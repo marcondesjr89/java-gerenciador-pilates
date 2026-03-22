@@ -1,5 +1,6 @@
 package br.com.gerenciadorpilates.platform.api;
 
+import br.com.gerenciadorpilates.platform.domain.ResourceNotFoundException;
 import java.time.Instant;
 import java.util.HashMap;
 import java.util.Map;
@@ -19,6 +20,15 @@ public class ApiExceptionHandler {
     public ProblemDetail handleIllegalArgument(IllegalArgumentException exception) {
         ProblemDetail problem = ProblemDetail.forStatusAndDetail(HttpStatus.CONFLICT, exception.getMessage());
         problem.setTitle("Regra de negocio violada");
+        problem.setProperty("timestamp", Instant.now());
+        return problem;
+    }
+
+    @ExceptionHandler(ResourceNotFoundException.class)
+    @ResponseStatus(HttpStatus.NOT_FOUND)
+    public ProblemDetail handleNotFound(ResourceNotFoundException exception) {
+        ProblemDetail problem = ProblemDetail.forStatusAndDetail(HttpStatus.NOT_FOUND, exception.getMessage());
+        problem.setTitle("Recurso nao encontrado");
         problem.setProperty("timestamp", Instant.now());
         return problem;
     }
