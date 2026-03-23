@@ -44,6 +44,14 @@ public class StudentAnamnesisService {
         return StudentAnamnesisResponse.from(anamnesis);
     }
 
+    @Transactional(readOnly = true)
+    public StudentAnamnesisResponse findOptionalByStudentId(UUID studentId) {
+        ensureStudentExists(studentId);
+        return anamnesisRepository.findByStudentId(studentId)
+                .map(StudentAnamnesisResponse::from)
+                .orElse(null);
+    }
+
     private void ensureStudentExists(UUID studentId) {
         if (!studentRepository.existsById(studentId)) {
             throw new ResourceNotFoundException("Aluno nao encontrado.");

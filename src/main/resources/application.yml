@@ -52,6 +52,15 @@ app:
     full-name: ${BOOTSTRAP_ADMIN_FULL_NAME:}
     email: ${BOOTSTRAP_ADMIN_EMAIL:}
     password: ${BOOTSTRAP_ADMIN_PASSWORD:}
+  storage:
+    clinical-attachments:
+      local-root: ${CLINICAL_ATTACHMENTS_ROOT:storage/clinical-attachments}
+      max-file-size-bytes: ${CLINICAL_ATTACHMENTS_MAX_FILE_SIZE_BYTES:10485760}
+      allowed-content-types:
+        - image/jpeg
+        - image/png
+        - image/webp
+        - application/pdf
 
 ---
 spring:
@@ -97,6 +106,9 @@ app:
     full-name: Administrador Teste
     email: admin@test.local
     password: Admin@12345
+  storage:
+    clinical-attachments:
+      local-root: target/test-clinical-attachments
 
 ---
 spring:

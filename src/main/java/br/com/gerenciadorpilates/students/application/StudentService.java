@@ -4,6 +4,7 @@ import br.com.gerenciadorpilates.students.api.CreateStudentRequest;
 import br.com.gerenciadorpilates.students.api.StudentResponse;
 import br.com.gerenciadorpilates.students.domain.Student;
 import br.com.gerenciadorpilates.students.infrastructure.StudentRepository;
+import br.com.gerenciadorpilates.platform.domain.ResourceNotFoundException;
 import java.util.List;
 import java.util.UUID;
 import org.springframework.stereotype.Service;
@@ -48,5 +49,12 @@ public class StudentService {
                 .stream()
                 .map(StudentResponse::from)
                 .toList();
+    }
+
+    @Transactional(readOnly = true)
+    public StudentResponse getById(UUID studentId) {
+        Student student = studentRepository.findById(studentId)
+                .orElseThrow(() -> new ResourceNotFoundException("Aluno nao encontrado."));
+        return StudentResponse.from(student);
     }
 }

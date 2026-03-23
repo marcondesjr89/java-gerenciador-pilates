@@ -3,6 +3,7 @@ package br.com.gerenciadorpilates;
 import br.com.gerenciadorpilates.identityaccess.application.AdminBootstrapProperties;
 import br.com.gerenciadorpilates.platform.config.ApplicationProperties;
 import br.com.gerenciadorpilates.platform.security.JwtProperties;
+import br.com.gerenciadorpilates.platform.storage.ClinicalAttachmentStorageProperties;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
@@ -11,7 +12,8 @@ import org.springframework.boot.context.properties.EnableConfigurationProperties
 @EnableConfigurationProperties({
         ApplicationProperties.class,
         JwtProperties.class,
-        AdminBootstrapProperties.class
+        AdminBootstrapProperties.class,
+        ClinicalAttachmentStorageProperties.class
 })
 public class GerenciadorPilatesApplication {
 
