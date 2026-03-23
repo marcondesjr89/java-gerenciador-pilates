@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.http.MediaType.APPLICATION_JSON;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.multipart;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -11,6 +12,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import br.com.gerenciadorpilates.clinical.domain.StudentProgressEntry;
 import br.com.gerenciadorpilates.clinical.infrastructure.StudentProgressEntryRepository;
 import br.com.gerenciadorpilates.identityaccess.domain.AppUser;
+import br.com.gerenciadorpilates.identityaccess.domain.UserRole;
 import br.com.gerenciadorpilates.identityaccess.infrastructure.AppUserRepository;
 import br.com.gerenciadorpilates.students.domain.Student;
 import br.com.gerenciadorpilates.students.domain.StudentStatus;
@@ -153,6 +155,83 @@ class GerenciadorPilatesApplicationTests {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.student.fullName").value("Ana Costa"))
                 .andExpect(jsonPath("$.progressEntries[0].attachments[0].originalFileName").value("evolucao.png"));
+    }
+
+    @Test
+    void receptionCanCreateSlotBookStudentAndCancelBooking() throws Exception {
+        AppUser instructor = appUserRepository.save(new AppUser(
+                UUID.randomUUID(),
+                "instrutor@teste.local",
+                "Instrutor Teste",
+                "$2a$10$FKnDJwN6CmxQ0VJ8A5yI0e1IY7PvxI6Bjq5lHppZArYrusS4x2M5K",
+                UserRole.INSTRUCTOR,
+                true
+        ));
+        Student student = studentRepository.save(new Student(
+                UUID.randomUUID(),
+                "Carlos Lima",
+                "22233344455",
+                "carlos@teste.local",
+                "85977777777",
+                LocalDate.of(1992, 1, 15),
+                StudentStatus.ACTIVE,
+                true
+        ));
+
+        String adminToken = loginAndGetToken("admin@test.local", "Admin@12345");
+        OffsetDateTime start = OffsetDateTime.now().plusDays(1).withHour(13).withMinute(0).withSecond(0).withNano(0);
+        OffsetDateTime end = start.plusHours(1);
+
+        String slotRequest = """
+                {
+                  "instructorUserId": "%s",
+                  "startTime": "%s",
+                  "endTime": "%s",
+                  "capacity": 2
+                }
+                """.formatted(instructor.getId(), start, end);
+
+        String slotResponse = mockMvc.perform(post("/api/v1/schedule-slots")
+                        .header("Authorization", "Bearer " + adminToken)
+                        .contentType(APPLICATION_JSON)
+                        .content(slotRequest))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.instructorName").value("Instrutor Teste"))
+                .andReturn()
+                .getResponse()
+                .getContentAsString();
+
+        UUID slotId = UUID.fromString(objectMapper.readTree(slotResponse).get("id").asText());
+
+        String bookingRequest = """
+                {
+                  "studentId": "%s"
+                }
+                """.formatted(student.getId());
+
+        String bookingResponse = mockMvc.perform(post("/api/v1/schedule-slots/{slotId}/bookings", slotId)
+                        .header("Authorization", "Bearer " + adminToken)
+                        .contentType(APPLICATION_JSON)
+                        .content(bookingRequest))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.studentName").value("Carlos Lima"))
+                .andReturn()
+                .getResponse()
+                .getContentAsString();
+
+        UUID bookingId = UUID.fromString(objectMapper.readTree(bookingResponse).get("id").asText());
+
+        mockMvc.perform(get("/api/v1/schedule-slots")
+                        .header("Authorization", "Bearer " + adminToken)
+                        .param("date", start.toLocalDate().toString()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[0].bookedCount").value(1))
+                .andExpect(jsonPath("$[0].availableSpots").value(1));
+
+        mockMvc.perform(delete("/api/v1/schedule-slots/{slotId}/bookings/{bookingId}", slotId, bookingId)
+                        .header("Authorization", "Bearer " + adminToken))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value("CANCELED"));
     }
 
     private String loginAndGetToken(String email, String password) throws Exception {
