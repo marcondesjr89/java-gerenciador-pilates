@@ -43,6 +43,15 @@ management:
 app:
   name: Gerenciador Pilates
   timezone: America/Fortaleza
+  security:
+    jwt:
+      secret: ${JWT_SECRET:gerenciador-pilates-local-secret-key-2026-secure}
+      expiration-seconds: ${JWT_EXPIRATION_SECONDS:3600}
+  bootstrap-admin:
+    enabled: ${BOOTSTRAP_ADMIN_ENABLED:false}
+    full-name: ${BOOTSTRAP_ADMIN_FULL_NAME:}
+    email: ${BOOTSTRAP_ADMIN_EMAIL:}
+    password: ${BOOTSTRAP_ADMIN_PASSWORD:}
 
 ---
 spring:
@@ -57,6 +66,13 @@ spring:
 logging:
   level:
     org.hibernate.SQL: info
+
+app:
+  bootstrap-admin:
+    enabled: true
+    full-name: Administrador Local
+    email: admin@gerenciadorpilates.local
+    password: Admin@12345
 
 ---
 spring:
@@ -74,6 +90,13 @@ spring:
   jpa:
     hibernate:
       ddl-auto: create-drop
+
+app:
+  bootstrap-admin:
+    enabled: true
+    full-name: Administrador Teste
+    email: admin@test.local
+    password: Admin@12345
 
 ---
 spring:

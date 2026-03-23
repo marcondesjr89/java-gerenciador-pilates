@@ -1,6 +1,9 @@
 package br.com.gerenciadorpilates;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import br.com.gerenciadorpilates.platform.api.SystemInfoController.SystemInfoResponse;
 import org.junit.jupiter.api.Test;
@@ -31,5 +34,24 @@ class GerenciadorPilatesApplicationTests {
     void infoEndpointReturnsConfiguredApplicationName() {
         SystemInfoResponse response = controller.info();
         assertThat(response.applicationName()).isEqualTo("Gerenciador Pilates");
+    }
+
+    @Test
+    void loginReturnsJwtForBootstrapAdmin() throws Exception {
+        String request = """
+                {
+                  "email": "admin@test.local",
+                  "password": "Admin@12345"
+                }
+                """;
+
+        mockMvc.perform(post("/api/v1/auth/login")
+                        .contentType("application/json")
+                        .content(request))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.tokenType").value("Bearer"))
+                .andExpect(jsonPath("$.accessToken").isNotEmpty())
+                .andExpect(jsonPath("$.email").value("admin@test.local"))
+                .andExpect(jsonPath("$.role").value("ADMIN"));
     }
 }

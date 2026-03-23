@@ -4,6 +4,7 @@ import br.com.gerenciadorpilates.identityaccess.domain.AppUser;
 import br.com.gerenciadorpilates.identityaccess.infrastructure.AppUserRepository;
 import br.com.gerenciadorpilates.identityaccess.api.CreateUserRequest;
 import br.com.gerenciadorpilates.identityaccess.api.UserResponse;
+import br.com.gerenciadorpilates.platform.domain.ResourceNotFoundException;
 import java.util.List;
 import java.util.UUID;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -47,5 +48,12 @@ public class UserService {
                 .stream()
                 .map(UserResponse::from)
                 .toList();
+    }
+
+    @Transactional(readOnly = true)
+    public UserResponse getByEmail(String email) {
+        AppUser user = userRepository.findByEmailIgnoreCaseAndActiveTrue(email)
+                .orElseThrow(() -> new ResourceNotFoundException("Usuario nao encontrado."));
+        return UserResponse.from(user);
     }
 }
