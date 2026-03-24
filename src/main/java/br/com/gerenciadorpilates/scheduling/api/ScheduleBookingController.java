@@ -42,4 +42,18 @@ public class ScheduleBookingController {
     public ScheduleBookingResponse cancel(@PathVariable UUID slotId, @PathVariable UUID bookingId) {
         return bookingService.cancel(slotId, bookingId);
     }
+
+    @PostMapping("/{bookingId}/self-service-cancel")
+    public ScheduleBookingResponse selfServiceCancel(@PathVariable UUID slotId, @PathVariable UUID bookingId) {
+        return bookingService.selfServiceCancel(slotId, bookingId);
+    }
+
+    @PostMapping("/{bookingId}/self-service-reschedule")
+    public ScheduleRescheduleResponse selfServiceReschedule(
+            @PathVariable UUID slotId,
+            @PathVariable UUID bookingId,
+            @Valid @RequestBody ScheduleRescheduleRequest request
+    ) {
+        return bookingService.selfServiceReschedule(slotId, bookingId, request.targetSlotId());
+    }
 }

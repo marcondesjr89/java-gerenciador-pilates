@@ -225,13 +225,102 @@ class GerenciadorPilatesApplicationTests {
                         .header("Authorization", "Bearer " + adminToken)
                         .param("date", start.toLocalDate().toString()))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$[0].bookedCount").value(1))
-                .andExpect(jsonPath("$[0].availableSpots").value(1));
+                .andExpect(jsonPath("$[?(@.id=='%s')].bookedCount".formatted(slotId)).value(1))
+                .andExpect(jsonPath("$[?(@.id=='%s')].availableSpots".formatted(slotId)).value(1));
 
         mockMvc.perform(delete("/api/v1/schedule-slots/{slotId}/bookings/{bookingId}", slotId, bookingId)
                         .header("Authorization", "Bearer " + adminToken))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.status").value("CANCELED"));
+    }
+
+    @Test
+    void selfServiceRescheduleFollowsConfiguredWindowAndCapacityRules() throws Exception {
+        AppUser instructor = appUserRepository.save(new AppUser(
+                UUID.randomUUID(),
+                "instrutor2@teste.local",
+                "Instrutor Dois",
+                "$2a$10$FKnDJwN6CmxQ0VJ8A5yI0e1IY7PvxI6Bjq5lHppZArYrusS4x2M5K",
+                UserRole.INSTRUCTOR,
+                true
+        ));
+        Student student = studentRepository.save(new Student(
+                UUID.randomUUID(),
+                "Julia Alves",
+                "55566677788",
+                "julia@teste.local",
+                "85966666666",
+                LocalDate.of(1995, 6, 3),
+                StudentStatus.ACTIVE,
+                true
+        ));
+
+        String adminToken = loginAndGetToken("admin@test.local", "Admin@12345");
+        OffsetDateTime startA = OffsetDateTime.now().plusDays(1).withHour(9).withMinute(0).withSecond(0).withNano(0);
+        OffsetDateTime endA = startA.plusHours(1);
+        OffsetDateTime startB = startA.plusHours(2);
+        OffsetDateTime endB = startB.plusHours(1);
+
+        UUID slotA = createScheduleSlot(adminToken, instructor.getId(), startA, endA, 1);
+        UUID slotB = createScheduleSlot(adminToken, instructor.getId(), startB, endB, 1);
+        UUID bookingId = createBooking(adminToken, slotA, student.getId());
+
+        String rescheduleRequest = """
+                {
+                  "targetSlotId": "%s"
+                }
+                """.formatted(slotB);
+
+        mockMvc.perform(post("/api/v1/schedule-slots/{slotId}/bookings/{bookingId}/self-service-reschedule", slotA, bookingId)
+                        .header("Authorization", "Bearer " + adminToken)
+                        .contentType(APPLICATION_JSON)
+                        .content(rescheduleRequest))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.canceledBooking.status").value("CANCELED"))
+                .andExpect(jsonPath("$.newBooking.slotId").value(slotB.toString()))
+                .andExpect(jsonPath("$.newBooking.studentName").value("Julia Alves"));
+    }
+
+    private UUID createScheduleSlot(String token, UUID instructorId, OffsetDateTime start, OffsetDateTime end, int capacity)
+            throws Exception {
+        String request = """
+                {
+                  "instructorUserId": "%s",
+                  "startTime": "%s",
+                  "endTime": "%s",
+                  "capacity": %d
+                }
+                """.formatted(instructorId, start, end, capacity);
+
+        String response = mockMvc.perform(post("/api/v1/schedule-slots")
+                        .header("Authorization", "Bearer " + token)
+                        .contentType(APPLICATION_JSON)
+                        .content(request))
+                .andExpect(status().isCreated())
+                .andReturn()
+                .getResponse()
+                .getContentAsString();
+
+        return UUID.fromString(objectMapper.readTree(response).get("id").asText());
+    }
+
+    private UUID createBooking(String token, UUID slotId, UUID studentId) throws Exception {
+        String request = """
+                {
+                  "studentId": "%s"
+                }
+                """.formatted(studentId);
+
+        String response = mockMvc.perform(post("/api/v1/schedule-slots/{slotId}/bookings", slotId)
+                        .header("Authorization", "Bearer " + token)
+                        .contentType(APPLICATION_JSON)
+                        .content(request))
+                .andExpect(status().isCreated())
+                .andReturn()
+                .getResponse()
+                .getContentAsString();
+
+        return UUID.fromString(objectMapper.readTree(response).get("id").asText());
     }
 
     private String loginAndGetToken(String email, String password) throws Exception {

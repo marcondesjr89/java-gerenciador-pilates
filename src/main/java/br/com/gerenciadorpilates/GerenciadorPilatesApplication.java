@@ -4,6 +4,7 @@ import br.com.gerenciadorpilates.identityaccess.application.AdminBootstrapProper
 import br.com.gerenciadorpilates.platform.config.ApplicationProperties;
 import br.com.gerenciadorpilates.platform.security.JwtProperties;
 import br.com.gerenciadorpilates.platform.storage.ClinicalAttachmentStorageProperties;
+import br.com.gerenciadorpilates.scheduling.application.SchedulingPolicyProperties;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
@@ -13,7 +14,8 @@ import org.springframework.boot.context.properties.EnableConfigurationProperties
         ApplicationProperties.class,
         JwtProperties.class,
         AdminBootstrapProperties.class,
-        ClinicalAttachmentStorageProperties.class
+        ClinicalAttachmentStorageProperties.class,
+        SchedulingPolicyProperties.class
 })
 public class GerenciadorPilatesApplication {
 

@@ -61,6 +61,10 @@ app:
         - image/png
         - image/webp
         - application/pdf
+  scheduling:
+    policy:
+      min-hours-before-cancellation: ${SCHEDULING_MIN_HOURS_BEFORE_CANCELLATION:12}
+      min-hours-before-reschedule: ${SCHEDULING_MIN_HOURS_BEFORE_RESCHEDULE:12}
 
 ---
 spring:
@@ -109,6 +113,10 @@ app:
   storage:
     clinical-attachments:
       local-root: target/test-clinical-attachments
+  scheduling:
+    policy:
+      min-hours-before-cancellation: 1
+      min-hours-before-reschedule: 1
 
 ---
 spring:

@@ -7,6 +7,7 @@ import br.com.gerenciadorpilates.platform.domain.ResourceNotFoundException;
 import br.com.gerenciadorpilates.scheduling.api.CreateScheduleSlotRequest;
 import br.com.gerenciadorpilates.scheduling.api.ScheduleSlotResponse;
 import br.com.gerenciadorpilates.scheduling.domain.ScheduleSlot;
+import br.com.gerenciadorpilates.scheduling.infrastructure.ScheduleBlockRepository;
 import br.com.gerenciadorpilates.scheduling.infrastructure.ScheduleSlotRepository;
 import java.time.LocalDate;
 import java.time.OffsetDateTime;
@@ -20,10 +21,16 @@ import org.springframework.transaction.annotation.Transactional;
 public class ScheduleSlotService {
 
     private final ScheduleSlotRepository slotRepository;
+    private final ScheduleBlockRepository blockRepository;
     private final AppUserRepository userRepository;
 
-    public ScheduleSlotService(ScheduleSlotRepository slotRepository, AppUserRepository userRepository) {
+    public ScheduleSlotService(
+            ScheduleSlotRepository slotRepository,
+            ScheduleBlockRepository blockRepository,
+            AppUserRepository userRepository
+    ) {
         this.slotRepository = slotRepository;
+        this.blockRepository = blockRepository;
         this.userRepository = userRepository;
     }
 
@@ -48,6 +55,15 @@ public class ScheduleSlotService {
 
         if (hasConflict) {
             throw new IllegalArgumentException("Ja existe um horario conflitante para este instrutor.");
+        }
+
+        boolean hasBlockConflict = !blockRepository.findOverlappingBlocks(
+                request.instructorUserId(),
+                request.startTime(),
+                request.endTime()
+        ).isEmpty();
+        if (hasBlockConflict) {
+            throw new IllegalArgumentException("Existe um bloqueio ativo no intervalo informado.");
         }
 
         ScheduleSlot slot = new ScheduleSlot(

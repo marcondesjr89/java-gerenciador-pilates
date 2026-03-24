@@ -1,0 +1,74 @@
+package br.com.gerenciadorpilates.scheduling.application;
+
+import br.com.gerenciadorpilates.identityaccess.domain.AppUser;
+import br.com.gerenciadorpilates.identityaccess.domain.UserRole;
+import br.com.gerenciadorpilates.identityaccess.infrastructure.AppUserRepository;
+import br.com.gerenciadorpilates.platform.domain.ResourceNotFoundException;
+import br.com.gerenciadorpilates.scheduling.api.CreateScheduleBlockRequest;
+import br.com.gerenciadorpilates.scheduling.api.ScheduleBlockResponse;
+import br.com.gerenciadorpilates.scheduling.domain.ScheduleBlock;
+import br.com.gerenciadorpilates.scheduling.infrastructure.ScheduleBlockRepository;
+import br.com.gerenciadorpilates.scheduling.infrastructure.ScheduleSlotRepository;
+import java.util.UUID;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+@Service
+public class ScheduleBlockService {
+
+    private final ScheduleBlockRepository blockRepository;
+    private final ScheduleSlotRepository slotRepository;
+    private final AppUserRepository userRepository;
+
+    public ScheduleBlockService(
+            ScheduleBlockRepository blockRepository,
+            ScheduleSlotRepository slotRepository,
+            AppUserRepository userRepository
+    ) {
+        this.blockRepository = blockRepository;
+        this.slotRepository = slotRepository;
+        this.userRepository = userRepository;
+    }
+
+    @Transactional
+    public ScheduleBlockResponse create(CreateScheduleBlockRequest request) {
+        if (!request.endTime().isAfter(request.startTime())) {
+            throw new IllegalArgumentException("O horario final do bloqueio deve ser maior que o inicial.");
+        }
+
+        AppUser instructor = userRepository.findById(request.instructorUserId())
+                .orElseThrow(() -> new ResourceNotFoundException("Instrutor nao encontrado."));
+
+        if (instructor.getRole() != UserRole.INSTRUCTOR) {
+            throw new IllegalArgumentException("O usuario informado nao possui perfil de instrutor.");
+        }
+
+        boolean hasSlotConflict = !slotRepository.findOverlappingSlots(
+                request.instructorUserId(),
+                request.startTime(),
+                request.endTime()
+        ).isEmpty();
+        if (hasSlotConflict) {
+            throw new IllegalArgumentException("Existem aulas neste intervalo. Remova ou remarque antes de bloquear.");
+        }
+
+        boolean hasBlockConflict = !blockRepository.findOverlappingBlocks(
+                request.instructorUserId(),
+                request.startTime(),
+                request.endTime()
+        ).isEmpty();
+        if (hasBlockConflict) {
+            throw new IllegalArgumentException("Ja existe um bloqueio conflitante para este instrutor.");
+        }
+
+        ScheduleBlock block = new ScheduleBlock(
+                UUID.randomUUID(),
+                instructor.getId(),
+                instructor.getFullName(),
+                request.startTime(),
+                request.endTime(),
+                request.reason().trim()
+        );
+        return ScheduleBlockResponse.from(blockRepository.save(block));
+    }
+}

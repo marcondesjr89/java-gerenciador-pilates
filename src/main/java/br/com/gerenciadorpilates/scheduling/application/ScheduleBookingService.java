@@ -2,6 +2,7 @@ package br.com.gerenciadorpilates.scheduling.application;
 
 import br.com.gerenciadorpilates.platform.domain.ResourceNotFoundException;
 import br.com.gerenciadorpilates.scheduling.api.ScheduleBookingResponse;
+import br.com.gerenciadorpilates.scheduling.api.ScheduleRescheduleResponse;
 import br.com.gerenciadorpilates.scheduling.domain.ScheduleBooking;
 import br.com.gerenciadorpilates.scheduling.domain.ScheduleBookingStatus;
 import br.com.gerenciadorpilates.scheduling.domain.ScheduleSlot;
@@ -9,6 +10,7 @@ import br.com.gerenciadorpilates.scheduling.infrastructure.ScheduleBookingReposi
 import br.com.gerenciadorpilates.scheduling.infrastructure.ScheduleSlotRepository;
 import br.com.gerenciadorpilates.students.domain.Student;
 import br.com.gerenciadorpilates.students.infrastructure.StudentRepository;
+import java.time.OffsetDateTime;
 import java.util.List;
 import java.util.UUID;
 import org.springframework.stereotype.Service;
@@ -20,15 +22,18 @@ public class ScheduleBookingService {
     private final ScheduleBookingRepository bookingRepository;
     private final ScheduleSlotRepository slotRepository;
     private final StudentRepository studentRepository;
+    private final SchedulingPolicyProperties policyProperties;
 
     public ScheduleBookingService(
             ScheduleBookingRepository bookingRepository,
             ScheduleSlotRepository slotRepository,
-            StudentRepository studentRepository
+            StudentRepository studentRepository,
+            SchedulingPolicyProperties policyProperties
     ) {
         this.bookingRepository = bookingRepository;
         this.slotRepository = slotRepository;
         this.studentRepository = studentRepository;
+        this.policyProperties = policyProperties;
     }
 
     @Transactional
@@ -83,6 +88,63 @@ public class ScheduleBookingService {
         return ScheduleBookingResponse.from(bookingRepository.save(booking));
     }
 
+    @Transactional
+    public ScheduleBookingResponse selfServiceCancel(UUID slotId, UUID bookingId) {
+        ScheduleBooking booking = bookingRepository.findById(bookingId)
+                .orElseThrow(() -> new ResourceNotFoundException("Reserva nao encontrada."));
+        ScheduleSlot slot = validateCancelableBooking(slotId, booking);
+        validateSelfServiceWindow(slot.getStartTime(), policyProperties.minHoursBeforeCancellation(), "cancelamento");
+
+        booking.cancel();
+        slot.decrementBookedCount();
+        slotRepository.save(slot);
+        return ScheduleBookingResponse.from(bookingRepository.save(booking));
+    }
+
+    @Transactional
+    public ScheduleRescheduleResponse selfServiceReschedule(UUID slotId, UUID bookingId, UUID targetSlotId) {
+        ScheduleBooking originalBooking = bookingRepository.findById(bookingId)
+                .orElseThrow(() -> new ResourceNotFoundException("Reserva nao encontrada."));
+        ScheduleSlot originalSlot = validateCancelableBooking(slotId, originalBooking);
+        validateSelfServiceWindow(originalSlot.getStartTime(), policyProperties.minHoursBeforeReschedule(), "remarcacao");
+
+        ScheduleSlot targetSlot = slotRepository.findById(targetSlotId)
+                .orElseThrow(() -> new ResourceNotFoundException("Horario de destino nao encontrado."));
+
+        if (targetSlot.getBookedCount() >= targetSlot.getCapacity()) {
+            throw new IllegalArgumentException("O horario de destino nao possui vagas disponiveis.");
+        }
+
+        bookingRepository.findBySlotIdAndStudentIdAndStatus(
+                targetSlotId,
+                originalBooking.getStudentId(),
+                ScheduleBookingStatus.BOOKED
+        ).ifPresent(existing -> {
+            throw new IllegalArgumentException("O aluno ja possui reserva ativa no horario de destino.");
+        });
+
+        originalBooking.cancel();
+        originalSlot.decrementBookedCount();
+        targetSlot.incrementBookedCount();
+
+        ScheduleBooking newBooking = new ScheduleBooking(
+                UUID.randomUUID(),
+                targetSlotId,
+                originalBooking.getStudentId(),
+                originalBooking.getStudentName()
+        );
+
+        slotRepository.save(originalSlot);
+        slotRepository.save(targetSlot);
+        ScheduleBooking canceled = bookingRepository.save(originalBooking);
+        ScheduleBooking created = bookingRepository.save(newBooking);
+
+        return new ScheduleRescheduleResponse(
+                ScheduleBookingResponse.from(canceled),
+                ScheduleBookingResponse.from(created)
+        );
+    }
+
     @Transactional(readOnly = true)
     public List<ScheduleBookingResponse> listActiveBySlot(UUID slotId) {
         if (!slotRepository.existsById(slotId)) {
@@ -93,5 +155,27 @@ public class ScheduleBookingService {
                 .stream()
                 .map(ScheduleBookingResponse::from)
                 .toList();
+    }
+
+    private ScheduleSlot validateCancelableBooking(UUID slotId, ScheduleBooking booking) {
+        if (!booking.getSlotId().equals(slotId)) {
+            throw new ResourceNotFoundException("Reserva nao pertence ao horario informado.");
+        }
+
+        if (booking.getStatus() != ScheduleBookingStatus.BOOKED) {
+            throw new IllegalArgumentException("A reserva nao esta ativa.");
+        }
+
+        return slotRepository.findById(slotId)
+                .orElseThrow(() -> new ResourceNotFoundException("Horario nao encontrado."));
+    }
+
+    private void validateSelfServiceWindow(OffsetDateTime slotStart, long minimumHours, String actionLabel) {
+        OffsetDateTime limit = OffsetDateTime.now().plusHours(minimumHours);
+        if (!slotStart.isAfter(limit)) {
+            throw new IllegalArgumentException(
+                    "Nao e possivel realizar " + actionLabel + " dentro da antecedencia minima configurada."
+            );
+        }
     }
 }
