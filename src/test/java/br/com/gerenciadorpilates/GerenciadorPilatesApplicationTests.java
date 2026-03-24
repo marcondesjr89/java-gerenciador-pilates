@@ -14,6 +14,8 @@ import br.com.gerenciadorpilates.clinical.infrastructure.StudentProgressEntryRep
 import br.com.gerenciadorpilates.identityaccess.domain.AppUser;
 import br.com.gerenciadorpilates.identityaccess.domain.UserRole;
 import br.com.gerenciadorpilates.identityaccess.infrastructure.AppUserRepository;
+import br.com.gerenciadorpilates.students.api.ConfigureStudentPortalAccountRequest;
+import br.com.gerenciadorpilates.students.application.StudentPortalAccountService;
 import br.com.gerenciadorpilates.students.domain.Student;
 import br.com.gerenciadorpilates.students.domain.StudentStatus;
 import br.com.gerenciadorpilates.students.infrastructure.StudentRepository;
@@ -53,6 +55,9 @@ class GerenciadorPilatesApplicationTests {
 
     @Autowired
     private AppUserRepository appUserRepository;
+
+    @Autowired
+    private StudentPortalAccountService studentPortalAccountService;
 
     @Test
     void contextLoads() {
@@ -254,8 +259,13 @@ class GerenciadorPilatesApplicationTests {
                 StudentStatus.ACTIVE,
                 true
         ));
+        studentPortalAccountService.configure(
+                student.getId(),
+                new ConfigureStudentPortalAccountRequest("julia@portal.local", "Aluno@12345")
+        );
 
         String adminToken = loginAndGetToken("admin@test.local", "Admin@12345");
+        String studentToken = loginStudentPortalAndGetToken("julia@portal.local", "Aluno@12345");
         OffsetDateTime startA = OffsetDateTime.now().plusDays(1).withHour(9).withMinute(0).withSecond(0).withNano(0);
         OffsetDateTime endA = startA.plusHours(1);
         OffsetDateTime startB = startA.plusHours(2);
@@ -272,13 +282,69 @@ class GerenciadorPilatesApplicationTests {
                 """.formatted(slotB);
 
         mockMvc.perform(post("/api/v1/schedule-slots/{slotId}/bookings/{bookingId}/self-service-reschedule", slotA, bookingId)
-                        .header("Authorization", "Bearer " + adminToken)
+                        .header("Authorization", "Bearer " + studentToken)
                         .contentType(APPLICATION_JSON)
                         .content(rescheduleRequest))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.canceledBooking.status").value("CANCELED"))
                 .andExpect(jsonPath("$.newBooking.slotId").value(slotB.toString()))
                 .andExpect(jsonPath("$.newBooking.studentName").value("Julia Alves"));
+    }
+
+    @Test
+    void studentPortalLoginCanViewAndManageOwnBookings() throws Exception {
+        AppUser instructor = appUserRepository.save(new AppUser(
+                UUID.randomUUID(),
+                "instrutor3@teste.local",
+                "Instrutor Tres",
+                "$2a$10$FKnDJwN6CmxQ0VJ8A5yI0e1IY7PvxI6Bjq5lHppZArYrusS4x2M5K",
+                UserRole.INSTRUCTOR,
+                true
+        ));
+        Student student = studentRepository.save(new Student(
+                UUID.randomUUID(),
+                "Paula Mendes",
+                "10120230344",
+                "paula@teste.local",
+                "85955555555",
+                LocalDate.of(1994, 2, 12),
+                StudentStatus.ACTIVE,
+                true
+        ));
+        studentPortalAccountService.configure(
+                student.getId(),
+                new ConfigureStudentPortalAccountRequest("paula@portal.local", "Aluno@12345")
+        );
+
+        String adminToken = loginAndGetToken("admin@test.local", "Admin@12345");
+        OffsetDateTime startA = OffsetDateTime.now().plusDays(1).withHour(10).withMinute(0).withSecond(0).withNano(0);
+        OffsetDateTime endA = startA.plusHours(1);
+        OffsetDateTime startB = startA.plusHours(2);
+        OffsetDateTime endB = startB.plusHours(1);
+        UUID slotA = createScheduleSlot(adminToken, instructor.getId(), startA, endA, 1);
+        UUID slotB = createScheduleSlot(adminToken, instructor.getId(), startB, endB, 1);
+        UUID bookingId = createBooking(adminToken, slotA, student.getId());
+
+        String studentToken = loginStudentPortalAndGetToken("paula@portal.local", "Aluno@12345");
+
+        mockMvc.perform(get("/api/v1/student-portal/me/bookings")
+                        .header("Authorization", "Bearer " + studentToken))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[0].studentId").value(student.getId().toString()))
+                .andExpect(jsonPath("$[0].slotId").value(slotA.toString()));
+
+        String rescheduleRequest = """
+                {
+                  "targetSlotId": "%s"
+                }
+                """.formatted(slotB);
+
+        mockMvc.perform(post("/api/v1/schedule-slots/{slotId}/bookings/{bookingId}/self-service-reschedule", slotA, bookingId)
+                        .header("Authorization", "Bearer " + studentToken)
+                        .contentType(APPLICATION_JSON)
+                        .content(rescheduleRequest))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.newBooking.slotId").value(slotB.toString()));
     }
 
     private UUID createScheduleSlot(String token, UUID instructorId, OffsetDateTime start, OffsetDateTime end, int capacity)
@@ -332,6 +398,26 @@ class GerenciadorPilatesApplicationTests {
                 """.formatted(email, password);
 
         String response = mockMvc.perform(post("/api/v1/auth/login")
+                        .contentType(APPLICATION_JSON)
+                        .content(request))
+                .andExpect(status().isOk())
+                .andReturn()
+                .getResponse()
+                .getContentAsString();
+
+        JsonNode jsonNode = objectMapper.readTree(response);
+        return jsonNode.get("accessToken").asText();
+    }
+
+    private String loginStudentPortalAndGetToken(String email, String password) throws Exception {
+        String request = """
+                {
+                  "email": "%s",
+                  "password": "%s"
+                }
+                """.formatted(email, password);
+
+        String response = mockMvc.perform(post("/api/v1/student-portal/auth/login")
                         .contentType(APPLICATION_JSON)
                         .content(request))
                 .andExpect(status().isOk())

@@ -37,8 +37,11 @@ public class SecurityConfig {
                 .csrf(AbstractHttpConfigurer::disable)
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(authorize -> authorize
-                        .requestMatchers("/actuator/health", "/api/v1/system/info", "/api/v1/auth/login").permitAll()
+                        .requestMatchers("/actuator/health", "/api/v1/system/info", "/api/v1/auth/login", "/api/v1/student-portal/auth/login").permitAll()
                         .requestMatchers("/api/v1/users/**").hasRole("ADMIN")
+                        .requestMatchers("/api/v1/students/*/portal-account/**").hasAnyRole("ADMIN", "RECEPTION")
+                        .requestMatchers("/api/v1/student-portal/me/**").hasRole("STUDENT")
+                        .requestMatchers("/api/v1/schedule-slots/*/bookings/*/self-service-**").hasRole("STUDENT")
                         .requestMatchers("/api/v1/students/*/anamnesis/**").hasAnyRole("ADMIN", "INSTRUCTOR")
                         .requestMatchers("/api/v1/students/*/progress-entries/**").hasAnyRole("ADMIN", "INSTRUCTOR")
                         .requestMatchers(HttpMethod.POST, "/api/v1/schedule-blocks/**").hasAnyRole("ADMIN", "RECEPTION")

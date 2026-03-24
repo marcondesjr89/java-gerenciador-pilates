@@ -102,6 +102,14 @@ public class ScheduleBookingService {
     }
 
     @Transactional
+    public ScheduleBookingResponse selfServiceCancel(UUID slotId, UUID bookingId, UUID authenticatedStudentId) {
+        ScheduleBooking booking = bookingRepository.findById(bookingId)
+                .orElseThrow(() -> new ResourceNotFoundException("Reserva nao encontrada."));
+        validateBookingOwnership(booking, authenticatedStudentId);
+        return selfServiceCancel(slotId, bookingId);
+    }
+
+    @Transactional
     public ScheduleRescheduleResponse selfServiceReschedule(UUID slotId, UUID bookingId, UUID targetSlotId) {
         ScheduleBooking originalBooking = bookingRepository.findById(bookingId)
                 .orElseThrow(() -> new ResourceNotFoundException("Reserva nao encontrada."));
@@ -145,6 +153,19 @@ public class ScheduleBookingService {
         );
     }
 
+    @Transactional
+    public ScheduleRescheduleResponse selfServiceReschedule(
+            UUID slotId,
+            UUID bookingId,
+            UUID targetSlotId,
+            UUID authenticatedStudentId
+    ) {
+        ScheduleBooking booking = bookingRepository.findById(bookingId)
+                .orElseThrow(() -> new ResourceNotFoundException("Reserva nao encontrada."));
+        validateBookingOwnership(booking, authenticatedStudentId);
+        return selfServiceReschedule(slotId, bookingId, targetSlotId);
+    }
+
     @Transactional(readOnly = true)
     public List<ScheduleBookingResponse> listActiveBySlot(UUID slotId) {
         if (!slotRepository.existsById(slotId)) {
@@ -152,6 +173,18 @@ public class ScheduleBookingService {
         }
 
         return bookingRepository.findAllBySlotIdAndStatusOrderByCreatedAtAsc(slotId, ScheduleBookingStatus.BOOKED)
+                .stream()
+                .map(ScheduleBookingResponse::from)
+                .toList();
+    }
+
+    @Transactional(readOnly = true)
+    public List<ScheduleBookingResponse> listByStudent(UUID studentId) {
+        if (!studentRepository.existsById(studentId)) {
+            throw new ResourceNotFoundException("Aluno nao encontrado.");
+        }
+
+        return bookingRepository.findAllByStudentIdAndStatusOrderByCreatedAtDesc(studentId, ScheduleBookingStatus.BOOKED)
                 .stream()
                 .map(ScheduleBookingResponse::from)
                 .toList();
@@ -176,6 +209,12 @@ public class ScheduleBookingService {
             throw new IllegalArgumentException(
                     "Nao e possivel realizar " + actionLabel + " dentro da antecedencia minima configurada."
             );
+        }
+    }
+
+    private void validateBookingOwnership(ScheduleBooking booking, UUID authenticatedStudentId) {
+        if (!booking.getStudentId().equals(authenticatedStudentId)) {
+            throw new IllegalArgumentException("A reserva nao pertence ao aluno autenticado.");
         }
     }
 }

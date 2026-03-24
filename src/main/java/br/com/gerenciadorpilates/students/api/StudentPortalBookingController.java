@@ -1,0 +1,28 @@
+package br.com.gerenciadorpilates.students.api;
+
+import br.com.gerenciadorpilates.platform.security.AuthenticatedActor;
+import br.com.gerenciadorpilates.platform.security.SecurityActorUtils;
+import br.com.gerenciadorpilates.scheduling.api.ScheduleBookingResponse;
+import br.com.gerenciadorpilates.scheduling.application.ScheduleBookingService;
+import java.util.List;
+import org.springframework.security.core.Authentication;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
+
+@RestController
+@RequestMapping("/api/v1/student-portal/me/bookings")
+public class StudentPortalBookingController {
+
+    private final ScheduleBookingService bookingService;
+
+    public StudentPortalBookingController(ScheduleBookingService bookingService) {
+        this.bookingService = bookingService;
+    }
+
+    @GetMapping
+    public List<ScheduleBookingResponse> myBookings(Authentication authentication) {
+        AuthenticatedActor actor = SecurityActorUtils.requireActor(authentication);
+        return bookingService.listByStudent(actor.principalId());
+    }
+}

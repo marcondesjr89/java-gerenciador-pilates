@@ -14,4 +14,6 @@ public interface ScheduleBookingRepository extends JpaRepository<ScheduleBooking
     Optional<ScheduleBooking> findBySlotIdAndStudentIdAndStatus(UUID slotId, UUID studentId, ScheduleBookingStatus status);
 
     List<ScheduleBooking> findAllBySlotIdAndStatusOrderByCreatedAtAsc(UUID slotId, ScheduleBookingStatus status);
+
+    List<ScheduleBooking> findAllByStudentIdAndStatusOrderByCreatedAtDesc(UUID studentId, ScheduleBookingStatus status);
 }

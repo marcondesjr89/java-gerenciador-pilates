@@ -1,10 +1,14 @@
 package br.com.gerenciadorpilates.scheduling.api;
 
 import br.com.gerenciadorpilates.scheduling.application.ScheduleBookingService;
+import br.com.gerenciadorpilates.platform.security.AuthenticatedActor;
+import br.com.gerenciadorpilates.platform.security.SecurityActorUtils;
 import jakarta.validation.Valid;
+import java.security.Principal;
 import java.util.List;
 import java.util.UUID;
 import org.springframework.http.HttpStatus;
+import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -44,16 +48,23 @@ public class ScheduleBookingController {
     }
 
     @PostMapping("/{bookingId}/self-service-cancel")
-    public ScheduleBookingResponse selfServiceCancel(@PathVariable UUID slotId, @PathVariable UUID bookingId) {
-        return bookingService.selfServiceCancel(slotId, bookingId);
+    public ScheduleBookingResponse selfServiceCancel(
+            @PathVariable UUID slotId,
+            @PathVariable UUID bookingId,
+            Authentication authentication
+    ) {
+        AuthenticatedActor actor = SecurityActorUtils.requireActor(authentication);
+        return bookingService.selfServiceCancel(slotId, bookingId, actor.principalId());
     }
 
     @PostMapping("/{bookingId}/self-service-reschedule")
     public ScheduleRescheduleResponse selfServiceReschedule(
             @PathVariable UUID slotId,
             @PathVariable UUID bookingId,
-            @Valid @RequestBody ScheduleRescheduleRequest request
+            @Valid @RequestBody ScheduleRescheduleRequest request,
+            Authentication authentication
     ) {
-        return bookingService.selfServiceReschedule(slotId, bookingId, request.targetSlotId());
+        AuthenticatedActor actor = SecurityActorUtils.requireActor(authentication);
+        return bookingService.selfServiceReschedule(slotId, bookingId, request.targetSlotId(), actor.principalId());
     }
 }
