@@ -1,7 +1,10 @@
 package br.com.gerenciadorpilates.scheduling.domain;
 
+import br.com.gerenciadorpilates.identityaccess.domain.InstructorSpecialty;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
 import jakarta.persistence.Id;
 import jakarta.persistence.PrePersist;
 import jakarta.persistence.PreUpdate;
@@ -21,6 +24,10 @@ public class ScheduleSlot {
 
     @Column(name = "instructor_name", nullable = false)
     private String instructorName;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "required_specialty", nullable = false)
+    private InstructorSpecialty requiredSpecialty;
 
     @Column(name = "start_time", nullable = false)
     private OffsetDateTime startTime;
@@ -47,6 +54,7 @@ public class ScheduleSlot {
             UUID id,
             UUID instructorUserId,
             String instructorName,
+            InstructorSpecialty requiredSpecialty,
             OffsetDateTime startTime,
             OffsetDateTime endTime,
             int capacity
@@ -54,6 +62,7 @@ public class ScheduleSlot {
         this.id = id;
         this.instructorUserId = instructorUserId;
         this.instructorName = instructorName;
+        this.requiredSpecialty = requiredSpecialty;
         this.startTime = startTime;
         this.endTime = endTime;
         this.capacity = capacity;
@@ -95,6 +104,10 @@ public class ScheduleSlot {
 
     public String getInstructorName() {
         return instructorName;
+    }
+
+    public InstructorSpecialty getRequiredSpecialty() {
+        return requiredSpecialty;
     }
 
     public OffsetDateTime getStartTime() {

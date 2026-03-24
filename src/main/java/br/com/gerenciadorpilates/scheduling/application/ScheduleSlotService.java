@@ -1,6 +1,7 @@
 package br.com.gerenciadorpilates.scheduling.application;
 
 import br.com.gerenciadorpilates.identityaccess.domain.AppUser;
+import br.com.gerenciadorpilates.identityaccess.domain.InstructorSpecialty;
 import br.com.gerenciadorpilates.identityaccess.domain.UserRole;
 import br.com.gerenciadorpilates.identityaccess.infrastructure.AppUserRepository;
 import br.com.gerenciadorpilates.platform.domain.ResourceNotFoundException;
@@ -47,6 +48,10 @@ public class ScheduleSlotService {
             throw new IllegalArgumentException("O usuario informado nao possui perfil de instrutor.");
         }
 
+        if (!instructor.getSpecialties().contains(request.requiredSpecialty())) {
+            throw new IllegalArgumentException("O instrutor nao possui a especialidade exigida para este horario.");
+        }
+
         boolean hasConflict = !slotRepository.findOverlappingSlots(
                 request.instructorUserId(),
                 request.startTime(),
@@ -70,6 +75,7 @@ public class ScheduleSlotService {
                 UUID.randomUUID(),
                 instructor.getId(),
                 instructor.getFullName(),
+                request.requiredSpecialty(),
                 request.startTime(),
                 request.endTime(),
                 request.capacity()

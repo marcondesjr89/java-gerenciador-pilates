@@ -23,17 +23,20 @@ public class ScheduleBookingService {
     private final ScheduleSlotRepository slotRepository;
     private final StudentRepository studentRepository;
     private final SchedulingPolicyProperties policyProperties;
+    private final ScheduleWaitlistService waitlistService;
 
     public ScheduleBookingService(
             ScheduleBookingRepository bookingRepository,
             ScheduleSlotRepository slotRepository,
             StudentRepository studentRepository,
-            SchedulingPolicyProperties policyProperties
+            SchedulingPolicyProperties policyProperties,
+            ScheduleWaitlistService waitlistService
     ) {
         this.bookingRepository = bookingRepository;
         this.slotRepository = slotRepository;
         this.studentRepository = studentRepository;
         this.policyProperties = policyProperties;
+        this.waitlistService = waitlistService;
     }
 
     @Transactional
@@ -85,7 +88,9 @@ public class ScheduleBookingService {
         slot.decrementBookedCount();
 
         slotRepository.save(slot);
-        return ScheduleBookingResponse.from(bookingRepository.save(booking));
+        ScheduleBookingResponse response = ScheduleBookingResponse.from(bookingRepository.save(booking));
+        waitlistService.promoteNextIfPossible(slotId);
+        return response;
     }
 
     @Transactional
@@ -98,7 +103,9 @@ public class ScheduleBookingService {
         booking.cancel();
         slot.decrementBookedCount();
         slotRepository.save(slot);
-        return ScheduleBookingResponse.from(bookingRepository.save(booking));
+        ScheduleBookingResponse response = ScheduleBookingResponse.from(bookingRepository.save(booking));
+        waitlistService.promoteNextIfPossible(slotId);
+        return response;
     }
 
     @Transactional
@@ -146,6 +153,7 @@ public class ScheduleBookingService {
         slotRepository.save(targetSlot);
         ScheduleBooking canceled = bookingRepository.save(originalBooking);
         ScheduleBooking created = bookingRepository.save(newBooking);
+        waitlistService.promoteNextIfPossible(slotId);
 
         return new ScheduleRescheduleResponse(
                 ScheduleBookingResponse.from(canceled),

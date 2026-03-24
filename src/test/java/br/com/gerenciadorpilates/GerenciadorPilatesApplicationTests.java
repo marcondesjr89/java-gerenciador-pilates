@@ -12,8 +12,10 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import br.com.gerenciadorpilates.clinical.domain.StudentProgressEntry;
 import br.com.gerenciadorpilates.clinical.infrastructure.StudentProgressEntryRepository;
 import br.com.gerenciadorpilates.identityaccess.domain.AppUser;
+import br.com.gerenciadorpilates.identityaccess.domain.InstructorSpecialty;
 import br.com.gerenciadorpilates.identityaccess.domain.UserRole;
 import br.com.gerenciadorpilates.identityaccess.infrastructure.AppUserRepository;
+import br.com.gerenciadorpilates.notifications.infrastructure.NotificationOutboxRepository;
 import br.com.gerenciadorpilates.students.api.ConfigureStudentPortalAccountRequest;
 import br.com.gerenciadorpilates.students.application.StudentPortalAccountService;
 import br.com.gerenciadorpilates.students.domain.Student;
@@ -58,6 +60,9 @@ class GerenciadorPilatesApplicationTests {
 
     @Autowired
     private StudentPortalAccountService studentPortalAccountService;
+
+    @Autowired
+    private NotificationOutboxRepository notificationOutboxRepository;
 
     @Test
     void contextLoads() {
@@ -170,7 +175,8 @@ class GerenciadorPilatesApplicationTests {
                 "Instrutor Teste",
                 "$2a$10$FKnDJwN6CmxQ0VJ8A5yI0e1IY7PvxI6Bjq5lHppZArYrusS4x2M5K",
                 UserRole.INSTRUCTOR,
-                true
+                true,
+                java.util.Set.of(InstructorSpecialty.PILATES_APARELHOS)
         ));
         Student student = studentRepository.save(new Student(
                 UUID.randomUUID(),
@@ -190,6 +196,7 @@ class GerenciadorPilatesApplicationTests {
         String slotRequest = """
                 {
                   "instructorUserId": "%s",
+                  "requiredSpecialty": "PILATES_APARELHOS",
                   "startTime": "%s",
                   "endTime": "%s",
                   "capacity": 2
@@ -247,7 +254,8 @@ class GerenciadorPilatesApplicationTests {
                 "Instrutor Dois",
                 "$2a$10$FKnDJwN6CmxQ0VJ8A5yI0e1IY7PvxI6Bjq5lHppZArYrusS4x2M5K",
                 UserRole.INSTRUCTOR,
-                true
+                true,
+                java.util.Set.of(InstructorSpecialty.PILATES_REABILITACAO)
         ));
         Student student = studentRepository.save(new Student(
                 UUID.randomUUID(),
@@ -271,8 +279,8 @@ class GerenciadorPilatesApplicationTests {
         OffsetDateTime startB = startA.plusHours(2);
         OffsetDateTime endB = startB.plusHours(1);
 
-        UUID slotA = createScheduleSlot(adminToken, instructor.getId(), startA, endA, 1);
-        UUID slotB = createScheduleSlot(adminToken, instructor.getId(), startB, endB, 1);
+        UUID slotA = createScheduleSlot(adminToken, instructor.getId(), InstructorSpecialty.PILATES_REABILITACAO, startA, endA, 1);
+        UUID slotB = createScheduleSlot(adminToken, instructor.getId(), InstructorSpecialty.PILATES_REABILITACAO, startB, endB, 1);
         UUID bookingId = createBooking(adminToken, slotA, student.getId());
 
         String rescheduleRequest = """
@@ -299,7 +307,8 @@ class GerenciadorPilatesApplicationTests {
                 "Instrutor Tres",
                 "$2a$10$FKnDJwN6CmxQ0VJ8A5yI0e1IY7PvxI6Bjq5lHppZArYrusS4x2M5K",
                 UserRole.INSTRUCTOR,
-                true
+                true,
+                java.util.Set.of(InstructorSpecialty.PILATES_SOLO)
         ));
         Student student = studentRepository.save(new Student(
                 UUID.randomUUID(),
@@ -321,8 +330,8 @@ class GerenciadorPilatesApplicationTests {
         OffsetDateTime endA = startA.plusHours(1);
         OffsetDateTime startB = startA.plusHours(2);
         OffsetDateTime endB = startB.plusHours(1);
-        UUID slotA = createScheduleSlot(adminToken, instructor.getId(), startA, endA, 1);
-        UUID slotB = createScheduleSlot(adminToken, instructor.getId(), startB, endB, 1);
+        UUID slotA = createScheduleSlot(adminToken, instructor.getId(), InstructorSpecialty.PILATES_SOLO, startA, endA, 1);
+        UUID slotB = createScheduleSlot(adminToken, instructor.getId(), InstructorSpecialty.PILATES_SOLO, startB, endB, 1);
         UUID bookingId = createBooking(adminToken, slotA, student.getId());
 
         String studentToken = loginStudentPortalAndGetToken("paula@portal.local", "Aluno@12345");
@@ -347,16 +356,89 @@ class GerenciadorPilatesApplicationTests {
                 .andExpect(jsonPath("$.newBooking.slotId").value(slotB.toString()));
     }
 
-    private UUID createScheduleSlot(String token, UUID instructorId, OffsetDateTime start, OffsetDateTime end, int capacity)
+    @Test
+    void waitlistPromotesFirstStudentAndCreatesNotificationWhenVacancyOpens() throws Exception {
+        AppUser instructor = appUserRepository.save(new AppUser(
+                UUID.randomUUID(),
+                "instrutor4@teste.local",
+                "Instrutor Quatro",
+                "$2a$10$FKnDJwN6CmxQ0VJ8A5yI0e1IY7PvxI6Bjq5lHppZArYrusS4x2M5K",
+                UserRole.INSTRUCTOR,
+                true,
+                java.util.Set.of(InstructorSpecialty.PILATES_GESTANTES)
+        ));
+        Student studentA = studentRepository.save(new Student(
+                UUID.randomUUID(),
+                "Aluno A",
+                "11111111111",
+                "a@teste.local",
+                "85944444441",
+                LocalDate.of(1990, 1, 1),
+                StudentStatus.ACTIVE,
+                true
+        ));
+        Student studentB = studentRepository.save(new Student(
+                UUID.randomUUID(),
+                "Aluno B",
+                "22222222222",
+                "b@teste.local",
+                "85944444442",
+                LocalDate.of(1991, 1, 1),
+                StudentStatus.ACTIVE,
+                true
+        ));
+
+        String adminToken = loginAndGetToken("admin@test.local", "Admin@12345");
+        OffsetDateTime start = OffsetDateTime.now().plusDays(1).withHour(15).withMinute(0).withSecond(0).withNano(0);
+        OffsetDateTime end = start.plusHours(1);
+        UUID slotId = createScheduleSlot(adminToken, instructor.getId(), InstructorSpecialty.PILATES_GESTANTES, start, end, 1);
+        UUID bookingId = createBooking(adminToken, slotId, studentA.getId());
+
+        String waitlistRequest = """
+                {
+                  "studentId": "%s"
+                }
+                """.formatted(studentB.getId());
+
+        mockMvc.perform(post("/api/v1/schedule-slots/{slotId}/waitlist", slotId)
+                        .header("Authorization", "Bearer " + adminToken)
+                        .contentType(APPLICATION_JSON)
+                        .content(waitlistRequest))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.studentName").value("Aluno B"))
+                .andExpect(jsonPath("$.status").value("WAITING"));
+
+        mockMvc.perform(delete("/api/v1/schedule-slots/{slotId}/bookings/{bookingId}", slotId, bookingId)
+                        .header("Authorization", "Bearer " + adminToken))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value("CANCELED"));
+
+        mockMvc.perform(get("/api/v1/schedule-slots/{slotId}/bookings", slotId)
+                        .header("Authorization", "Bearer " + adminToken))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[0].studentName").value("Aluno B"));
+
+        assertThat(notificationOutboxRepository.count()).isPositive();
+    }
+
+    private UUID createScheduleSlot(
+            String token,
+            UUID instructorId,
+            InstructorSpecialty specialty,
+            OffsetDateTime start,
+            OffsetDateTime end,
+            int capacity
+    )
             throws Exception {
         String request = """
                 {
                   "instructorUserId": "%s",
+                  "requiredSpecialty": "%s",
                   "startTime": "%s",
                   "endTime": "%s",
                   "capacity": %d
                 }
-                """.formatted(instructorId, start, end, capacity);
+                """.formatted(instructorId, specialty.name(), start, end, capacity);
 
         String response = mockMvc.perform(post("/api/v1/schedule-slots")
                         .header("Authorization", "Bearer " + token)

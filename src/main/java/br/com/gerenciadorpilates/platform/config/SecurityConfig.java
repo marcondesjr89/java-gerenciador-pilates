@@ -42,6 +42,8 @@ public class SecurityConfig {
                         .requestMatchers("/api/v1/students/*/portal-account/**").hasAnyRole("ADMIN", "RECEPTION")
                         .requestMatchers("/api/v1/student-portal/me/**").hasRole("STUDENT")
                         .requestMatchers("/api/v1/schedule-slots/*/bookings/*/self-service-**").hasRole("STUDENT")
+                        .requestMatchers(HttpMethod.GET, "/api/v1/schedule-slots/*/waitlist/**").hasAnyRole("ADMIN", "RECEPTION")
+                        .requestMatchers(HttpMethod.POST, "/api/v1/schedule-slots/*/waitlist/**").hasAnyRole("ADMIN", "RECEPTION")
                         .requestMatchers("/api/v1/students/*/anamnesis/**").hasAnyRole("ADMIN", "INSTRUCTOR")
                         .requestMatchers("/api/v1/students/*/progress-entries/**").hasAnyRole("ADMIN", "INSTRUCTOR")
                         .requestMatchers(HttpMethod.POST, "/api/v1/schedule-blocks/**").hasAnyRole("ADMIN", "RECEPTION")

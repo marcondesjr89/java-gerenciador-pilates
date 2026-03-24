@@ -35,7 +35,8 @@ public class UserService {
                 request.fullName().trim(),
                 passwordEncoder.encode(request.password()),
                 request.role(),
-                true
+                true,
+                request.specialties() == null ? java.util.Set.of() : request.specialties()
         );
 
         AppUser savedUser = userRepository.save(user);
