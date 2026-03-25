@@ -65,6 +65,10 @@ app:
     policy:
       min-hours-before-cancellation: ${SCHEDULING_MIN_HOURS_BEFORE_CANCELLATION:12}
       min-hours-before-reschedule: ${SCHEDULING_MIN_HOURS_BEFORE_RESCHEDULE:12}
+  reporting:
+    dmed:
+      provider-name: ${DMED_PROVIDER_NAME:Studio Pilates Exemplo Ltda}
+      provider-cnpj: ${DMED_PROVIDER_CNPJ:12345678000199}
 
 ---
 spring:

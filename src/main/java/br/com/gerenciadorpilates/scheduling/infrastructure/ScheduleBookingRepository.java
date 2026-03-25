@@ -2,6 +2,7 @@ package br.com.gerenciadorpilates.scheduling.infrastructure;
 
 import br.com.gerenciadorpilates.scheduling.domain.ScheduleBooking;
 import br.com.gerenciadorpilates.scheduling.domain.ScheduleBookingStatus;
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -16,4 +17,6 @@ public interface ScheduleBookingRepository extends JpaRepository<ScheduleBooking
     List<ScheduleBooking> findAllBySlotIdAndStatusOrderByCreatedAtAsc(UUID slotId, ScheduleBookingStatus status);
 
     List<ScheduleBooking> findAllByStudentIdAndStatusOrderByCreatedAtDesc(UUID studentId, ScheduleBookingStatus status);
+
+    long countBySlotIdInAndStatus(Collection<UUID> slotIds, ScheduleBookingStatus status);
 }

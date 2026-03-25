@@ -23,4 +23,10 @@ public interface ScheduleSlotRepository extends JpaRepository<ScheduleSlot, UUID
     );
 
     List<ScheduleSlot> findAllByStartTimeBetweenOrderByStartTimeAsc(OffsetDateTime start, OffsetDateTime end);
+
+    List<ScheduleSlot> findAllByInstructorUserIdAndStartTimeBetweenOrderByStartTimeAsc(
+            UUID instructorUserId,
+            OffsetDateTime start,
+            OffsetDateTime end
+    );
 }

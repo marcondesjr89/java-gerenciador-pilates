@@ -536,6 +536,195 @@ class GerenciadorPilatesApplicationTests {
                 .andExpect(jsonPath("$").isEmpty());
     }
 
+    @Test
+    void financialReportingSupportsDreCommissionAndDmed() throws Exception {
+        AppUser instructor = appUserRepository.save(new AppUser(
+                UUID.randomUUID(),
+                "financeiro.instrutor@teste.local",
+                "Instrutor Financeiro",
+                "$2a$10$FKnDJwN6CmxQ0VJ8A5yI0e1IY7PvxI6Bjq5lHppZArYrusS4x2M5K",
+                UserRole.INSTRUCTOR,
+                true,
+                java.util.Set.of(InstructorSpecialty.PILATES_SOLO)
+        ));
+        Student student = studentRepository.save(new Student(
+                UUID.randomUUID(),
+                "Aluno DMED",
+                "44455566677",
+                "aluno.dmed@teste.local",
+                "85940001122",
+                LocalDate.of(1991, 4, 9),
+                StudentStatus.ACTIVE,
+                true
+        ));
+
+        String adminToken = loginAndGetToken("admin@test.local", "Admin@12345");
+        OffsetDateTime start = OffsetDateTime.now().plusDays(2).withHour(8).withMinute(0).withSecond(0).withNano(0);
+        OffsetDateTime end = start.plusHours(1);
+        UUID slotId = createScheduleSlot(adminToken, instructor.getId(), InstructorSpecialty.PILATES_SOLO, start, end, 2);
+        createBooking(adminToken, slotId, student.getId());
+
+        String commissionProfileRequest = """
+                {
+                  "instructorUserId": "%s",
+                  "commissionModel": "PER_STUDENT_BOOKING",
+                  "unitAmount": 30.00,
+                  "active": true
+                }
+                """.formatted(instructor.getId());
+
+        mockMvc.perform(post("/api/v1/financial/commissions/profiles")
+                        .header("Authorization", "Bearer " + adminToken)
+                        .contentType(APPLICATION_JSON)
+                        .content(commissionProfileRequest))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.commissionModel").value("PER_STUDENT_BOOKING"))
+                .andExpect(jsonPath("$.unitAmount").value(30.00));
+
+        String planRequest = """
+                {
+                  "name": "Mensal Financeiro",
+                  "priceAmount": 500.00,
+                  "billingCycleMonths": 1
+                }
+                """;
+
+        String planResponse = mockMvc.perform(post("/api/v1/billing/plans")
+                        .header("Authorization", "Bearer " + adminToken)
+                        .contentType(APPLICATION_JSON)
+                        .content(planRequest))
+                .andExpect(status().isCreated())
+                .andReturn()
+                .getResponse()
+                .getContentAsString();
+
+        UUID planId = UUID.fromString(objectMapper.readTree(planResponse).get("id").asText());
+        LocalDate startDate = LocalDate.now().minusDays(15);
+
+        String subscriptionRequest = """
+                {
+                  "studentId": "%s",
+                  "planId": "%s",
+                  "startDate": "%s"
+                }
+                """.formatted(student.getId(), planId, startDate);
+
+        String subscriptionResponse = mockMvc.perform(post("/api/v1/billing/subscriptions")
+                        .header("Authorization", "Bearer " + adminToken)
+                        .contentType(APPLICATION_JSON)
+                        .content(subscriptionRequest))
+                .andExpect(status().isCreated())
+                .andReturn()
+                .getResponse()
+                .getContentAsString();
+
+        UUID subscriptionId = UUID.fromString(objectMapper.readTree(subscriptionResponse).get("id").asText());
+
+        String invoiceRequest = """
+                {
+                  "subscriptionId": "%s",
+                  "dueDate": "%s"
+                }
+                """.formatted(subscriptionId, LocalDate.now().minusDays(1));
+
+        String invoiceResponse = mockMvc.perform(post("/api/v1/billing/invoices/generate")
+                        .header("Authorization", "Bearer " + adminToken)
+                        .contentType(APPLICATION_JSON)
+                        .content(invoiceRequest))
+                .andExpect(status().isCreated())
+                .andReturn()
+                .getResponse()
+                .getContentAsString();
+
+        UUID invoiceId = UUID.fromString(objectMapper.readTree(invoiceResponse).get("id").asText());
+        OffsetDateTime paidAt = OffsetDateTime.now().minusDays(1);
+
+        String paymentRequest = """
+                {
+                  "amountPaid": 500.00,
+                  "paymentMethod": "PIX",
+                  "paidAt": "%s",
+                  "externalReference": "DMED-PIX-001"
+                }
+                """.formatted(paidAt);
+
+        mockMvc.perform(post("/api/v1/billing/invoices/{invoiceId}/payments", invoiceId)
+                        .header("Authorization", "Bearer " + adminToken)
+                        .contentType(APPLICATION_JSON)
+                        .content(paymentRequest))
+                .andExpect(status().isCreated());
+
+        String fixedExpenseRequest = """
+                {
+                  "description": "Aluguel",
+                  "expenseType": "FIXED",
+                  "amount": 200.00,
+                  "occurredOn": "%s"
+                }
+                """.formatted(LocalDate.now().minusDays(1));
+
+        String variableExpenseRequest = """
+                {
+                  "description": "Comissao instrutor",
+                  "expenseType": "VARIABLE",
+                  "amount": 30.00,
+                  "occurredOn": "%s"
+                }
+                """.formatted(LocalDate.now().minusDays(1));
+
+        mockMvc.perform(post("/api/v1/financial/expenses")
+                        .header("Authorization", "Bearer " + adminToken)
+                        .contentType(APPLICATION_JSON)
+                        .content(fixedExpenseRequest))
+                .andExpect(status().isCreated());
+
+        mockMvc.perform(post("/api/v1/financial/expenses")
+                        .header("Authorization", "Bearer " + adminToken)
+                        .contentType(APPLICATION_JSON)
+                        .content(variableExpenseRequest))
+                .andExpect(status().isCreated());
+
+        mockMvc.perform(get("/api/v1/financial/dre")
+                        .header("Authorization", "Bearer " + adminToken)
+                        .param("startDate", LocalDate.now().minusDays(5).toString())
+                        .param("endDate", LocalDate.now().toString()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.totalRevenue").value(500.00))
+                .andExpect(jsonPath("$.totalFixedCosts").value(200.00))
+                .andExpect(jsonPath("$.totalVariableCosts").value(30.00))
+                .andExpect(jsonPath("$.netResult").value(270.00));
+
+        mockMvc.perform(get("/api/v1/financial/commissions/reports")
+                        .header("Authorization", "Bearer " + adminToken)
+                        .param("startDate", LocalDate.now().toString())
+                        .param("endDate", LocalDate.now().plusDays(5).toString())
+                        .param("instructorUserId", instructor.getId().toString()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[0].instructorName").value("Instrutor Financeiro"))
+                .andExpect(jsonPath("$[0].quantity").value(1))
+                .andExpect(jsonPath("$[0].totalAmount").value(30.00));
+
+        int baseYear = paidAt.getYear();
+
+        mockMvc.perform(get("/api/v1/financial/dmed/{baseYear}", baseYear)
+                        .header("Authorization", "Bearer " + adminToken))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.providerCnpj").value("12345678000199"))
+                .andExpect(jsonPath("$.students[0].cpf").value("44455566677"))
+                .andExpect(jsonPath("$.students[0].totalPaid").value(500.00));
+
+        String csvResponse = mockMvc.perform(get("/api/v1/financial/dmed/{baseYear}/csv", baseYear)
+                        .header("Authorization", "Bearer " + adminToken))
+                .andExpect(status().isOk())
+                .andReturn()
+                .getResponse()
+                .getContentAsString();
+
+        assertThat(csvResponse).contains("12345678000199");
+        assertThat(csvResponse).contains("44455566677");
+        assertThat(csvResponse).contains("500.00");
+    }
+
     private UUID createScheduleSlot(
             String token,
             UUID instructorId,
