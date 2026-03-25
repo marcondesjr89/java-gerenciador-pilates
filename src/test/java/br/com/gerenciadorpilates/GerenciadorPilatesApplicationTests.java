@@ -421,6 +421,121 @@ class GerenciadorPilatesApplicationTests {
         assertThat(notificationOutboxRepository.count()).isPositive();
     }
 
+    @Test
+    void billingFlowCreatesPlanSubscriptionInvoiceListsOverdueAndRegistersPayment() throws Exception {
+        Student student = studentRepository.save(new Student(
+                UUID.randomUUID(),
+                "Financeiro Aluno",
+                "33344455566",
+                "financeiro@teste.local",
+                "85943332211",
+                LocalDate.of(1987, 3, 7),
+                StudentStatus.ACTIVE,
+                true
+        ));
+
+        String adminToken = loginAndGetToken("admin@test.local", "Admin@12345");
+
+        String planRequest = """
+                {
+                  "name": "Mensal 8 aulas",
+                  "priceAmount": 450.00,
+                  "billingCycleMonths": 1
+                }
+                """;
+
+        String planResponse = mockMvc.perform(post("/api/v1/billing/plans")
+                        .header("Authorization", "Bearer " + adminToken)
+                        .contentType(APPLICATION_JSON)
+                        .content(planRequest))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.name").value("Mensal 8 aulas"))
+                .andReturn()
+                .getResponse()
+                .getContentAsString();
+
+        UUID planId = UUID.fromString(objectMapper.readTree(planResponse).get("id").asText());
+
+        LocalDate startDate = LocalDate.now().minusDays(15);
+        String subscriptionRequest = """
+                {
+                  "studentId": "%s",
+                  "planId": "%s",
+                  "startDate": "%s"
+                }
+                """.formatted(student.getId(), planId, startDate);
+
+        String subscriptionResponse = mockMvc.perform(post("/api/v1/billing/subscriptions")
+                        .header("Authorization", "Bearer " + adminToken)
+                        .contentType(APPLICATION_JSON)
+                        .content(subscriptionRequest))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.studentName").value("Financeiro Aluno"))
+                .andExpect(jsonPath("$.status").value("ACTIVE"))
+                .andReturn()
+                .getResponse()
+                .getContentAsString();
+
+        UUID subscriptionId = UUID.fromString(objectMapper.readTree(subscriptionResponse).get("id").asText());
+
+        LocalDate dueDate = LocalDate.now().minusDays(1);
+        String invoiceRequest = """
+                {
+                  "subscriptionId": "%s",
+                  "dueDate": "%s"
+                }
+                """.formatted(subscriptionId, dueDate);
+
+        String invoiceResponse = mockMvc.perform(post("/api/v1/billing/invoices/generate")
+                        .header("Authorization", "Bearer " + adminToken)
+                        .contentType(APPLICATION_JSON)
+                        .content(invoiceRequest))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.status").value("OPEN"))
+                .andExpect(jsonPath("$.amountDue").value(450.00))
+                .andReturn()
+                .getResponse()
+                .getContentAsString();
+
+        UUID invoiceId = UUID.fromString(objectMapper.readTree(invoiceResponse).get("id").asText());
+
+        mockMvc.perform(get("/api/v1/billing/invoices/overdue")
+                        .header("Authorization", "Bearer " + adminToken)
+                        .param("baseDate", LocalDate.now().toString()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[0].id").value(invoiceId.toString()))
+                .andExpect(jsonPath("$[0].status").value("OPEN"));
+
+        String paymentRequest = """
+                {
+                  "amountPaid": 450.00,
+                  "paymentMethod": "PIX",
+                  "paidAt": "%s",
+                  "externalReference": "PIX-TST-001"
+                }
+                """.formatted(OffsetDateTime.now());
+
+        mockMvc.perform(post("/api/v1/billing/invoices/{invoiceId}/payments", invoiceId)
+                        .header("Authorization", "Bearer " + adminToken)
+                        .contentType(APPLICATION_JSON)
+                        .content(paymentRequest))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.invoiceId").value(invoiceId.toString()))
+                .andExpect(jsonPath("$.paymentMethod").value("PIX"));
+
+        mockMvc.perform(get("/api/v1/billing/invoices/student/{studentId}", student.getId())
+                        .header("Authorization", "Bearer " + adminToken))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[0].id").value(invoiceId.toString()))
+                .andExpect(jsonPath("$[0].status").value("PAID"));
+
+        mockMvc.perform(get("/api/v1/billing/invoices/overdue")
+                        .header("Authorization", "Bearer " + adminToken)
+                        .param("baseDate", LocalDate.now().toString()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$").isEmpty());
+    }
+
     private UUID createScheduleSlot(
             String token,
             UUID instructorId,
