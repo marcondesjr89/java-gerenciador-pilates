@@ -11,11 +11,13 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import br.com.gerenciadorpilates.clinical.domain.StudentProgressEntry;
 import br.com.gerenciadorpilates.clinical.infrastructure.StudentProgressEntryRepository;
+import br.com.gerenciadorpilates.billing.infrastructure.BillingInvoiceRepository;
 import br.com.gerenciadorpilates.identityaccess.domain.AppUser;
 import br.com.gerenciadorpilates.identityaccess.domain.InstructorSpecialty;
 import br.com.gerenciadorpilates.identityaccess.domain.UserRole;
 import br.com.gerenciadorpilates.identityaccess.infrastructure.AppUserRepository;
 import br.com.gerenciadorpilates.notifications.infrastructure.NotificationOutboxRepository;
+import br.com.gerenciadorpilates.scheduling.infrastructure.ScheduleSlotRepository;
 import br.com.gerenciadorpilates.students.api.ConfigureStudentPortalAccountRequest;
 import br.com.gerenciadorpilates.students.application.StudentPortalAccountService;
 import br.com.gerenciadorpilates.students.domain.Student;
@@ -24,6 +26,7 @@ import br.com.gerenciadorpilates.students.infrastructure.StudentRepository;
 import br.com.gerenciadorpilates.platform.api.SystemInfoController.SystemInfoResponse;
 import java.time.LocalDate;
 import java.time.OffsetDateTime;
+import java.util.Map;
 import java.util.UUID;
 import org.springframework.mock.web.MockMultipartFile;
 import org.junit.jupiter.api.Test;
@@ -32,12 +35,14 @@ import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMock
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.transaction.annotation.Transactional;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
 @SpringBootTest
 @AutoConfigureMockMvc
 @ActiveProfiles("test")
+@Transactional
 class GerenciadorPilatesApplicationTests {
 
     @Autowired
@@ -63,6 +68,12 @@ class GerenciadorPilatesApplicationTests {
 
     @Autowired
     private NotificationOutboxRepository notificationOutboxRepository;
+
+    @Autowired
+    private BillingInvoiceRepository billingInvoiceRepository;
+
+    @Autowired
+    private ScheduleSlotRepository scheduleSlotRepository;
 
     @Test
     void contextLoads() {
@@ -725,6 +736,138 @@ class GerenciadorPilatesApplicationTests {
         assertThat(csvResponse).contains("500.00");
     }
 
+    @Test
+    void dashboardReturnsKpisForChurnOccupancyAndDelinquency() throws Exception {
+        AppUser instructor = appUserRepository.save(new AppUser(
+                UUID.randomUUID(),
+                "dashboard.instrutor@teste.local",
+                "Instrutor Dashboard",
+                "$2a$10$FKnDJwN6CmxQ0VJ8A5yI0e1IY7PvxI6Bjq5lHppZArYrusS4x2M5K",
+                UserRole.INSTRUCTOR,
+                true,
+                java.util.Set.of(InstructorSpecialty.PILATES_APARELHOS)
+        ));
+        Student activeStudent = studentRepository.save(new Student(
+                UUID.randomUUID(),
+                "Aluno KPI Ativo",
+                "55566677799",
+                "ativo.kpi@teste.local",
+                "85949998877",
+                LocalDate.of(1990, 7, 10),
+                StudentStatus.ACTIVE,
+                true
+        ));
+        studentRepository.save(new Student(
+                UUID.randomUUID(),
+                "Aluno KPI Inativo",
+                "66677788800",
+                "inativo.kpi@teste.local",
+                "85949998878",
+                LocalDate.of(1989, 7, 10),
+                StudentStatus.INACTIVE,
+                true
+        ));
+
+        String adminToken = loginAndGetToken("admin@test.local", "Admin@12345");
+        OffsetDateTime slotStart = OffsetDateTime.now().plusDays(1).withHour(11).withMinute(0).withSecond(0).withNano(0);
+        UUID slotId = createScheduleSlot(
+                adminToken,
+                instructor.getId(),
+                InstructorSpecialty.PILATES_APARELHOS,
+                slotStart,
+                slotStart.plusHours(1),
+                4
+        );
+        createBooking(adminToken, slotId, activeStudent.getId());
+
+        String planRequest = """
+                {
+                  "name": "Plano KPI",
+                  "priceAmount": 320.00,
+                  "billingCycleMonths": 1
+                }
+                """;
+
+        String planResponse = mockMvc.perform(post("/api/v1/billing/plans")
+                        .header("Authorization", "Bearer " + adminToken)
+                        .contentType(APPLICATION_JSON)
+                        .content(planRequest))
+                .andExpect(status().isCreated())
+                .andReturn()
+                .getResponse()
+                .getContentAsString();
+
+        UUID planId = UUID.fromString(objectMapper.readTree(planResponse).get("id").asText());
+
+        String subscriptionRequest = """
+                {
+                  "studentId": "%s",
+                  "planId": "%s",
+                  "startDate": "%s"
+                }
+                """.formatted(activeStudent.getId(), planId, LocalDate.now().minusDays(10));
+
+        String subscriptionResponse = mockMvc.perform(post("/api/v1/billing/subscriptions")
+                        .header("Authorization", "Bearer " + adminToken)
+                        .contentType(APPLICATION_JSON)
+                        .content(subscriptionRequest))
+                .andExpect(status().isCreated())
+                .andReturn()
+                .getResponse()
+                .getContentAsString();
+
+        UUID subscriptionId = UUID.fromString(objectMapper.readTree(subscriptionResponse).get("id").asText());
+
+        mockMvc.perform(post("/api/v1/billing/invoices/generate")
+                        .header("Authorization", "Bearer " + adminToken)
+                        .contentType(APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "subscriptionId": "%s",
+                                  "dueDate": "%s"
+                                }
+                                """.formatted(subscriptionId, LocalDate.now().minusDays(1))))
+                .andExpect(status().isCreated());
+
+        String dashboardResponse = mockMvc.perform(get("/api/v1/dashboard/kpis")
+                        .header("Authorization", "Bearer " + adminToken)
+                        .param("startDate", LocalDate.now().minusDays(2).toString())
+                        .param("endDate", LocalDate.now().plusDays(2).toString()))
+                .andExpect(status().isOk())
+                .andReturn()
+                .getResponse()
+                .getContentAsString();
+
+        JsonNode indicators = objectMapper.readTree(dashboardResponse).get("indicators");
+        Map<String, Double> valuesByKey = new java.util.HashMap<>();
+        for (JsonNode indicator : indicators) {
+            valuesByKey.put(indicator.get("key").asText(), indicator.get("value").asDouble());
+        }
+
+        long activeCount = studentRepository.countByStatus(StudentStatus.ACTIVE);
+        long inactiveCount = studentRepository.countByStatus(StudentStatus.INACTIVE);
+        double expectedChurn = ((double) inactiveCount * 100.0) / (activeCount + inactiveCount);
+        LocalDate rangeStart = LocalDate.now().minusDays(2);
+        LocalDate rangeEnd = LocalDate.now().plusDays(2);
+        OffsetDateTime occupancyStart = rangeStart.atStartOfDay().atOffset(slotStart.getOffset());
+        OffsetDateTime occupancyEnd = rangeEnd.atTime(23, 59, 59).atOffset(slotStart.getOffset());
+        var slotsInRange = scheduleSlotRepository.findAllByStartTimeBetweenOrderByStartTimeAsc(occupancyStart, occupancyEnd);
+        int totalCapacity = slotsInRange.stream().mapToInt(slot -> slot.getCapacity()).sum();
+        int totalBooked = slotsInRange.stream().mapToInt(slot -> slot.getBookedCount()).sum();
+        double expectedOccupancy = totalCapacity == 0 ? 0.0d : round(((double) totalBooked * 100.0) / totalCapacity);
+        var invoicesInRange = billingInvoiceRepository.findAllByDueDateBetweenOrderByDueDateAsc(rangeStart, rangeEnd);
+        long overdueOpen = invoicesInRange.stream()
+                .filter(invoice -> invoice.getStatus() == br.com.gerenciadorpilates.billing.domain.InvoiceStatus.OPEN)
+                .count();
+        double expectedDelinquency = invoicesInRange.isEmpty()
+                ? 0.0d
+                : round(((double) overdueOpen * 100.0) / invoicesInRange.size());
+
+        assertThat(valuesByKey.get("churnRate")).isEqualTo(round(expectedChurn));
+        assertThat(valuesByKey.get("occupancyRate")).isEqualTo(expectedOccupancy);
+        assertThat(valuesByKey.get("delinquencyRate")).isEqualTo(expectedDelinquency);
+    }
+
     private UUID createScheduleSlot(
             String token,
             UUID instructorId,
@@ -813,5 +956,11 @@ class GerenciadorPilatesApplicationTests {
 
         JsonNode jsonNode = objectMapper.readTree(response);
         return jsonNode.get("accessToken").asText();
+    }
+
+    private double round(double value) {
+        return java.math.BigDecimal.valueOf(value)
+                .setScale(2, java.math.RoundingMode.HALF_UP)
+                .doubleValue();
     }
 }
