@@ -4,7 +4,7 @@ import { SectionCard } from "@/components/ui/section-card";
 import { SlotBookingsPanel } from "@/app/agenda/slot-bookings-panel";
 import { requireInternalSession } from "@/lib/auth";
 import { fetchScheduleSlots } from "@/lib/schedule";
-import { fetchInstructors } from "@/lib/users";
+import { fetchActiveStudents, fetchInstructors } from "@/lib/users";
 import { CreateSlotForm } from "@/app/agenda/create-slot-form";
 
 type AgendaPageProps = {
@@ -51,6 +51,7 @@ export default async function AgendaPage({ searchParams }: AgendaPageProps) {
   const created = params?.created === "1";
   const slots = await fetchScheduleSlots(session, selectedDate);
   const instructors = await fetchInstructors(session);
+  const students = await fetchActiveStudents(session);
 
   const totalCapacity = slots.reduce((sum, slot) => sum + slot.capacity, 0);
   const totalBooked = slots.reduce((sum, slot) => sum + slot.bookedCount, 0);
@@ -204,7 +205,7 @@ export default async function AgendaPage({ searchParams }: AgendaPageProps) {
                       </div>
                     </div>
 
-                    <SlotBookingsPanel slotId={slot.id} />
+                    <SlotBookingsPanel slotId={slot.id} availableSpots={slot.availableSpots} students={students} />
                   </article>
                 );
               })}

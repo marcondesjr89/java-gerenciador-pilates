@@ -8,6 +8,10 @@ type RouteContext = {
   }>;
 };
 
+type BackendProblem = {
+  detail?: string;
+};
+
 export async function GET(_request: Request, context: RouteContext) {
   const session = await getSessionUser();
 
@@ -29,4 +33,37 @@ export async function GET(_request: Request, context: RouteContext) {
   }
 
   return NextResponse.json(await response.json());
+}
+
+export async function POST(request: Request, context: RouteContext) {
+  const session = await getSessionUser();
+
+  if (!session || (session.role !== "ADMIN" && session.role !== "RECEPTION")) {
+    return NextResponse.json({ message: "Sessao invalida para reservar aluno." }, { status: 401 });
+  }
+
+  const { slotId } = await context.params;
+  const body = (await request.json()) as {
+    studentId?: string;
+  };
+
+  const response = await fetch(`${API_BASE_URL}/api/v1/schedule-slots/${slotId}/bookings`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${session.accessToken}`
+    },
+    body: JSON.stringify(body),
+    cache: "no-store"
+  });
+
+  if (!response.ok) {
+    const problem = (await response.json().catch(() => ({}))) as BackendProblem;
+    return NextResponse.json(
+      { message: problem.detail || "Nao foi possivel reservar o aluno." },
+      { status: response.status }
+    );
+  }
+
+  return NextResponse.json(await response.json(), { status: 201 });
 }
