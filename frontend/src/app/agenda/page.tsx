@@ -3,10 +3,13 @@ import { AppShell } from "@/components/ui/app-shell";
 import { SectionCard } from "@/components/ui/section-card";
 import { requireInternalSession } from "@/lib/auth";
 import { fetchScheduleSlots } from "@/lib/schedule";
+import { fetchInstructors } from "@/lib/users";
+import { CreateSlotForm } from "@/app/agenda/create-slot-form";
 
 type AgendaPageProps = {
   searchParams?: Promise<{
     date?: string;
+    created?: string;
   }>;
 };
 
@@ -44,7 +47,9 @@ export default async function AgendaPage({ searchParams }: AgendaPageProps) {
   const session = await requireInternalSession();
   const params = await searchParams;
   const selectedDate = params?.date ?? getTodayIsoDate();
+  const created = params?.created === "1";
   const slots = await fetchScheduleSlots(session, selectedDate);
+  const instructors = session.role === "ADMIN" ? await fetchInstructors(session) : [];
 
   const totalCapacity = slots.reduce((sum, slot) => sum + slot.capacity, 0);
   const totalBooked = slots.reduce((sum, slot) => sum + slot.bookedCount, 0);
@@ -126,6 +131,39 @@ export default async function AgendaPage({ searchParams }: AgendaPageProps) {
             </div>
           </article>
         </section>
+
+        <SectionCard
+          title="Criar horario"
+          description="Primeiro fluxo operacional da agenda ligado ao backend para abrir novos slots de atendimento."
+        >
+          {created ? (
+            <div className="mb-4 rounded-2xl border border-brand-line bg-[rgba(25,135,84,0.12)] px-4 py-3 text-sm text-brand-success">
+              Horario criado com sucesso para a data selecionada.
+            </div>
+          ) : null}
+
+          {session.role === "ADMIN" ? (
+            instructors.length > 0 ? (
+              <CreateSlotForm
+                selectedDate={selectedDate}
+                instructors={instructors.map((instructor) => ({
+                  id: instructor.id,
+                  fullName: instructor.fullName,
+                  specialties: instructor.specialties
+                }))}
+              />
+            ) : (
+              <div className="rounded-2xl border border-dashed border-brand-line bg-brand-surface px-5 py-8 text-sm text-brand-subtext">
+                Nenhum instrutor ativo disponivel para criar horario.
+              </div>
+            )
+          ) : (
+            <div className="rounded-2xl border border-dashed border-brand-line bg-brand-surface px-5 py-8 text-sm leading-7 text-brand-subtext">
+              O backend atual permite que `RECEPTION` crie slots, mas ainda nao expõe uma listagem de instrutores para esse papel.
+              Para concluir esse fluxo sem gambiarra, o proximo ajuste precisa ser um endpoint adequado de consulta de instrutores.
+            </div>
+          )}
+        </SectionCard>
 
         <SectionCard
           title="Grade do dia"
