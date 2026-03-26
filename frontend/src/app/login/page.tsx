@@ -1,7 +1,28 @@
+import { redirect } from "next/navigation";
 import { ArrowRight, HeartPulse, ShieldCheck } from "lucide-react";
+import { getSessionUser } from "@/lib/auth";
 import { ThemeToggle } from "@/components/ui/theme-toggle";
+import { LoginForm } from "@/app/login/login-form";
 
-export default function LoginPage() {
+type LoginPageProps = {
+  searchParams?: Promise<{
+    error?: string;
+  }>;
+};
+
+const errorMessages: Record<string, string> = {
+  forbidden: "Seu usuario autenticou, mas nao tem acesso ao painel interno."
+};
+
+export default async function LoginPage({ searchParams }: LoginPageProps) {
+  const session = await getSessionUser();
+  if (session && (session.role === "ADMIN" || session.role === "RECEPTION")) {
+    redirect("/dashboard");
+  }
+
+  const params = await searchParams;
+  const initialError = params?.error ? errorMessages[params.error] : undefined;
+
   return (
     <main className="min-h-screen bg-[var(--login-background)] px-4 py-8 text-brand-ink">
       <div className="mx-auto grid min-h-[calc(100vh-4rem)] max-w-6xl items-center gap-6 lg:grid-cols-[1.05fr_0.95fr]">
@@ -51,33 +72,7 @@ export default function LoginPage() {
             </div>
           </div>
 
-          <form className="mt-10 space-y-5">
-            <label className="block">
-              <span className="mb-2 block text-sm text-white/74">E-mail</span>
-              <input
-                type="email"
-                placeholder="admin@gerenciadorpilates.local"
-                className="w-full rounded-2xl border border-white/15 bg-white/8 px-4 py-3 text-white outline-none transition focus:border-white/50 focus:bg-white/12"
-              />
-            </label>
-
-            <label className="block">
-              <span className="mb-2 block text-sm text-white/74">Senha</span>
-              <input
-                type="password"
-                placeholder="********"
-                className="w-full rounded-2xl border border-white/15 bg-white/8 px-4 py-3 text-white outline-none transition focus:border-white/50 focus:bg-white/12"
-              />
-            </label>
-
-            <button
-              type="button"
-              className="flex w-full items-center justify-center gap-2 rounded-2xl bg-brand-primary px-4 py-3 font-semibold text-white transition hover:bg-brand-primaryHover"
-            >
-              Entrar
-              <ArrowRight className="h-4 w-4" />
-            </button>
-          </form>
+          <LoginForm initialError={initialError} />
 
           <div className="mt-8 rounded-[28px] border border-white/12 bg-white/8 p-5">
             <p className="text-sm font-semibold">Primeiro bloco de UI</p>

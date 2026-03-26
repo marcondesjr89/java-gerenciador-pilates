@@ -2,6 +2,8 @@ import { AlertCircle, CalendarClock, TrendingUp } from "lucide-react";
 import { AppShell } from "@/components/ui/app-shell";
 import { KpiCard } from "@/components/ui/kpi-card";
 import { SectionCard } from "@/components/ui/section-card";
+import { fetchDashboardKpis } from "@/lib/dashboard";
+import { requireInternalSession } from "@/lib/auth";
 
 const agendaItems = [
   {
@@ -24,9 +26,30 @@ const agendaItems = [
   }
 ];
 
-export default function DashboardPage() {
+function formatPercent(value: number) {
+  return `${value.toFixed(2).replace(".", ",")}%`;
+}
+
+function formatDate(date: Date) {
+  return date.toLocaleDateString("pt-BR");
+}
+
+export default async function DashboardPage() {
+  const session = await requireInternalSession();
+  const today = new Date();
+  const startDate = new Date(today);
+  startDate.setDate(today.getDate() - 7);
+  const endDate = new Date(today);
+  endDate.setDate(today.getDate() + 7);
+
+  const startIso = startDate.toISOString().slice(0, 10);
+  const endIso = endDate.toISOString().slice(0, 10);
+
+  const dashboard = await fetchDashboardKpis(session, startIso, endIso);
+  const valuesByKey = new Map(dashboard.indicators.map((indicator) => [indicator.key, indicator]));
+
   return (
-    <AppShell>
+    <AppShell currentPath="/dashboard">
       <div className="space-y-6">
         <section className="rounded-[26px] border border-brand-line bg-brand-surface p-6 shadow-panel lg:p-8">
           <p className="text-sm uppercase tracking-[0.24em] text-brand-primary">Painel inicial</p>
@@ -34,12 +57,12 @@ export default function DashboardPage() {
             <div>
               <h1 className="font-display text-4xl text-brand-secondary lg:text-5xl">Studio em operacao</h1>
               <p className="mt-3 max-w-2xl text-sm leading-7 text-brand-subtext">
-                O dashboard ja nasce preparado para consumir os KPIs do backend e priorizar leitura rapida
-                durante o expediente.
+                O dashboard agora consome os indicadores operacionais reais do backend para apoiar a rotina
+                de recepcao e administracao.
               </p>
             </div>
             <div className="rounded-[22px] bg-brand-soft px-5 py-4 text-sm text-brand-secondary">
-              Ultima sincronizacao: backend local em `localhost:8080`
+              Periodo analisado: {formatDate(startDate)} a {formatDate(endDate)}
             </div>
           </div>
         </section>
@@ -47,22 +70,24 @@ export default function DashboardPage() {
         <section className="grid gap-5 xl:grid-cols-3">
           <KpiCard
             label="Churn Rate"
-            value="8,40%"
-            helper="Leitura do risco atual de cancelamento sobre a base ativa e inativa."
+            value={formatPercent(valuesByKey.get("churnRate")?.value ?? 0)}
+            helper={valuesByKey.get("churnRate")?.description ?? "Leitura do risco atual de cancelamento."}
             tone="primary"
             icon={<TrendingUp className="h-5 w-5" />}
           />
           <KpiCard
             label="Taxa de ocupacao"
-            value="76,00%"
-            helper="Slots preenchidos no periodo com leitura imediata para recepcao e coordenacao."
+            value={formatPercent(valuesByKey.get("occupancyRate")?.value ?? 0)}
+            helper={valuesByKey.get("occupancyRate")?.description ?? "Uso da agenda no periodo informado."}
             tone="success"
             icon={<CalendarClock className="h-5 w-5" />}
           />
           <KpiCard
             label="Inadimplencia"
-            value="12,50%"
-            helper="Faturas vencidas em aberto para apoiar cobranca e comunicacao."
+            value={formatPercent(valuesByKey.get("delinquencyRate")?.value ?? 0)}
+            helper={
+              valuesByKey.get("delinquencyRate")?.description ?? "Faturas vencidas em aberto no periodo informado."
+            }
             tone="warning"
             icon={<AlertCircle className="h-5 w-5" />}
           />
@@ -98,16 +123,15 @@ export default function DashboardPage() {
 
           <SectionCard
             title="Backlog funcional"
-            description="A estrutura visual ja separa claramente o que e operacional, clinico e financeiro."
+            description="Com o dashboard ligado ao backend, o proximo corte natural e abrir os modulos internos."
           >
             <div className="space-y-4 text-sm leading-7 text-brand-subtext">
               <p>
-                Proximo encaixe natural: autenticar com JWT do backend e substituir esses cards por dados reais
-                do endpoint `/api/v1/dashboard/kpis`.
+                Sessao autenticada para o painel interno: <strong className="font-semibold text-brand-secondary">{session.email}</strong>
               </p>
               <p>
-                Depois disso, a mesma base de layout pode receber alunos, prontuario, agenda inteligente e
-                financeiro sem reescrever a casca da aplicacao.
+                A mesma casca agora pode evoluir para alunos, agenda e financeiro sem reescrever autenticacao
+                e navegacao.
               </p>
             </div>
           </SectionCard>
