@@ -33,6 +33,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.transaction.annotation.Transactional;
@@ -74,6 +75,9 @@ class GerenciadorPilatesApplicationTests {
 
     @Autowired
     private ScheduleSlotRepository scheduleSlotRepository;
+
+    @Autowired
+    private PasswordEncoder passwordEncoder;
 
     @Test
     void contextLoads() {
@@ -176,6 +180,46 @@ class GerenciadorPilatesApplicationTests {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.student.fullName").value("Ana Costa"))
                 .andExpect(jsonPath("$.progressEntries[0].attachments[0].originalFileName").value("evolucao.png"));
+    }
+
+    @Test
+    void receptionCanListActiveInstructorsForScheduling() throws Exception {
+        appUserRepository.save(new AppUser(
+                UUID.randomUUID(),
+                "recepcao@teste.local",
+                "Recepcao Teste",
+                passwordEncoder.encode("Admin@12345"),
+                UserRole.RECEPTION,
+                true,
+                java.util.Set.of()
+        ));
+        appUserRepository.save(new AppUser(
+                UUID.randomUUID(),
+                "instrutor.lista@teste.local",
+                "Instrutor da Lista",
+                passwordEncoder.encode("Admin@12345"),
+                UserRole.INSTRUCTOR,
+                true,
+                java.util.Set.of(InstructorSpecialty.PILATES_REABILITACAO)
+        ));
+        appUserRepository.save(new AppUser(
+                UUID.randomUUID(),
+                "instrutor.inativo@teste.local",
+                "Instrutor Inativo",
+                passwordEncoder.encode("Admin@12345"),
+                UserRole.INSTRUCTOR,
+                false,
+                java.util.Set.of(InstructorSpecialty.PILATES_SOLO)
+        ));
+
+        String receptionToken = loginAndGetToken("recepcao@teste.local", "Admin@12345");
+
+        mockMvc.perform(get("/api/v1/users/instructors")
+                        .header("Authorization", "Bearer " + receptionToken))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[?(@.fullName=='Instrutor da Lista')]").exists())
+                .andExpect(jsonPath("$[0].specialties[0]").value("PILATES_REABILITACAO"))
+                .andExpect(jsonPath("$[?(@.fullName=='Instrutor Inativo')]").isEmpty());
     }
 
     @Test

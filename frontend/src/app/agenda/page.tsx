@@ -1,6 +1,7 @@
 import { CalendarDays, Clock3, UsersRound } from "lucide-react";
 import { AppShell } from "@/components/ui/app-shell";
 import { SectionCard } from "@/components/ui/section-card";
+import { SlotBookingsPanel } from "@/app/agenda/slot-bookings-panel";
 import { requireInternalSession } from "@/lib/auth";
 import { fetchScheduleSlots } from "@/lib/schedule";
 import { fetchInstructors } from "@/lib/users";
@@ -49,7 +50,7 @@ export default async function AgendaPage({ searchParams }: AgendaPageProps) {
   const selectedDate = params?.date ?? getTodayIsoDate();
   const created = params?.created === "1";
   const slots = await fetchScheduleSlots(session, selectedDate);
-  const instructors = session.role === "ADMIN" ? await fetchInstructors(session) : [];
+  const instructors = await fetchInstructors(session);
 
   const totalCapacity = slots.reduce((sum, slot) => sum + slot.capacity, 0);
   const totalBooked = slots.reduce((sum, slot) => sum + slot.bookedCount, 0);
@@ -142,25 +143,18 @@ export default async function AgendaPage({ searchParams }: AgendaPageProps) {
             </div>
           ) : null}
 
-          {session.role === "ADMIN" ? (
-            instructors.length > 0 ? (
-              <CreateSlotForm
-                selectedDate={selectedDate}
-                instructors={instructors.map((instructor) => ({
-                  id: instructor.id,
-                  fullName: instructor.fullName,
-                  specialties: instructor.specialties
-                }))}
-              />
-            ) : (
-              <div className="rounded-2xl border border-dashed border-brand-line bg-brand-surface px-5 py-8 text-sm text-brand-subtext">
-                Nenhum instrutor ativo disponivel para criar horario.
-              </div>
-            )
+          {instructors.length > 0 ? (
+            <CreateSlotForm
+              selectedDate={selectedDate}
+              instructors={instructors.map((instructor) => ({
+                id: instructor.id,
+                fullName: instructor.fullName,
+                specialties: instructor.specialties
+              }))}
+            />
           ) : (
-            <div className="rounded-2xl border border-dashed border-brand-line bg-brand-surface px-5 py-8 text-sm leading-7 text-brand-subtext">
-              O backend atual permite que `RECEPTION` crie slots, mas ainda nao expõe uma listagem de instrutores para esse papel.
-              Para concluir esse fluxo sem gambiarra, o proximo ajuste precisa ser um endpoint adequado de consulta de instrutores.
+            <div className="rounded-2xl border border-dashed border-brand-line bg-brand-surface px-5 py-8 text-sm text-brand-subtext">
+              Nenhum instrutor ativo disponivel para criar horario.
             </div>
           )}
         </SectionCard>
@@ -179,37 +173,38 @@ export default async function AgendaPage({ searchParams }: AgendaPageProps) {
                 const isFull = slot.availableSpots === 0;
 
                 return (
-                  <article
-                    key={slot.id}
-                    className="flex flex-col gap-4 rounded-[20px] border border-brand-line bg-brand-surface px-4 py-4 lg:flex-row lg:items-center lg:justify-between"
-                  >
-                    <div className="flex items-start gap-4">
-                      <div className="rounded-2xl bg-brand-primary px-3 py-2 text-sm font-semibold text-white">
-                        {formatHour(slot.startTime)}
+                  <article key={slot.id} className="rounded-[20px] border border-brand-line bg-brand-surface px-4 py-4">
+                    <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+                      <div className="flex items-start gap-4">
+                        <div className="rounded-2xl bg-brand-primary px-3 py-2 text-sm font-semibold text-white">
+                          {formatHour(slot.startTime)}
+                        </div>
+                        <div className="space-y-1">
+                          <p className="font-semibold text-brand-ink">{formatSpecialty(slot.requiredSpecialty)}</p>
+                          <p className="text-sm text-brand-subtext">Instrutor: {slot.instructorName}</p>
+                          <p className="text-sm text-brand-subtext">
+                            {formatHour(slot.startTime)} - {formatHour(slot.endTime)}
+                          </p>
+                        </div>
                       </div>
-                      <div className="space-y-1">
-                        <p className="font-semibold text-brand-ink">{formatSpecialty(slot.requiredSpecialty)}</p>
-                        <p className="text-sm text-brand-subtext">Instrutor: {slot.instructorName}</p>
-                        <p className="text-sm text-brand-subtext">
-                          {formatHour(slot.startTime)} - {formatHour(slot.endTime)}
-                        </p>
+
+                      <div className="flex flex-col gap-2 text-sm lg:items-end">
+                        <span
+                          className={
+                            isFull
+                              ? "rounded-full bg-[rgba(220,53,69,0.12)] px-3 py-1 font-semibold text-brand-danger"
+                              : "rounded-full bg-brand-soft px-3 py-1 font-semibold text-brand-secondary"
+                          }
+                        >
+                          {slot.bookedCount}/{slot.capacity} vagas ocupadas
+                        </span>
+                        <span className="text-brand-subtext">
+                          {isFull ? "Lotado" : `${slot.availableSpots} vaga(s) restante(s)`}
+                        </span>
                       </div>
                     </div>
 
-                    <div className="flex flex-col gap-2 text-sm lg:items-end">
-                      <span
-                        className={
-                          isFull
-                            ? "rounded-full bg-[rgba(220,53,69,0.12)] px-3 py-1 font-semibold text-brand-danger"
-                            : "rounded-full bg-brand-soft px-3 py-1 font-semibold text-brand-secondary"
-                        }
-                      >
-                        {slot.bookedCount}/{slot.capacity} vagas ocupadas
-                      </span>
-                      <span className="text-brand-subtext">
-                        {isFull ? "Lotado" : `${slot.availableSpots} vaga(s) restante(s)`}
-                      </span>
-                    </div>
+                    <SlotBookingsPanel slotId={slot.id} />
                   </article>
                 );
               })}

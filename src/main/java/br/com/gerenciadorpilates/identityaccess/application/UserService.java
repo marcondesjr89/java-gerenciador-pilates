@@ -1,9 +1,11 @@
 package br.com.gerenciadorpilates.identityaccess.application;
 
-import br.com.gerenciadorpilates.identityaccess.domain.AppUser;
-import br.com.gerenciadorpilates.identityaccess.infrastructure.AppUserRepository;
 import br.com.gerenciadorpilates.identityaccess.api.CreateUserRequest;
+import br.com.gerenciadorpilates.identityaccess.api.InstructorSummaryResponse;
 import br.com.gerenciadorpilates.identityaccess.api.UserResponse;
+import br.com.gerenciadorpilates.identityaccess.domain.AppUser;
+import br.com.gerenciadorpilates.identityaccess.domain.UserRole;
+import br.com.gerenciadorpilates.identityaccess.infrastructure.AppUserRepository;
 import br.com.gerenciadorpilates.platform.domain.ResourceNotFoundException;
 import java.util.List;
 import java.util.UUID;
@@ -48,6 +50,14 @@ public class UserService {
         return userRepository.findAll()
                 .stream()
                 .map(UserResponse::from)
+                .toList();
+    }
+
+    @Transactional(readOnly = true)
+    public List<InstructorSummaryResponse> listActiveInstructors() {
+        return userRepository.findAllByRoleAndActiveTrueOrderByFullNameAsc(UserRole.INSTRUCTOR)
+                .stream()
+                .map(InstructorSummaryResponse::from)
                 .toList();
     }
 

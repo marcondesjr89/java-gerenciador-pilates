@@ -31,4 +31,9 @@ public class UserController {
     public List<UserResponse> list() {
         return userService.list();
     }
+
+    @GetMapping("/instructors")
+    public List<InstructorSummaryResponse> listActiveInstructors() {
+        return userService.listActiveInstructors();
+    }
 }
