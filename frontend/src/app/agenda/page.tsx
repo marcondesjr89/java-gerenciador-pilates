@@ -2,8 +2,9 @@ import { CalendarDays, Clock3, UsersRound } from "lucide-react";
 import { AppShell } from "@/components/ui/app-shell";
 import { SectionCard } from "@/components/ui/section-card";
 import { SlotBookingsPanel } from "@/app/agenda/slot-bookings-panel";
+import { CreateBlockForm } from "@/app/agenda/create-block-form";
 import { requireInternalSession } from "@/lib/auth";
-import { fetchScheduleSlots } from "@/lib/schedule";
+import { fetchScheduleBlocks, fetchScheduleSlots } from "@/lib/schedule";
 import { fetchActiveStudents, fetchInstructors } from "@/lib/users";
 import { CreateSlotForm } from "@/app/agenda/create-slot-form";
 
@@ -11,6 +12,7 @@ type AgendaPageProps = {
   searchParams?: Promise<{
     date?: string;
     created?: string;
+    blocked?: string;
   }>;
 };
 
@@ -49,7 +51,9 @@ export default async function AgendaPage({ searchParams }: AgendaPageProps) {
   const params = await searchParams;
   const selectedDate = params?.date ?? getTodayIsoDate();
   const created = params?.created === "1";
+  const blocked = params?.blocked === "1";
   const slots = await fetchScheduleSlots(session, selectedDate);
+  const blocks = await fetchScheduleBlocks(session, selectedDate);
   const instructors = await fetchInstructors(session);
   const students = await fetchActiveStudents(session);
 
@@ -161,6 +165,32 @@ export default async function AgendaPage({ searchParams }: AgendaPageProps) {
         </SectionCard>
 
         <SectionCard
+          title="Bloquear agenda"
+          description="Crie indisponibilidades do instrutor para impedir novos horarios em intervalos reservados."
+        >
+          {blocked ? (
+            <div className="mb-4 rounded-2xl border border-brand-line bg-[rgba(220,53,69,0.08)] px-4 py-3 text-sm text-brand-danger">
+              Bloqueio criado com sucesso para a data selecionada.
+            </div>
+          ) : null}
+
+          {instructors.length > 0 ? (
+            <CreateBlockForm
+              selectedDate={selectedDate}
+              instructors={instructors.map((instructor) => ({
+                id: instructor.id,
+                fullName: instructor.fullName,
+                specialties: instructor.specialties
+              }))}
+            />
+          ) : (
+            <div className="rounded-2xl border border-dashed border-brand-line bg-brand-surface px-5 py-8 text-sm text-brand-subtext">
+              Nenhum instrutor ativo disponivel para bloquear agenda.
+            </div>
+          )}
+        </SectionCard>
+
+        <SectionCard
           title="Grade do dia"
           description="Slots reais vindos do backend, ordenados por horario para facilitar encaixe e acompanhamento."
         >
@@ -209,6 +239,43 @@ export default async function AgendaPage({ searchParams }: AgendaPageProps) {
                   </article>
                 );
               })}
+            </div>
+          )}
+        </SectionCard>
+
+        <SectionCard
+          title="Bloqueios do dia"
+          description="Indisponibilidades reais cadastradas para impedir novas aulas em intervalos reservados."
+        >
+          {blocks.length === 0 ? (
+            <div className="rounded-[20px] border border-dashed border-brand-line bg-brand-surface px-5 py-10 text-center text-sm text-brand-subtext">
+              Nenhum bloqueio encontrado para a data selecionada.
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {blocks.map((block) => (
+                <article
+                  key={block.id}
+                  className="flex flex-col gap-3 rounded-[20px] border border-brand-line bg-brand-surface px-4 py-4 md:flex-row md:items-center md:justify-between"
+                >
+                  <div className="flex items-start gap-4">
+                    <div className="rounded-2xl bg-[rgba(220,53,69,0.08)] px-3 py-2 text-sm font-semibold text-brand-danger">
+                      {formatHour(block.startTime)}
+                    </div>
+                    <div className="space-y-1">
+                      <p className="font-semibold text-brand-ink">{block.reason}</p>
+                      <p className="text-sm text-brand-subtext">Instrutor: {block.instructorName}</p>
+                      <p className="text-sm text-brand-subtext">
+                        {formatHour(block.startTime)} - {formatHour(block.endTime)}
+                      </p>
+                    </div>
+                  </div>
+
+                  <span className="rounded-full bg-[rgba(220,53,69,0.08)] px-3 py-1 text-xs font-semibold text-brand-danger">
+                    Bloqueado
+                  </span>
+                </article>
+              ))}
             </div>
           )}
         </SectionCard>

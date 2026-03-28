@@ -302,6 +302,56 @@ class GerenciadorPilatesApplicationTests {
     }
 
     @Test
+    void receptionCanCreateAndListScheduleBlocks() throws Exception {
+        AppUser reception = appUserRepository.save(new AppUser(
+                UUID.randomUUID(),
+                "recepcao.bloqueio@teste.local",
+                "Recepcao Bloqueio",
+                passwordEncoder.encode("Admin@12345"),
+                UserRole.RECEPTION,
+                true,
+                java.util.Set.of()
+        ));
+        AppUser instructor = appUserRepository.save(new AppUser(
+                UUID.randomUUID(),
+                "instrutor.bloqueio@teste.local",
+                "Instrutor Bloqueio",
+                passwordEncoder.encode("Admin@12345"),
+                UserRole.INSTRUCTOR,
+                true,
+                java.util.Set.of(InstructorSpecialty.PILATES_SOLO)
+        ));
+
+        String receptionToken = loginAndGetToken(reception.getEmail(), "Admin@12345");
+        OffsetDateTime start = OffsetDateTime.now().plusDays(2).withHour(14).withMinute(0).withSecond(0).withNano(0);
+        OffsetDateTime end = start.plusHours(2);
+
+        String createBlockRequest = """
+                {
+                  "instructorUserId": "%s",
+                  "startTime": "%s",
+                  "endTime": "%s",
+                  "reason": "Capacitacao interna"
+                }
+                """.formatted(instructor.getId(), start, end);
+
+        mockMvc.perform(post("/api/v1/schedule-blocks")
+                        .header("Authorization", "Bearer " + receptionToken)
+                        .contentType(APPLICATION_JSON)
+                        .content(createBlockRequest))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.instructorName").value("Instrutor Bloqueio"))
+                .andExpect(jsonPath("$.reason").value("Capacitacao interna"));
+
+        mockMvc.perform(get("/api/v1/schedule-blocks")
+                        .header("Authorization", "Bearer " + receptionToken)
+                        .param("date", start.toLocalDate().toString()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[0].instructorName").value("Instrutor Bloqueio"))
+                .andExpect(jsonPath("$[0].reason").value("Capacitacao interna"));
+    }
+
+    @Test
     void selfServiceRescheduleFollowsConfiguredWindowAndCapacityRules() throws Exception {
         AppUser instructor = appUserRepository.save(new AppUser(
                 UUID.randomUUID(),

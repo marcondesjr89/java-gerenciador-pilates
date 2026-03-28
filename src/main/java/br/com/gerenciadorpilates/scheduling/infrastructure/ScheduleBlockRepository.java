@@ -21,4 +21,6 @@ public interface ScheduleBlockRepository extends JpaRepository<ScheduleBlock, UU
             @Param("startTime") OffsetDateTime startTime,
             @Param("endTime") OffsetDateTime endTime
     );
+
+    List<ScheduleBlock> findAllByStartTimeBetweenOrderByStartTimeAsc(OffsetDateTime startTime, OffsetDateTime endTime);
 }

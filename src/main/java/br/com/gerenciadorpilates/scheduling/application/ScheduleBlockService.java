@@ -9,7 +9,10 @@ import br.com.gerenciadorpilates.scheduling.api.ScheduleBlockResponse;
 import br.com.gerenciadorpilates.scheduling.domain.ScheduleBlock;
 import br.com.gerenciadorpilates.scheduling.infrastructure.ScheduleBlockRepository;
 import br.com.gerenciadorpilates.scheduling.infrastructure.ScheduleSlotRepository;
+import java.time.LocalDate;
+import java.time.OffsetDateTime;
 import java.util.UUID;
+import java.util.List;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -70,5 +73,16 @@ public class ScheduleBlockService {
                 request.reason().trim()
         );
         return ScheduleBlockResponse.from(blockRepository.save(block));
+    }
+
+    @Transactional(readOnly = true)
+    public List<ScheduleBlockResponse> listByDate(LocalDate date) {
+        OffsetDateTime start = date.atStartOfDay().atOffset(OffsetDateTime.now().getOffset());
+        OffsetDateTime end = date.atTime(23, 59, 59).atOffset(start.getOffset());
+
+        return blockRepository.findAllByStartTimeBetweenOrderByStartTimeAsc(start, end)
+                .stream()
+                .map(ScheduleBlockResponse::from)
+                .toList();
     }
 }

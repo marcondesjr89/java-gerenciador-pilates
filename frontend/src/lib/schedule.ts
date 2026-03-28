@@ -13,6 +13,15 @@ export type ScheduleSlot = {
   availableSpots: number;
 };
 
+export type ScheduleBlock = {
+  id: string;
+  instructorUserId: string;
+  instructorName: string;
+  startTime: string;
+  endTime: string;
+  reason: string;
+};
+
 export async function fetchScheduleSlots(session: SessionUser, date: string) {
   const searchParams = new URLSearchParams({ date });
   const response = await fetch(`${API_BASE_URL}/api/v1/schedule-slots?${searchParams.toString()}`, {
@@ -31,4 +40,24 @@ export async function fetchScheduleSlots(session: SessionUser, date: string) {
   }
 
   return (await response.json()) as ScheduleSlot[];
+}
+
+export async function fetchScheduleBlocks(session: SessionUser, date: string) {
+  const searchParams = new URLSearchParams({ date });
+  const response = await fetch(`${API_BASE_URL}/api/v1/schedule-blocks?${searchParams.toString()}`, {
+    headers: {
+      Authorization: `Bearer ${session.accessToken}`
+    },
+    cache: "no-store"
+  });
+
+  if (response.status === 401 || response.status === 403) {
+    throw new Error("SESSION_FORBIDDEN");
+  }
+
+  if (!response.ok) {
+    throw new Error("Nao foi possivel carregar os bloqueios.");
+  }
+
+  return (await response.json()) as ScheduleBlock[];
 }
