@@ -3,7 +3,9 @@ package br.com.gerenciadorpilates.identityaccess.api;
 import br.com.gerenciadorpilates.identityaccess.application.UserService;
 import br.com.gerenciadorpilates.platform.security.JwtService;
 import jakarta.validation.Valid;
+import java.security.Principal;
 import org.springframework.http.HttpStatus;
+import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
@@ -58,5 +60,10 @@ public class AuthController {
                 user.email(),
                 user.role()
         );
+    }
+
+    @GetMapping("/me")
+    public UserResponse me(Principal principal) {
+        return userService.getByEmail(principal.getName());
     }
 }

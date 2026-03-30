@@ -8,6 +8,8 @@ export type InternalUserRole = "ADMIN" | "RECEPTION" | "INSTRUCTOR";
 export type SessionUser = {
   accessToken: string;
   email: string;
+  userId: string;
+  fullName: string;
   expiresAt: number;
   role: InternalUserRole;
 };
@@ -15,6 +17,8 @@ export type SessionUser = {
 export type SessionPayload = {
   accessToken: string;
   email: string;
+  userId: string;
+  fullName: string;
   expiresInSeconds: number;
   role: InternalUserRole;
 };
@@ -27,6 +31,8 @@ export function encodeSession(payload: SessionPayload) {
   const session: SessionUser = {
     accessToken: payload.accessToken,
     email: payload.email,
+    userId: payload.userId,
+    fullName: payload.fullName,
     expiresAt: Date.now() + payload.expiresInSeconds * 1000,
     role: payload.role
   };
@@ -44,6 +50,8 @@ export function decodeSession(value?: string): SessionUser | null {
     if (
       typeof parsed.accessToken !== "string" ||
       typeof parsed.email !== "string" ||
+      typeof parsed.userId !== "string" ||
+      typeof parsed.fullName !== "string" ||
       typeof parsed.expiresAt !== "number" ||
       !isInternalUserRole(parsed.role)
     ) {
@@ -57,6 +65,8 @@ export function decodeSession(value?: string): SessionUser | null {
     return {
       accessToken: parsed.accessToken,
       email: parsed.email,
+      userId: parsed.userId,
+      fullName: parsed.fullName,
       expiresAt: parsed.expiresAt,
       role: parsed.role
     };
@@ -78,6 +88,20 @@ export async function requireInternalSession() {
   }
 
   if (session.role !== "ADMIN" && session.role !== "RECEPTION") {
+    redirect("/login?error=forbidden");
+  }
+
+  return session;
+}
+
+export async function requireInstructorSession() {
+  const session = await getSessionUser();
+
+  if (!session) {
+    redirect("/login");
+  }
+
+  if (session.role !== "INSTRUCTOR") {
     redirect("/login?error=forbidden");
   }
 

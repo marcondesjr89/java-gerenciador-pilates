@@ -32,8 +32,10 @@ export function LoginForm({ initialError }: LoginFormProps) {
       return;
     }
 
+    const payload = (await response.json()) as { role?: string };
+
     startTransition(() => {
-      router.replace("/dashboard");
+      router.replace(payload.role === "INSTRUCTOR" ? "/instrutor" : "/dashboard");
       router.refresh();
     });
   }

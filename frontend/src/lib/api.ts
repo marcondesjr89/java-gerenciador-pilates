@@ -14,6 +14,16 @@ export type LoginResponse = {
   role: string;
 };
 
+export type AuthenticatedUserResponse = {
+  id: string;
+  email: string;
+  fullName: string;
+  role: string;
+  specialties: string[];
+  active: boolean;
+  createdAt: string;
+};
+
 export async function login(payload: LoginPayload): Promise<LoginResponse> {
   const response = await fetch(`${API_BASE_URL}/api/v1/auth/login`, {
     method: "POST",

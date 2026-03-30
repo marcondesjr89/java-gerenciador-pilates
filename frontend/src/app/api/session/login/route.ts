@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { API_BASE_URL, type LoginResponse } from "@/lib/api";
+import { API_BASE_URL, type AuthenticatedUserResponse, type LoginResponse } from "@/lib/api";
 import { SESSION_COOKIE_NAME, encodeSession } from "@/lib/auth";
 
 export async function POST(request: Request) {
@@ -25,23 +25,36 @@ export async function POST(request: Request) {
   }
 
   const payload = (await response.json()) as LoginResponse;
-
-  if (payload.role !== "ADMIN" && payload.role !== "RECEPTION") {
-    return NextResponse.json(
-      { message: "Este painel interno esta disponivel apenas para administracao e recepcao." },
-      { status: 403 }
-    );
+  if (payload.role !== "ADMIN" && payload.role !== "RECEPTION" && payload.role !== "INSTRUCTOR") {
+    return NextResponse.json({ message: "Perfil sem acesso ao frontend." }, { status: 403 });
   }
+
+  const meResponse = await fetch(`${API_BASE_URL}/api/v1/auth/me`, {
+    headers: {
+      Authorization: `Bearer ${payload.accessToken}`
+    },
+    cache: "no-store"
+  });
+
+  if (!meResponse.ok) {
+    return NextResponse.json({ message: "Nao foi possivel carregar os dados do usuario." }, { status: 502 });
+  }
+
+  const user = (await meResponse.json()) as AuthenticatedUserResponse;
 
   const sessionCookie = encodeSession({
     accessToken: payload.accessToken,
     email: payload.email,
+    userId: user.id,
+    fullName: user.fullName,
     expiresInSeconds: payload.expiresInSeconds,
     role: payload.role
   });
 
   const nextResponse = NextResponse.json({
     email: payload.email,
+    fullName: user.fullName,
+    userId: user.id,
     role: payload.role
   });
 
