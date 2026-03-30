@@ -21,7 +21,7 @@ const navItems: NavItem[] = [
   {
     label: "Alunos",
     hint: "CRM e prontuario",
-    href: "#",
+    href: "/alunos",
     icon: <UsersRound className="h-4 w-4" />
   },
   {
