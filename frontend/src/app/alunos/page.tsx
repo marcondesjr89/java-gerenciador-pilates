@@ -1,9 +1,12 @@
-import { Search, ShieldCheck, UserRound, UsersRound } from "lucide-react";
+import { AlertTriangle, FileHeart, Search, ShieldCheck, UserRound, UsersRound } from "lucide-react";
 import { AppShell } from "@/components/ui/app-shell";
 import { SectionCard } from "@/components/ui/section-card";
 import { requireInternalSession } from "@/lib/auth";
 import { fetchStudents } from "@/lib/students";
 import { CreateStudentForm } from "@/app/alunos/create-student-form";
+import { PortalAccountForm } from "@/app/alunos/portal-account-form";
+import { fetchClinicalRecord } from "@/lib/clinical";
+import { fetchStudentPortalAccount } from "@/lib/student-portal";
 
 type StudentsPageProps = {
   searchParams?: Promise<{
@@ -36,6 +39,13 @@ function formatDate(value: string) {
 
 function formatDateTime(value: string) {
   return new Date(value).toLocaleString("pt-BR");
+}
+
+function formatDateTimeWithTimezone(value: string) {
+  return new Date(value).toLocaleString("pt-BR", {
+    dateStyle: "short",
+    timeStyle: "short"
+  });
 }
 
 function getAge(value: string) {
@@ -72,6 +82,14 @@ export default async function StudentsPage({ searchParams }: StudentsPageProps) 
   const activeCount = students.filter((student) => student.status === "ACTIVE").length;
   const inactiveCount = students.length - activeCount;
   const lgpdCount = students.filter((student) => student.lgpdConsent).length;
+  const canViewClinicalRecord = session.role === "ADMIN";
+  const selectedStudentId = selectedStudent?.id ?? null;
+  const [portalAccount, clinicalRecord] = selectedStudentId
+    ? await Promise.all([
+        fetchStudentPortalAccount(session, selectedStudentId),
+        canViewClinicalRecord ? fetchClinicalRecord(session, selectedStudentId) : Promise.resolve(null)
+      ])
+    : [null, null];
 
   return (
     <AppShell currentPath="/alunos">
@@ -154,7 +172,7 @@ export default async function StudentsPage({ searchParams }: StudentsPageProps) 
           </article>
         </section>
 
-        <div className="grid gap-6 xl:grid-cols-[0.95fr_1.05fr]">
+        <div className="grid gap-6 xl:grid-cols-[0.92fr_1.08fr]">
           <SectionCard
             title="Cadastrar aluno"
             description="Entrada operacional para recepcao criar alunos na base principal com os campos essenciais."
@@ -163,11 +181,11 @@ export default async function StudentsPage({ searchParams }: StudentsPageProps) 
           </SectionCard>
 
           <SectionCard
-            title="Ficha resumida"
-            description="Leitura rapida do aluno selecionado para validar contato, situacao e consentimento."
+            title="Ficha do aluno"
+            description="Leitura operacional do cadastro, acesso ao portal e sinais clinicos do aluno selecionado."
           >
             {selectedStudent ? (
-              <div className="space-y-5">
+              <div className="space-y-6">
                 <div className="rounded-[20px] border border-brand-line bg-brand-surface px-5 py-5">
                   <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
                     <div>
@@ -220,6 +238,201 @@ export default async function StudentsPage({ searchParams }: StudentsPageProps) 
                   <p className="mt-4 text-xs text-brand-subtext">
                     Cadastro criado em {formatDateTime(selectedStudent.createdAt)}
                   </p>
+                </div>
+
+                <div className="rounded-[20px] border border-brand-line bg-brand-surface px-5 py-5">
+                  <div className="flex flex-col gap-2 md:flex-row md:items-start md:justify-between">
+                    <div>
+                      <p className="text-xs uppercase tracking-[0.18em] text-brand-subtext">Portal do aluno</p>
+                      <h3 className="mt-2 font-display text-2xl text-brand-secondary">Conta de acesso</h3>
+                      <p className="mt-2 text-sm leading-6 text-brand-subtext">
+                        Configure o login do aluno para habilitar o portal com o e-mail e a senha inicial.
+                      </p>
+                    </div>
+
+                    <span className="rounded-full bg-brand-soft px-3 py-1 text-xs font-semibold text-brand-secondary">
+                      {portalAccount?.active ? "Configurado" : "Aguardando ativacao"}
+                    </span>
+                  </div>
+
+                  <div className="mt-5">
+                    <PortalAccountForm
+                      studentId={selectedStudent.id}
+                      defaultEmail={selectedStudent.email}
+                      currentAccount={portalAccount}
+                    />
+                  </div>
+                </div>
+
+                <div className="rounded-[20px] border border-brand-line bg-brand-surface px-5 py-5">
+                  <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
+                    <div>
+                      <p className="text-xs uppercase tracking-[0.18em] text-brand-subtext">Prontuario clinico</p>
+                      <h3 className="mt-2 font-display text-2xl text-brand-secondary">Anamnese e historico</h3>
+                      <p className="mt-2 text-sm leading-6 text-brand-subtext">
+                        Resumo de alertas clinicos e evolucoes mais recentes do aluno.
+                      </p>
+                    </div>
+                    <div className="rounded-2xl bg-brand-soft p-3 text-brand-primary">
+                      <FileHeart className="h-5 w-5" />
+                    </div>
+                  </div>
+
+                  {canViewClinicalRecord ? (
+                    <div className="mt-5 space-y-5">
+                      {clinicalRecord?.anamnesis ? (
+                        <div className="space-y-4">
+                          <div className="flex flex-wrap gap-2">
+                            {clinicalRecord.anamnesis.alerts.length > 0 ? (
+                              clinicalRecord.anamnesis.alerts.map((alert) => (
+                                <span
+                                  key={alert}
+                                  className="rounded-full bg-[rgba(220,53,69,0.08)] px-3 py-1 text-xs font-semibold text-brand-danger"
+                                >
+                                  {alert}
+                                </span>
+                              ))
+                            ) : (
+                              <span className="rounded-full bg-[rgba(25,135,84,0.12)] px-3 py-1 text-xs font-semibold text-brand-success">
+                                Nenhum alerta clinico ativo
+                              </span>
+                            )}
+                          </div>
+
+                          <div className="grid gap-3 md:grid-cols-2">
+                            <div className="rounded-2xl border border-brand-line bg-brand-panel px-4 py-4">
+                              <p className="text-xs uppercase tracking-[0.18em] text-brand-subtext">Patologias</p>
+                              <p className="mt-2 font-semibold text-brand-ink">
+                                {clinicalRecord.anamnesis.hasPathologies ? "Sim" : "Nao"}
+                              </p>
+                              {clinicalRecord.anamnesis.pathologyDetails ? (
+                                <p className="mt-2 text-sm leading-6 text-brand-subtext">
+                                  {clinicalRecord.anamnesis.pathologyDetails}
+                                </p>
+                              ) : null}
+                            </div>
+
+                            <div className="rounded-2xl border border-brand-line bg-brand-panel px-4 py-4">
+                              <p className="text-xs uppercase tracking-[0.18em] text-brand-subtext">Cirurgias</p>
+                              <p className="mt-2 font-semibold text-brand-ink">
+                                {clinicalRecord.anamnesis.hasSurgeries ? "Sim" : "Nao"}
+                              </p>
+                              {clinicalRecord.anamnesis.surgeryDetails ? (
+                                <p className="mt-2 text-sm leading-6 text-brand-subtext">
+                                  {clinicalRecord.anamnesis.surgeryDetails}
+                                </p>
+                              ) : null}
+                            </div>
+
+                            <div className="rounded-2xl border border-brand-line bg-brand-panel px-4 py-4">
+                              <p className="text-xs uppercase tracking-[0.18em] text-brand-subtext">Dor em acompanhamento</p>
+                              <p className="mt-2 font-semibold text-brand-ink">
+                                {clinicalRecord.anamnesis.hasPain ? "Sim" : "Nao"}
+                              </p>
+                              {clinicalRecord.anamnesis.painDetails ? (
+                                <p className="mt-2 text-sm leading-6 text-brand-subtext">
+                                  {clinicalRecord.anamnesis.painDetails}
+                                </p>
+                              ) : null}
+                            </div>
+
+                            <div className="rounded-2xl border border-brand-line bg-brand-panel px-4 py-4">
+                              <p className="text-xs uppercase tracking-[0.18em] text-brand-subtext">Marcadores de atencao</p>
+                              <div className="mt-2 space-y-1 text-sm text-brand-subtext">
+                                <p>Hipertensao: {clinicalRecord.anamnesis.hasHypertension ? "Sim" : "Nao"}</p>
+                                <p>Osteoporose: {clinicalRecord.anamnesis.hasOsteoporosis ? "Sim" : "Nao"}</p>
+                                <p>Gestacao: {clinicalRecord.anamnesis.isPregnant ? "Sim" : "Nao"}</p>
+                                <p>Liberacao medica: {clinicalRecord.anamnesis.medicalClearanceRequired ? "Obrigatoria" : "Nao"}</p>
+                              </div>
+                            </div>
+                          </div>
+
+                          <div className="rounded-2xl border border-brand-line bg-brand-panel px-4 py-4">
+                            <p className="text-xs uppercase tracking-[0.18em] text-brand-subtext">Observacoes gerais</p>
+                            <p className="mt-2 text-sm leading-6 text-brand-subtext">
+                              {clinicalRecord.anamnesis.generalObservations || "Nenhuma observacao registrada ate o momento."}
+                            </p>
+                            <p className="mt-4 text-xs text-brand-subtext">
+                              Anamnese atualizada em {formatDateTimeWithTimezone(clinicalRecord.anamnesis.updatedAt)}
+                            </p>
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="rounded-2xl border border-dashed border-brand-line bg-brand-panel px-4 py-8 text-sm text-brand-subtext">
+                          Nenhuma anamnese cadastrada para este aluno.
+                        </div>
+                      )}
+
+                      <div className="space-y-3">
+                        <div className="flex items-center justify-between gap-3">
+                          <p className="text-sm font-semibold text-brand-secondary">Historico de evolucao</p>
+                          <span className="text-xs text-brand-subtext">
+                            {clinicalRecord?.progressEntries.length ?? 0} registro(s)
+                          </span>
+                        </div>
+
+                        {clinicalRecord && clinicalRecord.progressEntries.length > 0 ? (
+                          clinicalRecord.progressEntries.map((entry) => (
+                            <article
+                              key={entry.id}
+                              className="rounded-2xl border border-brand-line bg-brand-panel px-4 py-4"
+                            >
+                              <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
+                                <div>
+                                  <p className="font-semibold text-brand-ink">
+                                    Registro de {formatDateTimeWithTimezone(entry.recordedAt)}
+                                  </p>
+                                  <p className="mt-1 text-sm text-brand-subtext">
+                                    Lançado por {entry.createdByUserName} em {formatDateTimeWithTimezone(entry.createdAt)}
+                                  </p>
+                                </div>
+                                <div className="flex flex-wrap gap-2 text-xs">
+                                  <span className="rounded-full bg-brand-soft px-3 py-1 font-semibold text-brand-secondary">
+                                    Flexibilidade: {entry.flexibilityScore ?? "-"}
+                                  </span>
+                                  <span className="rounded-full bg-brand-soft px-3 py-1 font-semibold text-brand-secondary">
+                                    Forca: {entry.strengthScore ?? "-"}
+                                  </span>
+                                  <span className="rounded-full bg-brand-soft px-3 py-1 font-semibold text-brand-secondary">
+                                    Dor: {entry.painLevel ?? "-"}
+                                  </span>
+                                </div>
+                              </div>
+
+                              <p className="mt-4 text-sm leading-6 text-brand-subtext">{entry.instructorNotes}</p>
+
+                              <p className="mt-4 text-xs text-brand-subtext">
+                                {entry.attachments.length > 0
+                                  ? `${entry.attachments.length} anexo(s): ${entry.attachments
+                                      .map((attachment) => attachment.originalFileName)
+                                      .join(", ")}`
+                                  : "Sem anexos neste registro."}
+                              </p>
+                            </article>
+                          ))
+                        ) : (
+                          <div className="rounded-2xl border border-dashed border-brand-line bg-brand-panel px-4 py-8 text-sm text-brand-subtext">
+                            Nenhuma evolucao clinica registrada para este aluno.
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="mt-5 rounded-2xl border border-dashed border-brand-line bg-brand-panel px-4 py-5">
+                      <div className="flex items-start gap-3">
+                        <div className="rounded-2xl bg-[rgba(255,193,7,0.16)] p-2 text-[#a06b00]">
+                          <AlertTriangle className="h-4 w-4" />
+                        </div>
+                        <div>
+                          <p className="font-semibold text-brand-ink">Leitura clinica restrita neste perfil</p>
+                          <p className="mt-2 text-sm leading-6 text-brand-subtext">
+                            O backend libera anamnese e evolucao apenas para administracao e instrutores.
+                            Neste painel de recepcao, a ficha clinica permanece protegida.
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  )}
                 </div>
               </div>
             ) : (

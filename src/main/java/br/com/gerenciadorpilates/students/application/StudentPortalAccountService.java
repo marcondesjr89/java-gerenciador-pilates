@@ -41,21 +41,34 @@ public class StudentPortalAccountService {
         Student student = studentRepository.findById(studentId)
                 .orElseThrow(() -> new ResourceNotFoundException("Aluno nao encontrado."));
 
+        String normalizedEmail = request.email().trim().toLowerCase();
+
         StudentPortalAccount account = portalAccountRepository.findByStudentId(studentId)
                 .map(existing -> {
-                    existing.activate(passwordEncoder.encode(request.password()));
+                    existing.activate(normalizedEmail, passwordEncoder.encode(request.password()));
                     return existing;
                 })
                 .orElseGet(() -> new StudentPortalAccount(
                         UUID.randomUUID(),
                         studentId,
-                        request.email().trim().toLowerCase(),
+                        normalizedEmail,
                         passwordEncoder.encode(request.password()),
                         true
                 ));
 
         StudentPortalAccount savedAccount = portalAccountRepository.save(account);
         return StudentPortalAccountResponse.from(savedAccount);
+    }
+
+    @Transactional(readOnly = true)
+    public StudentPortalAccountResponse getByStudentId(UUID studentId) {
+        studentRepository.findById(studentId)
+                .orElseThrow(() -> new ResourceNotFoundException("Aluno nao encontrado."));
+
+        StudentPortalAccount account = portalAccountRepository.findByStudentId(studentId)
+                .orElseThrow(() -> new ResourceNotFoundException("Conta do portal ainda nao configurada."));
+
+        return StudentPortalAccountResponse.from(account);
     }
 
     @Transactional(readOnly = true)

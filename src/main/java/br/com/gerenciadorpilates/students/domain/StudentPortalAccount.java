@@ -45,7 +45,8 @@ public class StudentPortalAccount {
         this.active = active;
     }
 
-    public void activate(String passwordHash) {
+    public void activate(String email, String passwordHash) {
+        this.email = email;
         this.passwordHash = passwordHash;
         this.active = true;
     }
