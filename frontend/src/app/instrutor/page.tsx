@@ -1,6 +1,7 @@
 import { CalendarDays, ClipboardPen, UserRound } from "lucide-react";
 import { requireInstructorSession } from "@/lib/auth";
 import { fetchScheduleSlots, fetchSlotBookings } from "@/lib/schedule";
+import { fetchClinicalRecord } from "@/lib/clinical";
 import { ProgressEntryForm } from "@/app/instrutor/progress-entry-form";
 
 type InstructorPageProps = {
@@ -43,6 +44,16 @@ export default async function InstructorPage({ searchParams }: InstructorPagePro
       bookings: await fetchSlotBookings(session, slot.id)
     }))
   );
+  const uniqueStudentIds = Array.from(
+    new Set(bookingsBySlot.flatMap((entry) => entry.bookings.map((booking) => booking.studentId)))
+  );
+  const clinicalRecords = await Promise.all(
+    uniqueStudentIds.map(async (studentId) => ({
+      studentId,
+      record: await fetchClinicalRecord(session, studentId)
+    }))
+  );
+  const clinicalRecordByStudentId = new Map(clinicalRecords.map((entry) => [entry.studentId, entry.record]));
   const totalStudents = bookingsBySlot.reduce((sum, entry) => sum + entry.bookings.length, 0);
 
   return (
@@ -161,6 +172,58 @@ export default async function InstructorPage({ searchParams }: InstructorPagePro
                               Presenca aguardada
                             </span>
                           </div>
+
+                          {(() => {
+                            const clinicalRecord = clinicalRecordByStudentId.get(booking.studentId);
+                            const latestEntry = clinicalRecord?.progressEntries[0] ?? null;
+
+                            return (
+                              <div className="mt-4 grid gap-3 md:grid-cols-2">
+                                <div className="rounded-2xl border border-brand-line bg-brand-surface px-4 py-4">
+                                  <p className="text-xs uppercase tracking-[0.18em] text-brand-subtext">Alertas clinicos</p>
+                                  <div className="mt-3 flex flex-wrap gap-2">
+                                    {clinicalRecord?.anamnesis?.alerts.length ? (
+                                      clinicalRecord.anamnesis.alerts.map((alert) => (
+                                        <span
+                                          key={alert}
+                                          className="rounded-full bg-[rgba(220,53,69,0.08)] px-3 py-1 text-xs font-semibold text-brand-danger"
+                                        >
+                                          {alert}
+                                        </span>
+                                      ))
+                                    ) : (
+                                      <span className="rounded-full bg-[rgba(25,135,84,0.12)] px-3 py-1 text-xs font-semibold text-brand-success">
+                                        Sem alertas ativos
+                                      </span>
+                                    )}
+                                  </div>
+                                  <p className="mt-3 text-sm text-brand-subtext">
+                                    {clinicalRecord?.anamnesis?.generalObservations || "Sem observacoes gerais registradas."}
+                                  </p>
+                                </div>
+
+                                <div className="rounded-2xl border border-brand-line bg-brand-surface px-4 py-4">
+                                  <p className="text-xs uppercase tracking-[0.18em] text-brand-subtext">Ultima evolucao</p>
+                                  {latestEntry ? (
+                                    <div className="mt-3 space-y-2">
+                                      <p className="text-sm text-brand-subtext">
+                                        {new Date(latestEntry.recordedAt).toLocaleString("pt-BR", {
+                                          dateStyle: "short",
+                                          timeStyle: "short"
+                                        })}
+                                      </p>
+                                      <p className="text-sm text-brand-subtext">
+                                        Flexibilidade: {latestEntry.flexibilityScore ?? "-"} | Forca: {latestEntry.strengthScore ?? "-"} | Dor: {latestEntry.painLevel ?? "-"}
+                                      </p>
+                                      <p className="text-sm leading-6 text-brand-subtext">{latestEntry.instructorNotes}</p>
+                                    </div>
+                                  ) : (
+                                    <p className="mt-3 text-sm text-brand-subtext">Nenhuma evolucao registrada ate agora.</p>
+                                  )}
+                                </div>
+                              </div>
+                            );
+                          })()}
 
                           <ProgressEntryForm studentId={booking.studentId} />
                         </div>
