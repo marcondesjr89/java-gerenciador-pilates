@@ -8,11 +8,15 @@ import br.com.gerenciadorpilates.scheduling.domain.ScheduleBookingStatus;
 import br.com.gerenciadorpilates.scheduling.domain.ScheduleSlot;
 import br.com.gerenciadorpilates.scheduling.infrastructure.ScheduleBookingRepository;
 import br.com.gerenciadorpilates.scheduling.infrastructure.ScheduleSlotRepository;
+import br.com.gerenciadorpilates.students.api.StudentPortalBookingSummaryResponse;
 import br.com.gerenciadorpilates.students.domain.Student;
 import br.com.gerenciadorpilates.students.infrastructure.StudentRepository;
+import java.util.Map;
 import java.time.OffsetDateTime;
 import java.util.List;
 import java.util.UUID;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -117,6 +121,14 @@ public class ScheduleBookingService {
     }
 
     @Transactional
+    public ScheduleBookingResponse selfServiceCancelByBookingId(UUID bookingId, UUID authenticatedStudentId) {
+        ScheduleBooking booking = bookingRepository.findById(bookingId)
+                .orElseThrow(() -> new ResourceNotFoundException("Reserva nao encontrada."));
+        validateBookingOwnership(booking, authenticatedStudentId);
+        return selfServiceCancel(booking.getSlotId(), bookingId);
+    }
+
+    @Transactional
     public ScheduleRescheduleResponse selfServiceReschedule(UUID slotId, UUID bookingId, UUID targetSlotId) {
         ScheduleBooking originalBooking = bookingRepository.findById(bookingId)
                 .orElseThrow(() -> new ResourceNotFoundException("Reserva nao encontrada."));
@@ -195,6 +207,29 @@ public class ScheduleBookingService {
         return bookingRepository.findAllByStudentIdAndStatusOrderByCreatedAtDesc(studentId, ScheduleBookingStatus.BOOKED)
                 .stream()
                 .map(ScheduleBookingResponse::from)
+                .toList();
+    }
+
+    @Transactional(readOnly = true)
+    public List<StudentPortalBookingSummaryResponse> listPortalBookings(UUID studentId) {
+        if (!studentRepository.existsById(studentId)) {
+            throw new ResourceNotFoundException("Aluno nao encontrado.");
+        }
+
+        List<ScheduleBooking> bookings = bookingRepository.findAllByStudentIdAndStatusOrderByCreatedAtDesc(studentId, ScheduleBookingStatus.BOOKED);
+        Map<UUID, ScheduleSlot> slotsById = slotRepository.findAllById(bookings.stream().map(ScheduleBooking::getSlotId).toList())
+                .stream()
+                .collect(Collectors.toMap(ScheduleSlot::getId, Function.identity()));
+
+        return bookings.stream()
+                .map(booking -> {
+                    ScheduleSlot slot = slotsById.get(booking.getSlotId());
+                    if (slot == null) {
+                        throw new ResourceNotFoundException("Horario vinculado a reserva nao encontrado.");
+                    }
+                    return StudentPortalBookingSummaryResponse.from(booking, slot);
+                })
+                .sorted((left, right) -> left.startTime().compareTo(right.startTime()))
                 .toList();
     }
 
