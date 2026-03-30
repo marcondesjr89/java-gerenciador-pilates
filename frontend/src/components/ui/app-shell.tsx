@@ -33,7 +33,7 @@ const navItems: NavItem[] = [
   {
     label: "Financeiro",
     hint: "Billing, DRE e DMED",
-    href: "#",
+    href: "/financeiro",
     icon: <CreditCard className="h-4 w-4" />
   },
   {
