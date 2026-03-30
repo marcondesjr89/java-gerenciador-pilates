@@ -38,50 +38,66 @@ export function SlotBookingsPanel({ slotId, availableSpots, students }: SlotBook
   const [waitlist, setWaitlist] = useState<WaitlistEntry[] | null>(null);
   const [selectedStudentId, setSelectedStudentId] = useState(students[0]?.id ?? "");
   const [errorMessage, setErrorMessage] = useState("");
+  const [successMessage, setSuccessMessage] = useState("");
   const [isLoading, startLoading] = useTransition();
   const [isMutating, startMutating] = useTransition();
+
+  async function fetchBookings() {
+    const response = await fetch(`/api/schedule-slots/${slotId}/bookings`, {
+      cache: "no-store"
+    });
+
+    if (!response.ok) {
+      const payload = (await response.json().catch(() => ({ message: "" }))) as { message?: string };
+      throw new Error(payload.message || "Nao foi possivel carregar as reservas.");
+    }
+
+    return (await response.json()) as Booking[];
+  }
+
+  async function fetchWaitlist() {
+    const response = await fetch(`/api/schedule-slots/${slotId}/waitlist`, {
+      cache: "no-store"
+    });
+
+    if (!response.ok) {
+      const payload = (await response.json().catch(() => ({ message: "" }))) as { message?: string };
+      throw new Error(payload.message || "Nao foi possivel carregar a fila de espera.");
+    }
+
+    return (await response.json()) as WaitlistEntry[];
+  }
 
   function loadBookings() {
     startLoading(async () => {
       setErrorMessage("");
+      setSuccessMessage("");
 
-      const response = await fetch(`/api/schedule-slots/${slotId}/bookings`, {
-        cache: "no-store"
-      });
-
-      if (!response.ok) {
-        const payload = (await response.json().catch(() => ({ message: "" }))) as { message?: string };
-        setErrorMessage(payload.message || "Nao foi possivel carregar as reservas.");
-        return;
+      try {
+        setBookings(await fetchBookings());
+      } catch (error) {
+        setErrorMessage(error instanceof Error ? error.message : "Nao foi possivel carregar as reservas.");
       }
-
-      const payload = (await response.json()) as Booking[];
-      setBookings(payload);
     });
   }
 
   function loadWaitlist() {
     startLoading(async () => {
       setErrorMessage("");
+      setSuccessMessage("");
 
-      const response = await fetch(`/api/schedule-slots/${slotId}/waitlist`, {
-        cache: "no-store"
-      });
-
-      if (!response.ok) {
-        const payload = (await response.json().catch(() => ({ message: "" }))) as { message?: string };
-        setErrorMessage(payload.message || "Nao foi possivel carregar a fila de espera.");
-        return;
+      try {
+        setWaitlist(await fetchWaitlist());
+      } catch (error) {
+        setErrorMessage(error instanceof Error ? error.message : "Nao foi possivel carregar a fila de espera.");
       }
-
-      const payload = (await response.json()) as WaitlistEntry[];
-      setWaitlist(payload);
     });
   }
 
   function createBooking() {
     startMutating(async () => {
       setErrorMessage("");
+      setSuccessMessage("");
 
       const response = await fetch(`/api/schedule-slots/${slotId}/bookings`, {
         method: "POST",
@@ -99,7 +115,18 @@ export function SlotBookingsPanel({ slotId, availableSpots, students }: SlotBook
         return;
       }
 
-      await loadBookings();
+      const payload = (await response.json()) as Booking;
+      if (bookings) {
+        setBookings([...bookings, payload]);
+      }
+      if (waitlist) {
+        try {
+          setWaitlist(await fetchWaitlist());
+        } catch {
+          setWaitlist(waitlist);
+        }
+      }
+      setSuccessMessage("Reserva criada com sucesso para este horario.");
       router.refresh();
     });
   }
@@ -107,6 +134,7 @@ export function SlotBookingsPanel({ slotId, availableSpots, students }: SlotBook
   function joinWaitlist() {
     startMutating(async () => {
       setErrorMessage("");
+      setSuccessMessage("");
 
       const response = await fetch(`/api/schedule-slots/${slotId}/waitlist`, {
         method: "POST",
@@ -124,7 +152,11 @@ export function SlotBookingsPanel({ slotId, availableSpots, students }: SlotBook
         return;
       }
 
-      await loadWaitlist();
+      const payload = (await response.json()) as WaitlistEntry;
+      if (waitlist) {
+        setWaitlist([...waitlist, payload]);
+      }
+      setSuccessMessage("Aluno incluido na fila de espera deste horario.");
       router.refresh();
     });
   }
@@ -132,6 +164,7 @@ export function SlotBookingsPanel({ slotId, availableSpots, students }: SlotBook
   function cancelBooking(bookingId: string) {
     startMutating(async () => {
       setErrorMessage("");
+      setSuccessMessage("");
 
       const response = await fetch(`/api/schedule-slots/${slotId}/bookings/${bookingId}`, {
         method: "DELETE"
@@ -143,7 +176,17 @@ export function SlotBookingsPanel({ slotId, availableSpots, students }: SlotBook
         return;
       }
 
-      await loadBookings();
+      if (bookings) {
+        setBookings(bookings.filter((booking) => booking.id !== bookingId));
+      }
+      if (waitlist) {
+        try {
+          setWaitlist(await fetchWaitlist());
+        } catch {
+          setWaitlist(waitlist);
+        }
+      }
+      setSuccessMessage("Reserva cancelada com sucesso.");
       router.refresh();
     });
   }
@@ -232,6 +275,12 @@ export function SlotBookingsPanel({ slotId, availableSpots, students }: SlotBook
       {errorMessage ? (
         <div className="mt-4 rounded-2xl border border-brand-line bg-brand-soft px-4 py-3 text-sm text-brand-secondary">
           {errorMessage}
+        </div>
+      ) : null}
+
+      {successMessage ? (
+        <div className="mt-4 rounded-2xl border border-brand-line bg-[rgba(25,135,84,0.12)] px-4 py-3 text-sm text-brand-success">
+          {successMessage}
         </div>
       ) : null}
 

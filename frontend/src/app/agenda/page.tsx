@@ -12,10 +12,6 @@ import { CreateSlotForm } from "@/app/agenda/create-slot-form";
 type AgendaPageProps = {
   searchParams?: Promise<{
     date?: string;
-    created?: string;
-    blocked?: string;
-    updated?: string;
-    removed?: string;
   }>;
 };
 
@@ -53,10 +49,6 @@ export default async function AgendaPage({ searchParams }: AgendaPageProps) {
   const session = await requireInternalSession();
   const params = await searchParams;
   const selectedDate = params?.date ?? getTodayIsoDate();
-  const created = params?.created === "1";
-  const blocked = params?.blocked === "1";
-  const updated = params?.updated === "1";
-  const removed = params?.removed === "1";
   const slots = await fetchScheduleSlots(session, selectedDate);
   const blocks = await fetchScheduleBlocks(session, selectedDate);
   const instructors = await fetchInstructors(session);
@@ -147,12 +139,6 @@ export default async function AgendaPage({ searchParams }: AgendaPageProps) {
           title="Criar horario"
           description="Primeiro fluxo operacional da agenda ligado ao backend para abrir novos slots de atendimento."
         >
-          {created ? (
-            <div className="mb-4 rounded-2xl border border-brand-line bg-[rgba(25,135,84,0.12)] px-4 py-3 text-sm text-brand-success">
-              Horario criado com sucesso para a data selecionada.
-            </div>
-          ) : null}
-
           {instructors.length > 0 ? (
             <CreateSlotForm
               selectedDate={selectedDate}
@@ -173,12 +159,6 @@ export default async function AgendaPage({ searchParams }: AgendaPageProps) {
           title="Bloquear agenda"
           description="Crie indisponibilidades do instrutor para impedir novos horarios em intervalos reservados."
         >
-          {blocked ? (
-            <div className="mb-4 rounded-2xl border border-brand-line bg-[rgba(220,53,69,0.08)] px-4 py-3 text-sm text-brand-danger">
-              Bloqueio criado com sucesso para a data selecionada.
-            </div>
-          ) : null}
-
           {instructors.length > 0 ? (
             <CreateBlockForm
               selectedDate={selectedDate}
@@ -252,18 +232,6 @@ export default async function AgendaPage({ searchParams }: AgendaPageProps) {
           title="Bloqueios do dia"
           description="Indisponibilidades reais cadastradas para impedir novas aulas em intervalos reservados."
         >
-          {updated ? (
-            <div className="mb-4 rounded-2xl border border-brand-line bg-[rgba(25,135,84,0.12)] px-4 py-3 text-sm text-brand-success">
-              Bloqueio atualizado com sucesso para a data selecionada.
-            </div>
-          ) : null}
-
-          {removed ? (
-            <div className="mb-4 rounded-2xl border border-brand-line bg-[rgba(220,53,69,0.08)] px-4 py-3 text-sm text-brand-danger">
-              Bloqueio removido com sucesso da agenda selecionada.
-            </div>
-          ) : null}
-
           {blocks.length === 0 ? (
             <div className="rounded-[20px] border border-dashed border-brand-line bg-brand-surface px-5 py-10 text-center text-sm text-brand-subtext">
               Nenhum bloqueio encontrado para a data selecionada.

@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState, useTransition } from "react";
+import { useMemo, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { LoaderCircle, Plus } from "lucide-react";
 
@@ -29,8 +29,11 @@ function toIsoDateTime(date: string, time: string) {
 
 export function CreateSlotForm({ selectedDate, instructors }: CreateSlotFormProps) {
   const router = useRouter();
+  const formRef = useRef<HTMLFormElement>(null);
+  const initialInstructorId = instructors[0]?.id ?? "";
   const [selectedInstructorId, setSelectedInstructorId] = useState(instructors[0]?.id ?? "");
   const [errorMessage, setErrorMessage] = useState("");
+  const [successMessage, setSuccessMessage] = useState("");
   const [isPending, startTransition] = useTransition();
 
   const availableSpecialties = useMemo(() => {
@@ -43,6 +46,7 @@ export function CreateSlotForm({ selectedDate, instructors }: CreateSlotFormProp
       action={(formData) => {
         startTransition(async () => {
           setErrorMessage("");
+          setSuccessMessage("");
 
           const instructorUserId = String(formData.get("instructorUserId") ?? "");
           const requiredSpecialty = String(formData.get("requiredSpecialty") ?? "");
@@ -70,11 +74,20 @@ export function CreateSlotForm({ selectedDate, instructors }: CreateSlotFormProp
             return;
           }
 
-          router.replace(`/agenda?date=${selectedDate}&created=1`);
+          formRef.current?.reset();
+          setSelectedInstructorId(initialInstructorId);
+          setSuccessMessage("Horario criado com sucesso para a data selecionada.");
           router.refresh();
         });
       }}
+      ref={formRef}
     >
+      {successMessage ? (
+        <div className="md:col-span-2 rounded-2xl border border-brand-line bg-[rgba(25,135,84,0.12)] px-4 py-3 text-sm text-brand-success">
+          {successMessage}
+        </div>
+      ) : null}
+
       <label className="space-y-2">
         <span className="text-sm font-semibold text-brand-secondary">Instrutor</span>
         <select
@@ -96,6 +109,7 @@ export function CreateSlotForm({ selectedDate, instructors }: CreateSlotFormProp
         <span className="text-sm font-semibold text-brand-secondary">Especialidade</span>
         <select
           name="requiredSpecialty"
+          key={selectedInstructorId}
           className="w-full rounded-2xl border border-brand-line bg-brand-surface px-4 py-3 text-brand-ink outline-none"
           required
           disabled={availableSpecialties.length === 0}

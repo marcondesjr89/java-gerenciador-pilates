@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { Ban, LoaderCircle } from "lucide-react";
 
@@ -21,7 +21,9 @@ function toIsoDateTime(date: string, time: string) {
 
 export function CreateBlockForm({ selectedDate, instructors }: CreateBlockFormProps) {
   const router = useRouter();
+  const formRef = useRef<HTMLFormElement>(null);
   const [errorMessage, setErrorMessage] = useState("");
+  const [successMessage, setSuccessMessage] = useState("");
   const [isPending, startTransition] = useTransition();
 
   return (
@@ -30,6 +32,7 @@ export function CreateBlockForm({ selectedDate, instructors }: CreateBlockFormPr
       action={(formData) => {
         startTransition(async () => {
           setErrorMessage("");
+          setSuccessMessage("");
 
           const instructorUserId = String(formData.get("instructorUserId") ?? "");
           const startLocalTime = String(formData.get("startLocalTime") ?? "");
@@ -55,11 +58,19 @@ export function CreateBlockForm({ selectedDate, instructors }: CreateBlockFormPr
             return;
           }
 
-          router.replace(`/agenda?date=${selectedDate}&blocked=1`);
+          formRef.current?.reset();
+          setSuccessMessage("Bloqueio criado com sucesso para a data selecionada.");
           router.refresh();
         });
       }}
+      ref={formRef}
     >
+      {successMessage ? (
+        <div className="md:col-span-2 rounded-2xl border border-brand-line bg-[rgba(220,53,69,0.08)] px-4 py-3 text-sm text-brand-danger">
+          {successMessage}
+        </div>
+      ) : null}
+
       <label className="space-y-2">
         <span className="text-sm font-semibold text-brand-secondary">Instrutor</span>
         <select

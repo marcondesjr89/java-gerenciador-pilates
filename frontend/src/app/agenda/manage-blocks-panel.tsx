@@ -49,10 +49,12 @@ export function ManageBlocksPanel({ blocks, instructors, selectedDate }: ManageB
   const router = useRouter();
   const [editing, setEditing] = useState<EditingState | null>(null);
   const [errorMessage, setErrorMessage] = useState("");
+  const [successMessage, setSuccessMessage] = useState("");
   const [isPending, startTransition] = useTransition();
 
   function openEditor(block: ScheduleBlock) {
     setErrorMessage("");
+    setSuccessMessage("");
     setEditing({
       blockId: block.id,
       instructorUserId: block.instructorUserId,
@@ -78,6 +80,7 @@ export function ManageBlocksPanel({ blocks, instructors, selectedDate }: ManageB
 
     startTransition(async () => {
       setErrorMessage("");
+      setSuccessMessage("");
 
       const response = await fetch(`/api/schedule-blocks/${editing.blockId}`, {
         method: "PUT",
@@ -99,7 +102,7 @@ export function ManageBlocksPanel({ blocks, instructors, selectedDate }: ManageB
       }
 
       closeEditor();
-      router.replace(`/agenda?date=${selectedDate}&updated=1`, { scroll: false });
+      setSuccessMessage("Bloqueio atualizado com sucesso para a data selecionada.");
       router.refresh();
     });
   }
@@ -107,6 +110,7 @@ export function ManageBlocksPanel({ blocks, instructors, selectedDate }: ManageB
   function deleteBlock(blockId: string) {
     startTransition(async () => {
       setErrorMessage("");
+      setSuccessMessage("");
 
       const response = await fetch(`/api/schedule-blocks/${blockId}`, {
         method: "DELETE"
@@ -122,13 +126,19 @@ export function ManageBlocksPanel({ blocks, instructors, selectedDate }: ManageB
         closeEditor();
       }
 
-      router.replace(`/agenda?date=${selectedDate}&removed=1`, { scroll: false });
+      setSuccessMessage("Bloqueio removido com sucesso da agenda selecionada.");
       router.refresh();
     });
   }
 
   return (
     <div className="space-y-3">
+      {successMessage ? (
+        <div className="rounded-2xl border border-brand-line bg-[rgba(25,135,84,0.12)] px-4 py-3 text-sm text-brand-success">
+          {successMessage}
+        </div>
+      ) : null}
+
       {errorMessage ? (
         <div className="rounded-2xl border border-brand-line bg-brand-soft px-4 py-3 text-sm text-brand-secondary">
           {errorMessage}
