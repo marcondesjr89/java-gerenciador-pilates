@@ -3,6 +3,7 @@ import { requireStudentPortalSession } from "@/lib/student-portal-auth";
 import { fetchStudentPortalBookings } from "@/lib/student-portal-bookings";
 import { PortalLogoutButton } from "@/app/portal/portal-logout-button";
 import { CancelBookingButton } from "@/app/portal/cancel-booking-button";
+import { RescheduleBookingPanel } from "@/app/portal/reschedule-booking-panel";
 
 function formatDateTime(value: string) {
   return new Date(value).toLocaleString("pt-BR", {
@@ -132,6 +133,8 @@ export default async function StudentPortalPage() {
                       <CancelBookingButton bookingId={booking.id} />
                     </div>
                   </div>
+
+                  <RescheduleBookingPanel bookingId={booking.id} initialDate={booking.startTime.slice(0, 10)} />
                 </article>
               ))}
             </div>

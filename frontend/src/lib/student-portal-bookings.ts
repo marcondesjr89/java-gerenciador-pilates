@@ -13,6 +13,15 @@ export type StudentPortalBooking = {
   endTime: string;
 };
 
+export type StudentPortalRescheduleOption = {
+  slotId: string;
+  instructorName: string;
+  requiredSpecialty: string;
+  startTime: string;
+  endTime: string;
+  availableSpots: number;
+};
+
 export async function fetchStudentPortalBookings(session: StudentPortalSessionUser) {
   const response = await fetch(`${API_BASE_URL}/api/v1/student-portal/me/bookings`, {
     headers: {

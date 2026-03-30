@@ -9,8 +9,10 @@ import br.com.gerenciadorpilates.scheduling.domain.ScheduleSlot;
 import br.com.gerenciadorpilates.scheduling.infrastructure.ScheduleBookingRepository;
 import br.com.gerenciadorpilates.scheduling.infrastructure.ScheduleSlotRepository;
 import br.com.gerenciadorpilates.students.api.StudentPortalBookingSummaryResponse;
+import br.com.gerenciadorpilates.students.api.StudentPortalRescheduleOptionResponse;
 import br.com.gerenciadorpilates.students.domain.Student;
 import br.com.gerenciadorpilates.students.infrastructure.StudentRepository;
+import java.time.LocalDate;
 import java.util.Map;
 import java.time.OffsetDateTime;
 import java.util.List;
@@ -138,6 +140,10 @@ public class ScheduleBookingService {
         ScheduleSlot targetSlot = slotRepository.findById(targetSlotId)
                 .orElseThrow(() -> new ResourceNotFoundException("Horario de destino nao encontrado."));
 
+        if (!targetSlot.getStartTime().isAfter(OffsetDateTime.now())) {
+            throw new IllegalArgumentException("O horario de destino precisa estar no futuro.");
+        }
+
         if (targetSlot.getBookedCount() >= targetSlot.getCapacity()) {
             throw new IllegalArgumentException("O horario de destino nao possui vagas disponiveis.");
         }
@@ -186,6 +192,18 @@ public class ScheduleBookingService {
         return selfServiceReschedule(slotId, bookingId, targetSlotId);
     }
 
+    @Transactional
+    public ScheduleRescheduleResponse selfServiceRescheduleByBookingId(
+            UUID bookingId,
+            UUID targetSlotId,
+            UUID authenticatedStudentId
+    ) {
+        ScheduleBooking booking = bookingRepository.findById(bookingId)
+                .orElseThrow(() -> new ResourceNotFoundException("Reserva nao encontrada."));
+        validateBookingOwnership(booking, authenticatedStudentId);
+        return selfServiceReschedule(booking.getSlotId(), bookingId, targetSlotId);
+    }
+
     @Transactional(readOnly = true)
     public List<ScheduleBookingResponse> listActiveBySlot(UUID slotId) {
         if (!slotRepository.existsById(slotId)) {
@@ -230,6 +248,42 @@ public class ScheduleBookingService {
                     return StudentPortalBookingSummaryResponse.from(booking, slot);
                 })
                 .sorted((left, right) -> left.startTime().compareTo(right.startTime()))
+                .toList();
+    }
+
+    @Transactional(readOnly = true)
+    public List<StudentPortalRescheduleOptionResponse> listPortalRescheduleOptions(
+            UUID studentId,
+            UUID bookingId,
+            LocalDate date
+    ) {
+        if (!studentRepository.existsById(studentId)) {
+            throw new ResourceNotFoundException("Aluno nao encontrado.");
+        }
+
+        ScheduleBooking booking = bookingRepository.findById(bookingId)
+                .orElseThrow(() -> new ResourceNotFoundException("Reserva nao encontrada."));
+        validateBookingOwnership(booking, studentId);
+
+        ScheduleSlot currentSlot = validateCancelableBooking(booking.getSlotId(), booking);
+        validateSelfServiceWindow(currentSlot.getStartTime(), policyProperties.minHoursBeforeReschedule(), "remarcacao");
+
+        OffsetDateTime start = date.atStartOfDay(currentSlot.getStartTime().getOffset()).toOffsetDateTime();
+        OffsetDateTime end = start.plusDays(1);
+
+        return slotRepository.findAllByStartTimeBetweenOrderByStartTimeAsc(start, end)
+                .stream()
+                .filter(slot -> !slot.getId().equals(currentSlot.getId()))
+                .filter(slot -> slot.getStartTime().isAfter(OffsetDateTime.now()))
+                .filter(slot -> slot.getBookedCount() < slot.getCapacity())
+                .map(slot -> new StudentPortalRescheduleOptionResponse(
+                        slot.getId(),
+                        slot.getInstructorName(),
+                        slot.getRequiredSpecialty(),
+                        slot.getStartTime(),
+                        slot.getEndTime(),
+                        slot.getCapacity() - slot.getBookedCount()
+                ))
                 .toList();
     }
 
