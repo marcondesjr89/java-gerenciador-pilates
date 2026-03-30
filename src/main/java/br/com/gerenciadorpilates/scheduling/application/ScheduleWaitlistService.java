@@ -75,6 +75,18 @@ public class ScheduleWaitlistService {
         return WaitlistEntryResponse.from(waitlistRepository.save(entry));
     }
 
+    @Transactional
+    public WaitlistEntryResponse selfServiceJoin(UUID slotId, UUID studentId) {
+        ScheduleSlot slot = slotRepository.findById(slotId)
+                .orElseThrow(() -> new ResourceNotFoundException("Horario nao encontrado."));
+
+        if (!slot.getStartTime().isAfter(java.time.OffsetDateTime.now())) {
+            throw new IllegalArgumentException("Nao e possivel entrar na lista de espera de um horario que ja comecou ou passou.");
+        }
+
+        return join(slotId, studentId);
+    }
+
     @Transactional(readOnly = true)
     public List<WaitlistEntryResponse> listBySlot(UUID slotId) {
         if (!slotRepository.existsById(slotId)) {

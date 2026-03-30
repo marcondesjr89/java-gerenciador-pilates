@@ -75,6 +75,18 @@ public class ScheduleBookingService {
     }
 
     @Transactional
+    public ScheduleBookingResponse selfServiceCreate(UUID slotId, UUID studentId) {
+        ScheduleSlot slot = slotRepository.findById(slotId)
+                .orElseThrow(() -> new ResourceNotFoundException("Horario nao encontrado."));
+
+        if (!slot.getStartTime().isAfter(OffsetDateTime.now())) {
+            throw new IllegalArgumentException("Nao e possivel reservar um horario que ja comecou ou passou.");
+        }
+
+        return create(slotId, studentId);
+    }
+
+    @Transactional
     public ScheduleBookingResponse cancel(UUID slotId, UUID bookingId) {
         ScheduleBooking booking = bookingRepository.findById(bookingId)
                 .orElseThrow(() -> new ResourceNotFoundException("Reserva nao encontrada."));

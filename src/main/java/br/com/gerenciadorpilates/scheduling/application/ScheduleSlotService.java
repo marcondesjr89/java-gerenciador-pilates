@@ -95,6 +95,18 @@ public class ScheduleSlotService {
     }
 
     @Transactional(readOnly = true)
+    public List<ScheduleSlotResponse> listPortalByDate(LocalDate date) {
+        OffsetDateTime start = date.atStartOfDay().atOffset(ZoneOffset.UTC);
+        OffsetDateTime end = start.plusDays(1);
+        OffsetDateTime now = OffsetDateTime.now(ZoneOffset.UTC);
+        return slotRepository.findAllByStartTimeBetweenOrderByStartTimeAsc(start, end)
+                .stream()
+                .filter(slot -> slot.getStartTime().isAfter(now))
+                .map(ScheduleSlotResponse::from)
+                .toList();
+    }
+
+    @Transactional(readOnly = true)
     public ScheduleSlot getEntityById(UUID slotId) {
         return slotRepository.findById(slotId)
                 .orElseThrow(() -> new ResourceNotFoundException("Horario nao encontrado."));
