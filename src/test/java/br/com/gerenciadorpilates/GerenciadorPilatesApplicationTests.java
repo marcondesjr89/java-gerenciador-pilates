@@ -6,6 +6,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -349,6 +350,80 @@ class GerenciadorPilatesApplicationTests {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$[0].instructorName").value("Instrutor Bloqueio"))
                 .andExpect(jsonPath("$[0].reason").value("Capacitacao interna"));
+    }
+
+    @Test
+    void receptionCanUpdateAndDeleteScheduleBlock() throws Exception {
+        AppUser reception = appUserRepository.save(new AppUser(
+                UUID.randomUUID(),
+                "recepcao.bloqueio.edicao@teste.local",
+                "Recepcao Edicao",
+                passwordEncoder.encode("Admin@12345"),
+                UserRole.RECEPTION,
+                true,
+                java.util.Set.of()
+        ));
+        AppUser instructor = appUserRepository.save(new AppUser(
+                UUID.randomUUID(),
+                "instrutor.bloqueio.edicao@teste.local",
+                "Instrutor Edicao",
+                passwordEncoder.encode("Admin@12345"),
+                UserRole.INSTRUCTOR,
+                true,
+                java.util.Set.of(InstructorSpecialty.PILATES_SOLO)
+        ));
+
+        String receptionToken = loginAndGetToken(reception.getEmail(), "Admin@12345");
+        OffsetDateTime start = OffsetDateTime.now().plusDays(3).withHour(9).withMinute(0).withSecond(0).withNano(0);
+        OffsetDateTime end = start.plusHours(1);
+
+        String createRequest = """
+                {
+                  "instructorUserId": "%s",
+                  "startTime": "%s",
+                  "endTime": "%s",
+                  "reason": "Reuniao de equipe"
+                }
+                """.formatted(instructor.getId(), start, end);
+
+        String createResponse = mockMvc.perform(post("/api/v1/schedule-blocks")
+                        .header("Authorization", "Bearer " + receptionToken)
+                        .contentType(APPLICATION_JSON)
+                        .content(createRequest))
+                .andExpect(status().isCreated())
+                .andReturn()
+                .getResponse()
+                .getContentAsString();
+
+        UUID blockId = UUID.fromString(objectMapper.readTree(createResponse).get("id").asText());
+        OffsetDateTime updatedStart = start.plusHours(2);
+        OffsetDateTime updatedEnd = updatedStart.plusHours(1);
+        String updateRequest = """
+                {
+                  "instructorUserId": "%s",
+                  "startTime": "%s",
+                  "endTime": "%s",
+                  "reason": "Ajuste operacional"
+                }
+                """.formatted(instructor.getId(), updatedStart, updatedEnd);
+
+        mockMvc.perform(put("/api/v1/schedule-blocks/{blockId}", blockId)
+                        .header("Authorization", "Bearer " + receptionToken)
+                        .contentType(APPLICATION_JSON)
+                        .content(updateRequest))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.reason").value("Ajuste operacional"))
+                .andExpect(jsonPath("$.startTime").value(updatedStart.toInstant().toString()));
+
+        mockMvc.perform(delete("/api/v1/schedule-blocks/{blockId}", blockId)
+                        .header("Authorization", "Bearer " + receptionToken))
+                .andExpect(status().isNoContent());
+
+        mockMvc.perform(get("/api/v1/schedule-blocks")
+                        .header("Authorization", "Bearer " + receptionToken)
+                        .param("date", start.toLocalDate().toString()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$").isEmpty());
     }
 
     @Test

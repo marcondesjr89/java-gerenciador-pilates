@@ -4,9 +4,13 @@ import br.com.gerenciadorpilates.scheduling.application.ScheduleBlockService;
 import jakarta.validation.Valid;
 import java.time.LocalDate;
 import java.util.List;
+import java.util.UUID;
 import org.springframework.format.annotation.DateTimeFormat;
-import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.http.HttpStatus;
+import org.springframework.web.bind.annotation.DeleteMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -35,5 +39,19 @@ public class ScheduleBlockController {
     @ResponseStatus(HttpStatus.CREATED)
     public ScheduleBlockResponse create(@Valid @RequestBody CreateScheduleBlockRequest request) {
         return blockService.create(request);
+    }
+
+    @PutMapping("/{blockId}")
+    public ScheduleBlockResponse update(
+            @PathVariable UUID blockId,
+            @Valid @RequestBody CreateScheduleBlockRequest request
+    ) {
+        return blockService.update(blockId, request);
+    }
+
+    @DeleteMapping("/{blockId}")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void delete(@PathVariable UUID blockId) {
+        blockService.delete(blockId);
     }
 }

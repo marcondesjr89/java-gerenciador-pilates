@@ -91,4 +91,18 @@ public class ScheduleBlock {
     public String getReason() {
         return reason;
     }
+
+    public void update(
+            UUID instructorUserId,
+            String instructorName,
+            OffsetDateTime startTime,
+            OffsetDateTime endTime,
+            String reason
+    ) {
+        this.instructorUserId = instructorUserId;
+        this.instructorName = instructorName;
+        this.startTime = startTime;
+        this.endTime = endTime;
+        this.reason = reason;
+    }
 }

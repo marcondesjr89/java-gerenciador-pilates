@@ -35,34 +35,9 @@ public class ScheduleBlockService {
 
     @Transactional
     public ScheduleBlockResponse create(CreateScheduleBlockRequest request) {
-        if (!request.endTime().isAfter(request.startTime())) {
-            throw new IllegalArgumentException("O horario final do bloqueio deve ser maior que o inicial.");
-        }
-
-        AppUser instructor = userRepository.findById(request.instructorUserId())
-                .orElseThrow(() -> new ResourceNotFoundException("Instrutor nao encontrado."));
-
-        if (instructor.getRole() != UserRole.INSTRUCTOR) {
-            throw new IllegalArgumentException("O usuario informado nao possui perfil de instrutor.");
-        }
-
-        boolean hasSlotConflict = !slotRepository.findOverlappingSlots(
-                request.instructorUserId(),
-                request.startTime(),
-                request.endTime()
-        ).isEmpty();
-        if (hasSlotConflict) {
-            throw new IllegalArgumentException("Existem aulas neste intervalo. Remova ou remarque antes de bloquear.");
-        }
-
-        boolean hasBlockConflict = !blockRepository.findOverlappingBlocks(
-                request.instructorUserId(),
-                request.startTime(),
-                request.endTime()
-        ).isEmpty();
-        if (hasBlockConflict) {
-            throw new IllegalArgumentException("Ja existe um bloqueio conflitante para este instrutor.");
-        }
+        AppUser instructor = validateInstructor(request.instructorUserId());
+        validateBlockWindow(request.startTime(), request.endTime());
+        validateConflicts(null, instructor.getId(), request.startTime(), request.endTime());
 
         ScheduleBlock block = new ScheduleBlock(
                 UUID.randomUUID(),
@@ -73,6 +48,75 @@ public class ScheduleBlockService {
                 request.reason().trim()
         );
         return ScheduleBlockResponse.from(blockRepository.save(block));
+    }
+
+    @Transactional
+    public ScheduleBlockResponse update(UUID blockId, CreateScheduleBlockRequest request) {
+        ScheduleBlock block = blockRepository.findById(blockId)
+                .orElseThrow(() -> new ResourceNotFoundException("Bloqueio nao encontrado."));
+        AppUser instructor = validateInstructor(request.instructorUserId());
+        validateBlockWindow(request.startTime(), request.endTime());
+        validateConflicts(blockId, instructor.getId(), request.startTime(), request.endTime());
+
+        block.update(
+                instructor.getId(),
+                instructor.getFullName(),
+                request.startTime(),
+                request.endTime(),
+                request.reason().trim()
+        );
+        return ScheduleBlockResponse.from(blockRepository.save(block));
+    }
+
+    @Transactional
+    public void delete(UUID blockId) {
+        ScheduleBlock block = blockRepository.findById(blockId)
+                .orElseThrow(() -> new ResourceNotFoundException("Bloqueio nao encontrado."));
+        blockRepository.delete(block);
+    }
+
+    private AppUser validateInstructor(UUID instructorUserId) {
+        AppUser instructor = userRepository.findById(instructorUserId)
+                .orElseThrow(() -> new ResourceNotFoundException("Instrutor nao encontrado."));
+
+        if (instructor.getRole() != UserRole.INSTRUCTOR) {
+            throw new IllegalArgumentException("O usuario informado nao possui perfil de instrutor.");
+        }
+
+        return instructor;
+    }
+
+    private void validateBlockWindow(OffsetDateTime startTime, OffsetDateTime endTime) {
+        if (!endTime.isAfter(startTime)) {
+            throw new IllegalArgumentException("O horario final do bloqueio deve ser maior que o inicial.");
+        }
+    }
+
+    private void validateConflicts(
+            UUID currentBlockId,
+            UUID instructorUserId,
+            OffsetDateTime startTime,
+            OffsetDateTime endTime
+    ) {
+        boolean hasSlotConflict = !slotRepository.findOverlappingSlots(
+                instructorUserId,
+                startTime,
+                endTime
+        ).isEmpty();
+        if (hasSlotConflict) {
+            throw new IllegalArgumentException("Existem aulas neste intervalo. Remova ou remarque antes de bloquear.");
+        }
+
+        boolean hasBlockConflict = blockRepository.findOverlappingBlocks(
+                        instructorUserId,
+                        startTime,
+                        endTime
+                )
+                .stream()
+                .anyMatch(block -> !block.getId().equals(currentBlockId));
+        if (hasBlockConflict) {
+            throw new IllegalArgumentException("Ja existe um bloqueio conflitante para este instrutor.");
+        }
     }
 
     @Transactional(readOnly = true)
