@@ -49,6 +49,31 @@ export function ProgressEntryForm({ studentId }: ProgressEntryFormProps) {
             return;
           }
 
+          const progressEntry = (await response.json()) as { id: string };
+          const attachment = formData.get("attachment");
+
+          if (attachment instanceof File && attachment.size > 0) {
+            const attachmentFormData = new FormData();
+            attachmentFormData.set("file", attachment);
+
+            const attachmentResponse = await fetch(
+              `/api/students/${studentId}/progress-entries/${progressEntry.id}/attachments`,
+              {
+                method: "POST",
+                body: attachmentFormData
+              }
+            );
+
+            if (!attachmentResponse.ok) {
+              const payload = (await attachmentResponse.json().catch(() => ({ message: "" }))) as { message?: string };
+              setErrorMessage(
+                payload.message || "Evolucao registrada, mas nao foi possivel anexar o arquivo clinico."
+              );
+              router.refresh();
+              return;
+            }
+          }
+
           setSuccessMessage("Evolucao registrada com sucesso.");
           router.refresh();
         });
@@ -74,6 +99,15 @@ export function ProgressEntryForm({ studentId }: ProgressEntryFormProps) {
           className="w-full rounded-2xl border border-brand-line bg-brand-panel px-4 py-3 text-brand-ink outline-none"
           placeholder="Descreva a sessao, adaptacoes, resposta do aluno e proximo foco."
           required
+        />
+      </label>
+
+      <label className="space-y-2">
+        <span className="text-sm font-semibold text-brand-secondary">Anexo clinico opcional</span>
+        <input
+          name="attachment"
+          type="file"
+          className="w-full rounded-2xl border border-brand-line bg-brand-panel px-4 py-3 text-brand-ink outline-none file:mr-3 file:rounded-xl file:border-0 file:bg-brand-soft file:px-3 file:py-2 file:font-semibold file:text-brand-secondary"
         />
       </label>
 
