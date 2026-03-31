@@ -65,6 +65,14 @@ app:
     policy:
       min-hours-before-cancellation: ${SCHEDULING_MIN_HOURS_BEFORE_CANCELLATION:12}
       min-hours-before-reschedule: ${SCHEDULING_MIN_HOURS_BEFORE_RESCHEDULE:12}
+  notifications:
+    enabled: ${NOTIFICATIONS_ENABLED:false}
+    batch-size: ${NOTIFICATIONS_BATCH_SIZE:20}
+    outbox-fixed-delay-ms: ${NOTIFICATIONS_OUTBOX_FIXED_DELAY_MS:30000}
+    whatsapp:
+      enabled: ${WHATSAPP_ENABLED:false}
+      webhook-url: ${WHATSAPP_WEBHOOK_URL:}
+      auth-token: ${WHATSAPP_AUTH_TOKEN:}
   reporting:
     dmed:
       provider-name: ${DMED_PROVIDER_NAME:Studio Pilates Exemplo Ltda}

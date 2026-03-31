@@ -6,6 +6,7 @@ import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
 import jakarta.persistence.Id;
 import jakarta.persistence.PrePersist;
+import jakarta.persistence.PreUpdate;
 import jakarta.persistence.Table;
 import java.time.OffsetDateTime;
 import java.util.UUID;
@@ -34,8 +35,20 @@ public class NotificationOutboxEntry {
     @Column(name = "payload_json", nullable = false, length = 4000)
     private String payloadJson;
 
+    @Column(name = "attempted_at")
+    private OffsetDateTime attemptedAt;
+
+    @Column(name = "sent_at")
+    private OffsetDateTime sentAt;
+
+    @Column(name = "error_message", length = 500)
+    private String errorMessage;
+
     @Column(name = "created_at", nullable = false)
     private OffsetDateTime createdAt;
+
+    @Column(name = "updated_at", nullable = false)
+    private OffsetDateTime updatedAt;
 
     protected NotificationOutboxEntry() {
     }
@@ -58,6 +71,53 @@ public class NotificationOutboxEntry {
 
     @PrePersist
     void prePersist() {
-        createdAt = OffsetDateTime.now();
+        OffsetDateTime now = OffsetDateTime.now();
+        createdAt = now;
+        updatedAt = now;
+    }
+
+    @PreUpdate
+    void preUpdate() {
+        updatedAt = OffsetDateTime.now();
+    }
+
+    public void markAttempted(OffsetDateTime attemptedAt) {
+        this.attemptedAt = attemptedAt;
+    }
+
+    public void markSent(OffsetDateTime sentAt) {
+        this.status = NotificationStatus.SENT;
+        this.sentAt = sentAt;
+        this.errorMessage = null;
+    }
+
+    public void markFailed(OffsetDateTime attemptedAt, String errorMessage) {
+        this.status = NotificationStatus.FAILED;
+        this.attemptedAt = attemptedAt;
+        this.errorMessage = errorMessage;
+    }
+
+    public UUID getId() {
+        return id;
+    }
+
+    public NotificationChannel getChannel() {
+        return channel;
+    }
+
+    public NotificationStatus getStatus() {
+        return status;
+    }
+
+    public String getRecipientReference() {
+        return recipientReference;
+    }
+
+    public String getMessageTemplate() {
+        return messageTemplate;
+    }
+
+    public String getPayloadJson() {
+        return payloadJson;
     }
 }
