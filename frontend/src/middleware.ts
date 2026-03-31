@@ -2,7 +2,7 @@ import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
 import { SESSION_COOKIE_NAME, decodeSession } from "@/lib/auth";
 
-const protectedRoutes = ["/dashboard", "/agenda", "/alunos", "/financeiro", "/instrutor"];
+const protectedRoutes = ["/dashboard", "/agenda", "/alunos", "/financeiro", "/notificacoes", "/instrutor"];
 
 export function middleware(request: NextRequest) {
   const isProtectedRoute = protectedRoutes.some((route) => request.nextUrl.pathname.startsWith(route));
@@ -36,5 +36,5 @@ export function middleware(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/dashboard/:path*", "/agenda/:path*", "/alunos/:path*", "/financeiro/:path*", "/instrutor/:path*"]
+  matcher: ["/dashboard/:path*", "/agenda/:path*", "/alunos/:path*", "/financeiro/:path*", "/notificacoes/:path*", "/instrutor/:path*"]
 };

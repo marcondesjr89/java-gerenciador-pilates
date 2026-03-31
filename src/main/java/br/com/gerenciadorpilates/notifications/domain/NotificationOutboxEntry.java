@@ -120,4 +120,20 @@ public class NotificationOutboxEntry {
     public String getPayloadJson() {
         return payloadJson;
     }
+
+    public OffsetDateTime getAttemptedAt() {
+        return attemptedAt;
+    }
+
+    public OffsetDateTime getSentAt() {
+        return sentAt;
+    }
+
+    public String getErrorMessage() {
+        return errorMessage;
+    }
+
+    public OffsetDateTime getCreatedAt() {
+        return createdAt;
+    }
 }
