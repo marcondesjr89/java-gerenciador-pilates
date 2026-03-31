@@ -121,4 +121,8 @@ public class Student {
     public OffsetDateTime getUpdatedAt() {
         return updatedAt;
     }
+
+    public void updateLgpdConsent(boolean lgpdConsent) {
+        this.lgpdConsent = lgpdConsent;
+    }
 }

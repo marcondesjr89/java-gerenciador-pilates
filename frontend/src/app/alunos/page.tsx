@@ -4,8 +4,10 @@ import { SectionCard } from "@/components/ui/section-card";
 import { requireInternalSession } from "@/lib/auth";
 import { fetchStudents } from "@/lib/students";
 import { CreateStudentForm } from "@/app/alunos/create-student-form";
+import { LegalAcceptanceForm } from "@/app/alunos/legal-acceptance-form";
 import { PortalAccountForm } from "@/app/alunos/portal-account-form";
 import { fetchClinicalRecord } from "@/lib/clinical";
+import { fetchStudentLegalAcceptances } from "@/lib/legal-acceptances";
 import { fetchStudentPortalAccount } from "@/lib/student-portal";
 
 type StudentsPageProps = {
@@ -48,6 +50,43 @@ function formatDateTimeWithTimezone(value: string) {
   });
 }
 
+function formatLegalTermType(value: string) {
+  switch (value) {
+    case "LGPD_DATA_PROCESSING":
+      return "Tratamento de dados LGPD";
+    case "WHATSAPP_COMMUNICATION":
+      return "Comunicacao por WhatsApp";
+    case "CLINICAL_RECORD_SHARING":
+      return "Compartilhamento clinico";
+    default:
+      return value;
+  }
+}
+
+function formatLegalStatus(value: string) {
+  switch (value) {
+    case "ACCEPTED":
+      return "Aceito";
+    case "PENDING_SIGNATURE":
+      return "Pendente";
+    default:
+      return value;
+  }
+}
+
+function formatCollectionMethod(value: string | null) {
+  switch (value) {
+    case "TABLET_SIGNATURE":
+      return "Tablet";
+    case "PRINTED_SIGNATURE":
+      return "Papel";
+    case "INTERNAL_RECORD":
+      return "Registro interno";
+    default:
+      return "Ainda nao definido";
+  }
+}
+
 function getAge(value: string) {
   const today = new Date();
   const birthDate = new Date(`${value}T12:00:00`);
@@ -84,12 +123,13 @@ export default async function StudentsPage({ searchParams }: StudentsPageProps) 
   const lgpdCount = students.filter((student) => student.lgpdConsent).length;
   const canViewClinicalRecord = session.role === "ADMIN";
   const selectedStudentId = selectedStudent?.id ?? null;
-  const [portalAccount, clinicalRecord] = selectedStudentId
+  const [portalAccount, clinicalRecord, legalAcceptances] = selectedStudentId
     ? await Promise.all([
         fetchStudentPortalAccount(session, selectedStudentId),
-        canViewClinicalRecord ? fetchClinicalRecord(session, selectedStudentId) : Promise.resolve(null)
+        canViewClinicalRecord ? fetchClinicalRecord(session, selectedStudentId) : Promise.resolve(null),
+        fetchStudentLegalAcceptances(session, selectedStudentId)
       ])
-    : [null, null];
+    : [null, null, []];
 
   return (
     <AppShell currentPath="/alunos">
@@ -238,6 +278,130 @@ export default async function StudentsPage({ searchParams }: StudentsPageProps) 
                   <p className="mt-4 text-xs text-brand-subtext">
                     Cadastro criado em {formatDateTime(selectedStudent.createdAt)}
                   </p>
+                </div>
+
+                <div className="rounded-[20px] border border-brand-line bg-brand-surface px-5 py-5">
+                  <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
+                    <div>
+                      <p className="text-xs uppercase tracking-[0.18em] text-brand-subtext">LGPD e termos</p>
+                      <h3 className="mt-2 font-display text-2xl text-brand-secondary">Trilha juridica do aluno</h3>
+                      <p className="mt-2 text-sm leading-6 text-brand-subtext">
+                        Registre o texto exibido ao aluno, a versao do termo e o metodo usado para coleta no
+                        papel ou no tablet.
+                      </p>
+                    </div>
+
+                    <span
+                      className={
+                        selectedStudent.lgpdConsent
+                          ? "rounded-full bg-[rgba(25,135,84,0.12)] px-3 py-1 text-xs font-semibold text-brand-success"
+                          : "rounded-full bg-[rgba(255,193,7,0.16)] px-3 py-1 text-xs font-semibold text-[#a06b00]"
+                      }
+                    >
+                      {selectedStudent.lgpdConsent ? "Consentimento resumido ativo" : "Consentimento resumido pendente"}
+                    </span>
+                  </div>
+
+                  <div className="mt-5 grid gap-3 md:grid-cols-2">
+                    <div className="rounded-2xl border border-brand-line bg-brand-panel px-4 py-4">
+                      <p className="text-xs uppercase tracking-[0.18em] text-brand-subtext">Termos registrados</p>
+                      <p className="mt-2 font-semibold text-brand-ink">{legalAcceptances.length}</p>
+                      <p className="mt-2 text-sm text-brand-subtext">
+                        {legalAcceptances.filter((item) => item.status === "ACCEPTED").length} aceite(s) ja
+                        formalizados na trilha.
+                      </p>
+                    </div>
+
+                    <div className="rounded-2xl border border-brand-line bg-brand-panel px-4 py-4">
+                      <p className="text-xs uppercase tracking-[0.18em] text-brand-subtext">Ultima captura</p>
+                      <p className="mt-2 font-semibold text-brand-ink">
+                        {legalAcceptances[0] ? formatDateTimeWithTimezone(legalAcceptances[0].createdAt) : "Sem registro"}
+                      </p>
+                      <p className="mt-2 text-sm text-brand-subtext">
+                        {legalAcceptances[0]
+                          ? `${formatLegalStatus(legalAcceptances[0].status)} por ${legalAcceptances[0].capturedByUserName ?? "usuario interno"}`
+                          : "Use a ficha abaixo para abrir a trilha do primeiro termo."}
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="mt-5">
+                    <LegalAcceptanceForm studentId={selectedStudent.id} studentName={selectedStudent.fullName} />
+                  </div>
+
+                  <div className="mt-5 space-y-3">
+                    <div className="flex items-center justify-between gap-3">
+                      <p className="text-sm font-semibold text-brand-secondary">Historico de termos</p>
+                      <span className="text-xs text-brand-subtext">{legalAcceptances.length} registro(s)</span>
+                    </div>
+
+                    {legalAcceptances.length > 0 ? (
+                      legalAcceptances.map((acceptance) => (
+                        <article
+                          key={acceptance.id}
+                          className="rounded-2xl border border-brand-line bg-brand-panel px-4 py-4"
+                        >
+                          <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
+                            <div>
+                              <p className="font-semibold text-brand-ink">{acceptance.title}</p>
+                              <p className="mt-1 text-sm text-brand-subtext">
+                                {formatLegalTermType(acceptance.termType)} - versao {acceptance.termsVersion}
+                              </p>
+                            </div>
+
+                            <div className="flex flex-wrap gap-2 text-xs">
+                              <span
+                                className={
+                                  acceptance.status === "ACCEPTED"
+                                    ? "rounded-full bg-[rgba(25,135,84,0.12)] px-3 py-1 font-semibold text-brand-success"
+                                    : "rounded-full bg-[rgba(255,193,7,0.16)] px-3 py-1 font-semibold text-[#a06b00]"
+                                }
+                              >
+                                {formatLegalStatus(acceptance.status)}
+                              </span>
+                              <span className="rounded-full bg-brand-soft px-3 py-1 font-semibold text-brand-secondary">
+                                {formatCollectionMethod(acceptance.collectionMethod)}
+                              </span>
+                            </div>
+                          </div>
+
+                          <div className="mt-4 grid gap-3 md:grid-cols-2">
+                            <div className="rounded-2xl border border-brand-line bg-brand-surface px-4 py-4">
+                              <p className="text-xs uppercase tracking-[0.18em] text-brand-subtext">Base legal</p>
+                              <p className="mt-2 text-sm leading-6 text-brand-subtext">
+                                {acceptance.legalBasis || "Nao informada neste registro."}
+                              </p>
+                            </div>
+
+                            <div className="rounded-2xl border border-brand-line bg-brand-surface px-4 py-4">
+                              <p className="text-xs uppercase tracking-[0.18em] text-brand-subtext">Hash do documento</p>
+                              <p className="mt-2 break-all font-mono text-xs text-brand-subtext">{acceptance.documentHash}</p>
+                            </div>
+                          </div>
+
+                          <p className="mt-4 text-sm leading-6 text-brand-subtext">
+                            {acceptance.termBody.length > 220
+                              ? `${acceptance.termBody.slice(0, 220)}...`
+                              : acceptance.termBody}
+                          </p>
+
+                          <div className="mt-4 space-y-1 text-xs text-brand-subtext">
+                            <p>Capturado em {formatDateTimeWithTimezone(acceptance.createdAt)}</p>
+                            <p>Operador: {acceptance.capturedByUserName ?? "Nao identificado"}</p>
+                            <p>
+                              Aceite formal:{" "}
+                              {acceptance.acceptedAt ? formatDateTimeWithTimezone(acceptance.acceptedAt) : "aguardando assinatura"}
+                            </p>
+                            <p>Evidencia: {acceptance.evidenceNote || "Nenhuma observacao adicional registrada."}</p>
+                          </div>
+                        </article>
+                      ))
+                    ) : (
+                      <div className="rounded-2xl border border-dashed border-brand-line bg-brand-panel px-4 py-8 text-sm text-brand-subtext">
+                        Nenhum termo juridico arquivado para este aluno.
+                      </div>
+                    )}
+                  </div>
                 </div>
 
                 <div className="rounded-[20px] border border-brand-line bg-brand-surface px-5 py-5">
