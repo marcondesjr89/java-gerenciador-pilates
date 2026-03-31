@@ -2,6 +2,7 @@ import { CalendarDays, Clock3, ShieldCheck, UserRound } from "lucide-react";
 import { requireStudentPortalSession } from "@/lib/student-portal-auth";
 import { fetchStudentPortalBookings } from "@/lib/student-portal-bookings";
 import { fetchStudentPortalScheduleSlots } from "@/lib/student-portal-schedule";
+import { fetchStudentPortalBilling } from "@/lib/student-portal-billing";
 import { PortalLogoutButton } from "@/app/portal/portal-logout-button";
 import { CancelBookingButton } from "@/app/portal/cancel-booking-button";
 import { RescheduleBookingPanel } from "@/app/portal/reschedule-booking-panel";
@@ -35,14 +36,24 @@ function getToday() {
   }).format(new Date());
 }
 
+function formatCurrency(value: string) {
+  return Number(value).toLocaleString("pt-BR", {
+    style: "currency",
+    currency: "BRL"
+  });
+}
+
 export default async function StudentPortalPage({ searchParams }: StudentPortalPageProps) {
   const session = await requireStudentPortalSession();
   const params = await searchParams;
   const selectedDate = params?.date ?? getToday();
-  const [bookings, slots] = await Promise.all([
+  const [bookings, slots, billing] = await Promise.all([
     fetchStudentPortalBookings(session),
-    fetchStudentPortalScheduleSlots(session, selectedDate)
+    fetchStudentPortalScheduleSlots(session, selectedDate),
+    fetchStudentPortalBilling(session)
   ]);
+  const activeSubscription = billing.subscriptions.find((subscription) => subscription.status === "ACTIVE") ?? null;
+  const openInvoices = billing.invoices.filter((invoice) => invoice.status === "OPEN");
 
   return (
     <main className="min-h-screen bg-[var(--page-background)] px-4 py-5">
@@ -111,6 +122,99 @@ export default async function StudentPortalPage({ searchParams }: StudentPortalP
                 <ShieldCheck className="h-5 w-5" />
               </div>
             </div>
+          </article>
+
+          <article className="rounded-[24px] border border-brand-line bg-brand-panel p-5 shadow-panel">
+            <div className="flex items-start justify-between gap-4">
+              <div>
+                <p className="text-sm font-medium text-brand-subtext">Financeiro</p>
+                <p className="mt-3 font-display text-lg text-brand-ink">
+                  {activeSubscription ? activeSubscription.planName : "Sem assinatura ativa"}
+                </p>
+                <p className="mt-3 text-sm leading-6 text-brand-subtext">
+                  {openInvoices.length > 0
+                    ? `${openInvoices.length} fatura(s) em aberto no portal.`
+                    : "Nenhuma fatura aberta no momento."}
+                </p>
+              </div>
+              <div className="rounded-2xl bg-brand-soft p-3 text-brand-primary">
+                <CalendarDays className="h-5 w-5" />
+              </div>
+            </div>
+          </article>
+        </section>
+
+        <section className="grid gap-6 xl:grid-cols-[0.9fr_1.1fr]">
+          <article className="rounded-[28px] border border-brand-line bg-brand-surface p-6 shadow-panel lg:p-8">
+            <p className="text-sm uppercase tracking-[0.24em] text-brand-primary">Minha assinatura</p>
+            <h2 className="mt-2 font-display text-3xl text-brand-secondary">Plano atual</h2>
+
+            {activeSubscription ? (
+              <div className="mt-5 rounded-[24px] border border-brand-line bg-brand-panel px-5 py-5">
+                <p className="font-display text-2xl text-brand-secondary">{activeSubscription.planName}</p>
+                <p className="mt-2 text-sm text-brand-subtext">
+                  Inicio em {new Date(`${activeSubscription.startDate}T12:00:00`).toLocaleDateString("pt-BR")}
+                </p>
+                <p className="mt-2 text-sm text-brand-subtext">
+                  Proxima cobranca em {new Date(`${activeSubscription.nextBillingDate}T12:00:00`).toLocaleDateString("pt-BR")}
+                </p>
+                <span className="mt-4 inline-flex rounded-full bg-[rgba(25,135,84,0.12)] px-3 py-1 text-xs font-semibold text-brand-success">
+                  Assinatura ativa
+                </span>
+              </div>
+            ) : (
+              <div className="mt-5 rounded-[24px] border border-dashed border-brand-line bg-brand-panel px-5 py-10 text-center text-sm text-brand-subtext">
+                Nenhuma assinatura ativa vinculada ao portal neste momento.
+              </div>
+            )}
+          </article>
+
+          <article className="rounded-[28px] border border-brand-line bg-brand-surface p-6 shadow-panel lg:p-8">
+            <p className="text-sm uppercase tracking-[0.24em] text-brand-primary">Minhas faturas</p>
+            <h2 className="mt-2 font-display text-3xl text-brand-secondary">Historico financeiro</h2>
+
+            {billing.invoices.length > 0 ? (
+              <div className="mt-5 space-y-3">
+                {billing.invoices.map((invoice) => (
+                  <div key={invoice.id} className="rounded-[24px] border border-brand-line bg-brand-panel px-5 py-5">
+                    <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+                      <div>
+                        <p className="font-semibold text-brand-ink">
+                          Competencia {new Date(`${invoice.referenceMonth}T12:00:00`).toLocaleDateString("pt-BR")}
+                        </p>
+                        <p className="mt-1 text-sm text-brand-subtext">
+                          Vencimento em {new Date(`${invoice.dueDate}T12:00:00`).toLocaleDateString("pt-BR")}
+                        </p>
+                        {invoice.paidAt ? (
+                          <p className="mt-1 text-sm text-brand-subtext">
+                            Pago em {new Date(invoice.paidAt).toLocaleString("pt-BR", { dateStyle: "short", timeStyle: "short" })}
+                          </p>
+                        ) : null}
+                      </div>
+
+                      <div className="flex flex-col gap-2 md:items-end">
+                        <span className="font-semibold text-brand-secondary">{formatCurrency(invoice.amountDue)}</span>
+                        <span
+                          className={
+                            invoice.status === "PAID"
+                              ? "rounded-full bg-[rgba(25,135,84,0.12)] px-3 py-1 text-xs font-semibold text-brand-success"
+                              : invoice.status === "OPEN"
+                                ? "rounded-full bg-[rgba(255,193,7,0.18)] px-3 py-1 text-xs font-semibold text-[#8a6200]"
+                                : "rounded-full bg-[rgba(220,53,69,0.08)] px-3 py-1 text-xs font-semibold text-brand-danger"
+                          }
+                        >
+                          {invoice.status === "PAID" ? "Paga" : invoice.status === "OPEN" ? "Em aberto" : "Cancelada"}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="mt-5 rounded-[24px] border border-dashed border-brand-line bg-brand-panel px-5 py-10 text-center text-sm text-brand-subtext">
+                Nenhuma fatura vinculada a sua conta do portal.
+              </div>
+            )}
           </article>
         </section>
 
