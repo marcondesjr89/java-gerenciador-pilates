@@ -16,8 +16,22 @@ export type StudentLegalAcceptance = {
   evidenceNote: string | null;
   capturedByUserId: string | null;
   capturedByUserName: string | null;
+  attachments: StudentLegalAcceptanceAttachment[];
   createdAt: string;
   updatedAt: string;
+};
+
+export type StudentLegalAcceptanceAttachment = {
+  id: string;
+  studentId: string;
+  legalAcceptanceId: string;
+  attachmentType: "TABLET_SIGNATURE" | "PRINTED_SIGNED_TERM";
+  originalFileName: string;
+  contentType: string;
+  fileSize: number;
+  uploadedByUserId: string;
+  uploadedByUserName: string;
+  createdAt: string;
 };
 
 export async function fetchStudentLegalAcceptances(session: SessionUser, studentId: string) {

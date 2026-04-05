@@ -87,6 +87,17 @@ function formatCollectionMethod(value: string | null) {
   }
 }
 
+function formatAttachmentType(value: string) {
+  switch (value) {
+    case "TABLET_SIGNATURE":
+      return "Assinatura do tablet";
+    case "PRINTED_SIGNED_TERM":
+      return "Termo assinado";
+    default:
+      return value;
+  }
+}
+
 function getAge(value: string) {
   const today = new Date();
   const birthDate = new Date(`${value}T12:00:00`);
@@ -393,6 +404,27 @@ export default async function StudentsPage({ searchParams }: StudentsPageProps) 
                               {acceptance.acceptedAt ? formatDateTimeWithTimezone(acceptance.acceptedAt) : "aguardando assinatura"}
                             </p>
                             <p>Evidencia: {acceptance.evidenceNote || "Nenhuma observacao adicional registrada."}</p>
+                          </div>
+
+                          <div className="mt-4 space-y-2">
+                            <p className="text-xs uppercase tracking-[0.18em] text-brand-subtext">Arquivos de evidencia</p>
+                            {acceptance.attachments.length > 0 ? (
+                              <div className="flex flex-wrap gap-2">
+                                {acceptance.attachments.map((attachment) => (
+                                  <a
+                                    key={attachment.id}
+                                    href={`/api/students/${selectedStudent.id}/legal-acceptances/${acceptance.id}/attachments/${attachment.id}/download`}
+                                    target="_blank"
+                                    rel="noreferrer"
+                                    className="rounded-full bg-brand-soft px-3 py-2 text-xs font-semibold text-brand-secondary transition hover:bg-brand-primary hover:text-white"
+                                  >
+                                    {formatAttachmentType(attachment.attachmentType)}: {attachment.originalFileName}
+                                  </a>
+                                ))}
+                              </div>
+                            ) : (
+                              <p className="text-xs text-brand-subtext">Nenhum arquivo anexado a este aceite.</p>
+                            )}
                           </div>
                         </article>
                       ))

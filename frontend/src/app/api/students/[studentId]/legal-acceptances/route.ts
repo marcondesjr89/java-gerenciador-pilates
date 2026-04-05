@@ -9,21 +9,30 @@ type BackendProblem = {
 export async function POST(request: Request, context: { params: Promise<{ studentId: string }> }) {
   const session = await getSessionUser();
 
-  if (!session || (session.role !== "ADMIN" && session.role !== "RECEPTION")) {
+  if (!session || (session.role !== "ADMIN" && session.role !== "RECEPTION" && session.role !== "INSTRUCTOR")) {
     return NextResponse.json({ message: "Sessao invalida para registrar termo legal." }, { status: 401 });
   }
 
   const { studentId } = await context.params;
-  const body = await request.json();
-  const response = await fetch(`${API_BASE_URL}/api/v1/students/${studentId}/legal-acceptances`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${session.accessToken}`
-    },
-    body: JSON.stringify(body),
-    cache: "no-store"
-  });
+  const contentType = request.headers.get("content-type") ?? "";
+  const response = contentType.includes("multipart/form-data")
+    ? await fetch(`${API_BASE_URL}/api/v1/students/${studentId}/legal-acceptances`, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${session.accessToken}`
+        },
+        body: await request.formData(),
+        cache: "no-store"
+      })
+    : await fetch(`${API_BASE_URL}/api/v1/students/${studentId}/legal-acceptances`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${session.accessToken}`
+        },
+        body: JSON.stringify(await request.json()),
+        cache: "no-store"
+      });
 
   if (!response.ok) {
     const problem = (await response.json().catch(() => ({}))) as BackendProblem;

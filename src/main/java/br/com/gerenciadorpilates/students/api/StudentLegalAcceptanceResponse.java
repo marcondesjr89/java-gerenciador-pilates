@@ -5,6 +5,7 @@ import br.com.gerenciadorpilates.students.domain.StudentLegalAcceptanceStatus;
 import br.com.gerenciadorpilates.students.domain.StudentLegalCollectionMethod;
 import br.com.gerenciadorpilates.students.domain.StudentLegalTermType;
 import java.time.OffsetDateTime;
+import java.util.List;
 import java.util.UUID;
 
 public record StudentLegalAcceptanceResponse(
@@ -22,11 +23,15 @@ public record StudentLegalAcceptanceResponse(
         String evidenceNote,
         UUID capturedByUserId,
         String capturedByUserName,
+        List<StudentLegalAcceptanceAttachmentResponse> attachments,
         OffsetDateTime createdAt,
         OffsetDateTime updatedAt
 ) {
 
-    public static StudentLegalAcceptanceResponse from(StudentLegalAcceptance acceptance) {
+    public static StudentLegalAcceptanceResponse from(
+            StudentLegalAcceptance acceptance,
+            List<StudentLegalAcceptanceAttachmentResponse> attachments
+    ) {
         return new StudentLegalAcceptanceResponse(
                 acceptance.getId(),
                 acceptance.getStudentId(),
@@ -42,6 +47,7 @@ public record StudentLegalAcceptanceResponse(
                 acceptance.getEvidenceNote(),
                 acceptance.getCapturedByUserId(),
                 acceptance.getCapturedByUserName(),
+                attachments,
                 acceptance.getCreatedAt(),
                 acceptance.getUpdatedAt()
         );

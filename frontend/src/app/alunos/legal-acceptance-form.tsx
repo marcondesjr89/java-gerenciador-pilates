@@ -3,6 +3,7 @@
 import { useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { FileSignature, LoaderCircle } from "lucide-react";
+import { SignaturePad } from "@/app/alunos/signature-pad";
 
 type LegalAcceptanceFormProps = {
   studentId: string;
@@ -14,7 +15,15 @@ export function LegalAcceptanceForm({ studentId, studentName }: LegalAcceptanceF
   const formRef = useRef<HTMLFormElement>(null);
   const [errorMessage, setErrorMessage] = useState("");
   const [successMessage, setSuccessMessage] = useState("");
+  const [status, setStatus] = useState("PENDING_SIGNATURE");
+  const [collectionMethod, setCollectionMethod] = useState("TABLET_SIGNATURE");
   const [isPending, startTransition] = useTransition();
+
+  async function dataUrlToFile(dataUrl: string, fileName: string) {
+    const response = await fetch(dataUrl);
+    const blob = await response.blob();
+    return new File([blob], fileName, { type: blob.type || "image/png" });
+  }
 
   return (
     <form
@@ -27,21 +36,43 @@ export function LegalAcceptanceForm({ studentId, studentName }: LegalAcceptanceF
 
           const status = String(formData.get("status") ?? "PENDING_SIGNATURE");
           const collectionMethodValue = String(formData.get("collectionMethod") ?? "").trim();
+          const requestPayload = {
+            termType: String(formData.get("termType") ?? "LGPD_DATA_PROCESSING"),
+            title: String(formData.get("title") ?? "").trim(),
+            termsVersion: String(formData.get("termsVersion") ?? "").trim(),
+            legalBasis: String(formData.get("legalBasis") ?? "").trim(),
+            termBody: String(formData.get("termBody") ?? "").trim(),
+            status,
+            collectionMethod: status === "ACCEPTED" ? collectionMethodValue || null : null,
+            evidenceNote: String(formData.get("evidenceNote") ?? "").trim()
+          };
+
+          const body = new FormData();
+          body.set("request", new Blob([JSON.stringify(requestPayload)], { type: "application/json" }));
+
+          if (status === "ACCEPTED" && collectionMethodValue === "TABLET_SIGNATURE") {
+            const signatureDataUrl = String(formData.get("tabletSignatureDataUrl") ?? "").trim();
+            if (!signatureDataUrl) {
+              setErrorMessage("Colete a assinatura no tablet antes de concluir o aceite.");
+              return;
+            }
+
+            body.set("tabletSignatureFile", await dataUrlToFile(signatureDataUrl, "assinatura-tablet.png"));
+          }
+
+          if (status === "ACCEPTED" && collectionMethodValue === "PRINTED_SIGNATURE") {
+            const printedTermFile = formData.get("printedTermFile");
+            if (!(printedTermFile instanceof File) || printedTermFile.size === 0) {
+              setErrorMessage("Anexe o termo assinado em papel para concluir o aceite.");
+              return;
+            }
+
+            body.set("printedTermFile", printedTermFile);
+          }
+
           const response = await fetch(`/api/students/${studentId}/legal-acceptances`, {
             method: "POST",
-            headers: {
-              "Content-Type": "application/json"
-            },
-            body: JSON.stringify({
-              termType: String(formData.get("termType") ?? "LGPD_DATA_PROCESSING"),
-              title: String(formData.get("title") ?? "").trim(),
-              termsVersion: String(formData.get("termsVersion") ?? "").trim(),
-              legalBasis: String(formData.get("legalBasis") ?? "").trim(),
-              termBody: String(formData.get("termBody") ?? "").trim(),
-              status,
-              collectionMethod: status === "ACCEPTED" ? collectionMethodValue || null : null,
-              evidenceNote: String(formData.get("evidenceNote") ?? "").trim()
-            })
+            body
           });
 
           if (!response.ok) {
@@ -51,6 +82,8 @@ export function LegalAcceptanceForm({ studentId, studentName }: LegalAcceptanceF
           }
 
           formRef.current?.reset();
+          setStatus("PENDING_SIGNATURE");
+          setCollectionMethod("TABLET_SIGNATURE");
           setSuccessMessage(`Termo registrado para ${studentName}.`);
           router.refresh();
         });
@@ -107,7 +140,8 @@ export function LegalAcceptanceForm({ studentId, studentName }: LegalAcceptanceF
           <span className="text-sm font-semibold text-brand-secondary">Status inicial</span>
           <select
             name="status"
-            defaultValue="PENDING_SIGNATURE"
+            value={status}
+            onChange={(event) => setStatus(event.target.value)}
             className="w-full rounded-2xl border border-brand-line bg-brand-panel px-4 py-3 text-brand-ink outline-none"
           >
             <option value="PENDING_SIGNATURE">Pendente de assinatura</option>
@@ -119,7 +153,9 @@ export function LegalAcceptanceForm({ studentId, studentName }: LegalAcceptanceF
           <span className="text-sm font-semibold text-brand-secondary">Metodo de coleta</span>
           <select
             name="collectionMethod"
-            defaultValue="TABLET_SIGNATURE"
+            value={collectionMethod}
+            onChange={(event) => setCollectionMethod(event.target.value)}
+            disabled={status !== "ACCEPTED"}
             className="w-full rounded-2xl border border-brand-line bg-brand-panel px-4 py-3 text-brand-ink outline-none"
           >
             <option value="TABLET_SIGNATURE">Assinatura no tablet</option>
@@ -128,6 +164,26 @@ export function LegalAcceptanceForm({ studentId, studentName }: LegalAcceptanceF
           </select>
         </label>
       </div>
+
+      {status === "ACCEPTED" && collectionMethod === "TABLET_SIGNATURE" ? (
+        <label className="space-y-2">
+          <span className="text-sm font-semibold text-brand-secondary">Assinatura no tablet</span>
+          <SignaturePad name="tabletSignatureDataUrl" />
+        </label>
+      ) : null}
+
+      {status === "ACCEPTED" && collectionMethod === "PRINTED_SIGNATURE" ? (
+        <label className="space-y-2">
+          <span className="text-sm font-semibold text-brand-secondary">Termo assinado em papel</span>
+          <input
+            name="printedTermFile"
+            type="file"
+            accept=".pdf,image/png,image/jpeg,image/webp"
+            className="w-full rounded-2xl border border-brand-line bg-brand-panel px-4 py-3 text-brand-ink outline-none file:mr-3 file:rounded-xl file:border-0 file:bg-brand-soft file:px-3 file:py-2 file:font-semibold file:text-brand-secondary"
+          />
+          <p className="text-xs text-brand-subtext">Envie PDF ou imagem do termo fisico assinado.</p>
+        </label>
+      ) : null}
 
       <label className="space-y-2">
         <span className="text-sm font-semibold text-brand-secondary">Base legal ou observacao juridica</span>
