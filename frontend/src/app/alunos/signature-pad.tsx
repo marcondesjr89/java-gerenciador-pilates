@@ -1,20 +1,31 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 type SignaturePadProps = {
   name: string;
+  resetKey?: number;
 };
 
-export function SignaturePad({ name }: SignaturePadProps) {
+type Point = {
+  x: number;
+  y: number;
+};
+
+const CANVAS_BACKGROUND = "#fffdf8";
+const STROKE_COLOR = "#204b57";
+
+export function SignaturePad({ name, resetKey = 0 }: SignaturePadProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  const lastPointRef = useRef<Point | null>(null);
   const drawingRef = useRef(false);
   const [dataUrl, setDataUrl] = useState("");
+  const [hasSignature, setHasSignature] = useState(false);
 
-  useEffect(() => {
+  function configureContext() {
     const canvas = canvasRef.current;
     if (!canvas) {
-      return;
+      return null;
     }
 
     const ratio = Math.max(window.devicePixelRatio || 1, 1);
@@ -26,17 +37,47 @@ export function SignaturePad({ name }: SignaturePadProps) {
 
     const context = canvas.getContext("2d");
     if (!context) {
-      return;
+      return null;
     }
 
+    context.setTransform(1, 0, 0, 1, 0, 0);
+    context.clearRect(0, 0, canvas.width, canvas.height);
     context.scale(ratio, ratio);
     context.lineCap = "round";
     context.lineJoin = "round";
-    context.lineWidth = 2;
-    context.strokeStyle = "#204b57";
-    context.fillStyle = "#fffdf8";
+    context.lineWidth = 2.5;
+    context.strokeStyle = STROKE_COLOR;
+    context.fillStyle = CANVAS_BACKGROUND;
     context.fillRect(0, 0, width, height);
-  }, []);
+    return context;
+  }
+
+  useEffect(() => {
+    configureContext();
+
+    const handleResize = () => {
+      const previousDataUrl = dataUrl;
+      const context = configureContext();
+      const canvas = canvasRef.current;
+      if (!context || !canvas || !previousDataUrl) {
+        return;
+      }
+
+      const image = new Image();
+      image.onload = () => {
+        context.drawImage(image, 0, 0, canvas.clientWidth, canvas.clientHeight);
+        setDataUrl(canvas.toDataURL("image/png"));
+      };
+      image.src = previousDataUrl;
+    };
+
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
+  }, [dataUrl]);
+
+  useEffect(() => {
+    clearSignature();
+  }, [clearSignature, resetKey]);
 
   function getContext() {
     const canvas = canvasRef.current;
@@ -76,9 +117,17 @@ export function SignaturePad({ name }: SignaturePadProps) {
       return;
     }
 
+    event.preventDefault();
+    event.currentTarget.setPointerCapture(event.pointerId);
     drawingRef.current = true;
+    lastPointRef.current = point;
     context.beginPath();
     context.moveTo(point.x, point.y);
+    context.arc(point.x, point.y, 0.8, 0, Math.PI * 2);
+    context.fillStyle = STROKE_COLOR;
+    context.fill();
+    setHasSignature(true);
+    persistSignature();
   }
 
   function draw(event: React.PointerEvent<HTMLCanvasElement>) {
@@ -92,23 +141,42 @@ export function SignaturePad({ name }: SignaturePadProps) {
       return;
     }
 
+    event.preventDefault();
+    const previousPoint = lastPointRef.current;
+    if (!previousPoint) {
+      lastPointRef.current = point;
+      return;
+    }
+
+    context.beginPath();
+    context.moveTo(previousPoint.x, previousPoint.y);
     context.lineTo(point.x, point.y);
     context.stroke();
+    lastPointRef.current = point;
+    setHasSignature(true);
   }
 
-  function stopDrawing() {
+  function stopDrawing(event?: React.PointerEvent<HTMLCanvasElement>) {
     if (!drawingRef.current) {
       return;
     }
 
+    if (event) {
+      event.preventDefault();
+      if (event.currentTarget.hasPointerCapture(event.pointerId)) {
+        event.currentTarget.releasePointerCapture(event.pointerId);
+      }
+    }
+
     drawingRef.current = false;
+    lastPointRef.current = null;
     persistSignature();
   }
 
-  function clearSignature() {
-    const canvas = canvasRef.current;
+  const clearSignature = useCallback(() => {
     const context = getContext();
-    if (!canvas || !context) {
+    const canvas = canvasRef.current;
+    if (!context || !canvas) {
       return;
     }
 
@@ -116,10 +184,13 @@ export function SignaturePad({ name }: SignaturePadProps) {
     context.setTransform(1, 0, 0, 1, 0, 0);
     context.clearRect(0, 0, canvas.width, canvas.height);
     context.restore();
-    context.fillStyle = "#fffdf8";
+    context.fillStyle = CANVAS_BACKGROUND;
     context.fillRect(0, 0, canvas.clientWidth, canvas.clientHeight);
+    drawingRef.current = false;
+    lastPointRef.current = null;
     setDataUrl("");
-  }
+    setHasSignature(false);
+  }, []);
 
   return (
     <div className="space-y-3">
@@ -131,12 +202,15 @@ export function SignaturePad({ name }: SignaturePadProps) {
           onPointerMove={draw}
           onPointerUp={stopDrawing}
           onPointerLeave={stopDrawing}
+          onPointerCancel={stopDrawing}
         />
       </div>
 
-      <div className="flex items-center justify-between gap-3">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <p className="text-xs text-brand-subtext">
-          {dataUrl ? "Assinatura capturada." : "Assine no campo acima usando dedo, caneta ou mouse."}
+          {hasSignature
+            ? "Assinatura capturada. Revise o traço antes de salvar."
+            : "Assine no campo acima usando dedo, caneta ou mouse."}
         </p>
         <button
           type="button"

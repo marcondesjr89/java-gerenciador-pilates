@@ -17,6 +17,7 @@ export function LegalAcceptanceForm({ studentId, studentName }: LegalAcceptanceF
   const [successMessage, setSuccessMessage] = useState("");
   const [status, setStatus] = useState("PENDING_SIGNATURE");
   const [collectionMethod, setCollectionMethod] = useState("TABLET_SIGNATURE");
+  const [signatureResetKey, setSignatureResetKey] = useState(0);
   const [isPending, startTransition] = useTransition();
 
   async function dataUrlToFile(dataUrl: string, fileName: string) {
@@ -84,6 +85,7 @@ export function LegalAcceptanceForm({ studentId, studentName }: LegalAcceptanceF
           formRef.current?.reset();
           setStatus("PENDING_SIGNATURE");
           setCollectionMethod("TABLET_SIGNATURE");
+          setSignatureResetKey((current) => current + 1);
           setSuccessMessage(`Termo registrado para ${studentName}.`);
           router.refresh();
         });
@@ -168,7 +170,10 @@ export function LegalAcceptanceForm({ studentId, studentName }: LegalAcceptanceF
       {status === "ACCEPTED" && collectionMethod === "TABLET_SIGNATURE" ? (
         <label className="space-y-2">
           <span className="text-sm font-semibold text-brand-secondary">Assinatura no tablet</span>
-          <SignaturePad name="tabletSignatureDataUrl" />
+          <SignaturePad name="tabletSignatureDataUrl" resetKey={signatureResetKey} />
+          <p className="text-xs text-brand-subtext">
+            Para validacao em campo, teste com dedo e caneta em modo paisagem e retrato.
+          </p>
         </label>
       ) : null}
 
