@@ -22,6 +22,25 @@ export function SignaturePad({ name, resetKey = 0 }: SignaturePadProps) {
   const [dataUrl, setDataUrl] = useState("");
   const [hasSignature, setHasSignature] = useState(false);
 
+  const clearSignature = useCallback(() => {
+    const context = getContext();
+    const canvas = canvasRef.current;
+    if (!context || !canvas) {
+      return;
+    }
+
+    context.save();
+    context.setTransform(1, 0, 0, 1, 0, 0);
+    context.clearRect(0, 0, canvas.width, canvas.height);
+    context.restore();
+    context.fillStyle = CANVAS_BACKGROUND;
+    context.fillRect(0, 0, canvas.clientWidth, canvas.clientHeight);
+    drawingRef.current = false;
+    lastPointRef.current = null;
+    setDataUrl("");
+    setHasSignature(false);
+  }, []);
+
   function configureContext() {
     const canvas = canvasRef.current;
     if (!canvas) {
@@ -172,25 +191,6 @@ export function SignaturePad({ name, resetKey = 0 }: SignaturePadProps) {
     lastPointRef.current = null;
     persistSignature();
   }
-
-  const clearSignature = useCallback(() => {
-    const context = getContext();
-    const canvas = canvasRef.current;
-    if (!context || !canvas) {
-      return;
-    }
-
-    context.save();
-    context.setTransform(1, 0, 0, 1, 0, 0);
-    context.clearRect(0, 0, canvas.width, canvas.height);
-    context.restore();
-    context.fillStyle = CANVAS_BACKGROUND;
-    context.fillRect(0, 0, canvas.clientWidth, canvas.clientHeight);
-    drawingRef.current = false;
-    lastPointRef.current = null;
-    setDataUrl("");
-    setHasSignature(false);
-  }, []);
 
   return (
     <div className="space-y-3">
