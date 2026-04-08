@@ -1,5 +1,6 @@
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
+import { decodeLegacySessionCookie, decodeSignedSessionCookie, encodeSignedSessionCookie } from "@/lib/session-cookie";
 
 export const SESSION_COOKIE_NAME = "gp_internal_session";
 
@@ -27,7 +28,7 @@ function isInternalUserRole(value: unknown): value is InternalUserRole {
   return value === "ADMIN" || value === "RECEPTION" || value === "INSTRUCTOR";
 }
 
-export function encodeSession(payload: SessionPayload) {
+export async function encodeSession(payload: SessionPayload) {
   const session: SessionUser = {
     accessToken: payload.accessToken,
     email: payload.email,
@@ -37,47 +38,49 @@ export function encodeSession(payload: SessionPayload) {
     role: payload.role
   };
 
-  return Buffer.from(JSON.stringify(session)).toString("base64url");
+  return encodeSignedSessionCookie(session, "internal-session");
 }
 
-export function decodeSession(value?: string): SessionUser | null {
-  if (!value) {
+function parseSessionUser(parsed: Partial<SessionUser> | null): SessionUser | null {
+  if (
+    !parsed ||
+    typeof parsed.accessToken !== "string" ||
+    typeof parsed.email !== "string" ||
+    typeof parsed.userId !== "string" ||
+    typeof parsed.fullName !== "string" ||
+    typeof parsed.expiresAt !== "number" ||
+    !isInternalUserRole(parsed.role)
+  ) {
     return null;
   }
 
-  try {
-    const parsed = JSON.parse(Buffer.from(value, "base64url").toString("utf-8")) as Partial<SessionUser>;
-    if (
-      typeof parsed.accessToken !== "string" ||
-      typeof parsed.email !== "string" ||
-      typeof parsed.userId !== "string" ||
-      typeof parsed.fullName !== "string" ||
-      typeof parsed.expiresAt !== "number" ||
-      !isInternalUserRole(parsed.role)
-    ) {
-      return null;
-    }
-
-    if (parsed.expiresAt <= Date.now()) {
-      return null;
-    }
-
-    return {
-      accessToken: parsed.accessToken,
-      email: parsed.email,
-      userId: parsed.userId,
-      fullName: parsed.fullName,
-      expiresAt: parsed.expiresAt,
-      role: parsed.role
-    };
-  } catch {
+  if (parsed.expiresAt <= Date.now()) {
     return null;
   }
+
+  return {
+    accessToken: parsed.accessToken,
+    email: parsed.email,
+    userId: parsed.userId,
+    fullName: parsed.fullName,
+    expiresAt: parsed.expiresAt,
+    role: parsed.role
+  };
+}
+
+export async function decodeSession(value?: string): Promise<SessionUser | null> {
+  const signedSession = parseSessionUser(await decodeSignedSessionCookie<Partial<SessionUser>>(value, "internal-session"));
+
+  if (signedSession) {
+    return signedSession;
+  }
+
+  return parseSessionUser(decodeLegacySessionCookie<Partial<SessionUser>>(value));
 }
 
 export async function getSessionUser() {
   const cookieStore = await cookies();
-  return decodeSession(cookieStore.get(SESSION_COOKIE_NAME)?.value);
+  return await decodeSession(cookieStore.get(SESSION_COOKIE_NAME)?.value);
 }
 
 export async function requireInternalSession() {

@@ -42,7 +42,7 @@ export async function POST(request: Request) {
 
   const user = (await meResponse.json()) as AuthenticatedUserResponse;
 
-  const sessionCookie = encodeSession({
+  const sessionCookie = await encodeSession({
     accessToken: payload.accessToken,
     email: payload.email,
     userId: user.id,

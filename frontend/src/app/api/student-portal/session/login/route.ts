@@ -34,7 +34,7 @@ export async function POST(request: Request) {
   }
 
   const payload = (await response.json()) as StudentPortalLoginResponse;
-  const sessionCookie = encodeStudentPortalSession({
+  const sessionCookie = await encodeStudentPortalSession({
     accessToken: payload.accessToken,
     email: payload.email,
     fullName: payload.fullName,
