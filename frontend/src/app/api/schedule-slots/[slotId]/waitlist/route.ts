@@ -1,6 +1,4 @@
-import { NextResponse } from "next/server";
-import { API_BASE_URL } from "@/lib/api";
-import { getSessionUser } from "@/lib/auth";
+import { proxyJsonToBackend, requireInternalApiSession } from "@/app/api/_lib/proxy";
 
 type RouteContext = {
   params: Promise<{
@@ -8,62 +6,42 @@ type RouteContext = {
   }>;
 };
 
-type BackendProblem = {
-  detail?: string;
-};
-
 export async function GET(_request: Request, context: RouteContext) {
-  const session = await getSessionUser();
+  const session = await requireInternalApiSession(
+    ["ADMIN", "RECEPTION"],
+    "Sessao invalida para consultar a fila de espera."
+  );
 
-  if (!session || (session.role !== "ADMIN" && session.role !== "RECEPTION")) {
-    return NextResponse.json({ message: "Sessao invalida para consultar a fila de espera." }, { status: 401 });
+  if (session instanceof Response) {
+    return session;
   }
 
   const { slotId } = await context.params;
-  const response = await fetch(`${API_BASE_URL}/api/v1/schedule-slots/${slotId}/waitlist`, {
-    headers: {
-      Authorization: `Bearer ${session.accessToken}`
-    },
-    cache: "no-store"
+  return proxyJsonToBackend({
+    session,
+    path: `/api/v1/schedule-slots/${slotId}/waitlist`,
+    errorMessage: "Nao foi possivel consultar a fila de espera.",
+    passThroughErrorBody: true
   });
-
-  if (!response.ok) {
-    const payload = await response.json().catch(() => ({}));
-    return NextResponse.json(payload, { status: response.status });
-  }
-
-  return NextResponse.json(await response.json());
 }
 
 export async function POST(request: Request, context: RouteContext) {
-  const session = await getSessionUser();
+  const session = await requireInternalApiSession(
+    ["ADMIN", "RECEPTION"],
+    "Sessao invalida para incluir na fila de espera."
+  );
 
-  if (!session || (session.role !== "ADMIN" && session.role !== "RECEPTION")) {
-    return NextResponse.json({ message: "Sessao invalida para incluir na fila de espera." }, { status: 401 });
+  if (session instanceof Response) {
+    return session;
   }
 
   const { slotId } = await context.params;
-  const body = (await request.json()) as {
-    studentId?: string;
-  };
-
-  const response = await fetch(`${API_BASE_URL}/api/v1/schedule-slots/${slotId}/waitlist`, {
+  return proxyJsonToBackend({
+    session,
+    path: `/api/v1/schedule-slots/${slotId}/waitlist`,
     method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${session.accessToken}`
-    },
-    body: JSON.stringify(body),
-    cache: "no-store"
+    body: await request.json(),
+    errorMessage: "Nao foi possivel incluir o aluno na fila de espera.",
+    successStatus: 201
   });
-
-  if (!response.ok) {
-    const problem = (await response.json().catch(() => ({}))) as BackendProblem;
-    return NextResponse.json(
-      { message: problem.detail || "Nao foi possivel incluir o aluno na fila de espera." },
-      { status: response.status }
-    );
-  }
-
-  return NextResponse.json(await response.json(), { status: 201 });
 }

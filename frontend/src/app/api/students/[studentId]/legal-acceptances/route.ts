@@ -1,46 +1,31 @@
-import { NextResponse } from "next/server";
-import { API_BASE_URL } from "@/lib/api";
-import { getSessionUser } from "@/lib/auth";
-
-type BackendProblem = {
-  detail?: string;
-};
+import { proxyFormDataToBackend, proxyJsonToBackend, requireInternalApiSession } from "@/app/api/_lib/proxy";
 
 export async function POST(request: Request, context: { params: Promise<{ studentId: string }> }) {
-  const session = await getSessionUser();
+  const session = await requireInternalApiSession(
+    ["ADMIN", "RECEPTION", "INSTRUCTOR"],
+    "Sessao invalida para registrar termo legal."
+  );
 
-  if (!session || (session.role !== "ADMIN" && session.role !== "RECEPTION" && session.role !== "INSTRUCTOR")) {
-    return NextResponse.json({ message: "Sessao invalida para registrar termo legal." }, { status: 401 });
+  if (session instanceof Response) {
+    return session;
   }
 
   const { studentId } = await context.params;
   const contentType = request.headers.get("content-type") ?? "";
-  const response = contentType.includes("multipart/form-data")
-    ? await fetch(`${API_BASE_URL}/api/v1/students/${studentId}/legal-acceptances`, {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${session.accessToken}`
-        },
-        body: await request.formData(),
-        cache: "no-store"
-      })
-    : await fetch(`${API_BASE_URL}/api/v1/students/${studentId}/legal-acceptances`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${session.accessToken}`
-        },
-        body: JSON.stringify(await request.json()),
-        cache: "no-store"
-      });
-
-  if (!response.ok) {
-    const problem = (await response.json().catch(() => ({}))) as BackendProblem;
-    return NextResponse.json(
-      { message: problem.detail || "Nao foi possivel registrar o termo legal." },
-      { status: response.status }
-    );
+  if (contentType.includes("multipart/form-data")) {
+    return proxyFormDataToBackend({
+      session,
+      path: `/api/v1/students/${studentId}/legal-acceptances`,
+      formData: await request.formData(),
+      errorMessage: "Nao foi possivel registrar o termo legal."
+    });
   }
 
-  return NextResponse.json(await response.json(), { status: response.status });
+  return proxyJsonToBackend({
+    session,
+    path: `/api/v1/students/${studentId}/legal-acceptances`,
+    method: "POST",
+    body: await request.json(),
+    errorMessage: "Nao foi possivel registrar o termo legal."
+  });
 }

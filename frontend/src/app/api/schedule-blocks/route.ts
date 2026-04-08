@@ -1,16 +1,10 @@
-import { NextResponse } from "next/server";
-import { API_BASE_URL } from "@/lib/api";
-import { getSessionUser } from "@/lib/auth";
-
-type BackendProblem = {
-  detail?: string;
-};
+import { proxyJsonToBackend, requireInternalApiSession } from "@/app/api/_lib/proxy";
 
 export async function GET(request: Request) {
-  const session = await getSessionUser();
+  const session = await requireInternalApiSession(["ADMIN", "RECEPTION"], "Sessao invalida para consultar bloqueios.");
 
-  if (!session || (session.role !== "ADMIN" && session.role !== "RECEPTION")) {
-    return NextResponse.json({ message: "Sessao invalida para consultar bloqueios." }, { status: 401 });
+  if (session instanceof Response) {
+    return session;
   }
 
   const url = new URL(request.url);
@@ -21,52 +15,27 @@ export async function GET(request: Request) {
     searchParams.set("date", date);
   }
 
-  const response = await fetch(`${API_BASE_URL}/api/v1/schedule-blocks?${searchParams.toString()}`, {
-    headers: {
-      Authorization: `Bearer ${session.accessToken}`
-    },
-    cache: "no-store"
+  return proxyJsonToBackend({
+    session,
+    path: `/api/v1/schedule-blocks?${searchParams.toString()}`,
+    errorMessage: "Nao foi possivel consultar os bloqueios.",
+    passThroughErrorBody: true
   });
-
-  if (!response.ok) {
-    const payload = await response.json().catch(() => ({}));
-    return NextResponse.json(payload, { status: response.status });
-  }
-
-  return NextResponse.json(await response.json());
 }
 
 export async function POST(request: Request) {
-  const session = await getSessionUser();
+  const session = await requireInternalApiSession(["ADMIN", "RECEPTION"], "Sessao invalida para criar bloqueio.");
 
-  if (!session || (session.role !== "ADMIN" && session.role !== "RECEPTION")) {
-    return NextResponse.json({ message: "Sessao invalida para criar bloqueio." }, { status: 401 });
+  if (session instanceof Response) {
+    return session;
   }
 
-  const body = (await request.json()) as {
-    instructorUserId?: string;
-    startTime?: string;
-    endTime?: string;
-    reason?: string;
-  };
-
-  const response = await fetch(`${API_BASE_URL}/api/v1/schedule-blocks`, {
+  return proxyJsonToBackend({
+    session,
+    path: "/api/v1/schedule-blocks",
     method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${session.accessToken}`
-    },
-    body: JSON.stringify(body),
-    cache: "no-store"
+    body: await request.json(),
+    errorMessage: "Nao foi possivel criar o bloqueio.",
+    successStatus: 201
   });
-
-  if (!response.ok) {
-    const problem = (await response.json().catch(() => ({}))) as BackendProblem;
-    return NextResponse.json(
-      { message: problem.detail || "Nao foi possivel criar o bloqueio." },
-      { status: response.status }
-    );
-  }
-
-  return NextResponse.json(await response.json(), { status: 201 });
 }

@@ -1,34 +1,17 @@
-import { NextResponse } from "next/server";
-import { API_BASE_URL } from "@/lib/api";
-import { getStudentPortalSessionUser } from "@/lib/student-portal-auth";
-
-type BackendProblem = {
-  detail?: string;
-};
+import { proxyJsonToBackend, requireStudentPortalApiSession } from "@/app/api/_lib/proxy";
 
 export async function POST(request: Request, context: { params: Promise<{ slotId: string }> }) {
-  const session = await getStudentPortalSessionUser();
+  const session = await requireStudentPortalApiSession("Sessao invalida para reservar horario.");
 
-  if (!session) {
-    return NextResponse.json({ message: "Sessao invalida para reservar horario." }, { status: 401 });
+  if (session instanceof Response) {
+    return session;
   }
 
   const { slotId } = await context.params;
-  const response = await fetch(`${API_BASE_URL}/api/v1/student-portal/me/schedule-slots/${slotId}/bookings`, {
+  return proxyJsonToBackend({
+    session,
+    path: `/api/v1/student-portal/me/schedule-slots/${slotId}/bookings`,
     method: "POST",
-    headers: {
-      Authorization: `Bearer ${session.accessToken}`
-    },
-    cache: "no-store"
+    errorMessage: "Nao foi possivel reservar o horario."
   });
-
-  if (!response.ok) {
-    const problem = (await response.json().catch(() => ({}))) as BackendProblem;
-    return NextResponse.json(
-      { message: problem.detail || "Nao foi possivel reservar o horario." },
-      { status: response.status }
-    );
-  }
-
-  return NextResponse.json(await response.json(), { status: response.status });
 }
