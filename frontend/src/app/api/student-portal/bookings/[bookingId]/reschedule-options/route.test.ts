@@ -27,6 +27,21 @@ describe("student portal reschedule options route", () => {
     expect(proxyJsonToBackendMock).not.toHaveBeenCalled();
   });
 
+  it("retorna 400 quando a data chega fora do formato iso", async () => {
+    requireStudentPortalApiSessionMock.mockResolvedValue({ accessToken: "portal-token" });
+
+    const response = await GET(
+      new Request("http://localhost/api/student-portal/bookings/booking-1/reschedule-options?date=10/04/2026"),
+      {
+        params: Promise.resolve({ bookingId: "booking-1" })
+      }
+    );
+
+    expect(response.status).toBe(400);
+    await expect(response.json()).resolves.toEqual({ message: "Informe a data desejada." });
+    expect(proxyJsonToBackendMock).not.toHaveBeenCalled();
+  });
+
   it("encaminha a consulta com a data codificada", async () => {
     requireStudentPortalApiSessionMock.mockResolvedValue({ accessToken: "portal-token" });
     proxyJsonToBackendMock.mockResolvedValue(new Response(JSON.stringify({ ok: true }), { status: 200 }));

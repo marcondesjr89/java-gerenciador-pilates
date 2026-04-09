@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { badRequest, readJsonBody, readTrimmedString } from "@/app/api/_lib/validation";
 import { API_BASE_URL } from "@/lib/api";
 import { STUDENT_PORTAL_SESSION_COOKIE_NAME, encodeStudentPortalSession } from "@/lib/student-portal-auth";
 
@@ -12,12 +13,18 @@ type StudentPortalLoginResponse = {
 };
 
 export async function POST(request: Request) {
-  const body = (await request.json()) as { email?: string; password?: string };
-  const email = body.email?.trim();
-  const password = body.password;
+  const bodyResult = await readJsonBody(request);
+
+  if (!bodyResult.success) {
+    return bodyResult.response;
+  }
+
+  const body = bodyResult.data as { email?: unknown; password?: unknown };
+  const email = readTrimmedString(body.email);
+  const password = typeof body.password === "string" ? body.password : "";
 
   if (!email || !password) {
-    return NextResponse.json({ message: "Informe e-mail e senha." }, { status: 400 });
+    return badRequest("Informe e-mail e senha.");
   }
 
   const response = await fetch(`${API_BASE_URL}/api/v1/student-portal/auth/login`, {

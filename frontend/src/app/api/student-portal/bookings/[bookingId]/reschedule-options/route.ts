@@ -1,5 +1,5 @@
-import { NextResponse } from "next/server";
 import { proxyJsonToBackend, requireStudentPortalApiSession } from "@/app/api/_lib/proxy";
+import { badRequest, isIsoDate, readTrimmedString } from "@/app/api/_lib/validation";
 
 export async function GET(request: Request, context: { params: Promise<{ bookingId: string }> }) {
   const session = await requireStudentPortalApiSession("Sessao invalida para consultar remarcacao.");
@@ -9,11 +9,15 @@ export async function GET(request: Request, context: { params: Promise<{ booking
   }
 
   const { bookingId } = await context.params;
-  const url = new URL(request.url);
-  const date = url.searchParams.get("date");
+  if (!bookingId.trim()) {
+    return badRequest("Informe a reserva para consultar remarcacao.");
+  }
 
-  if (!date) {
-    return NextResponse.json({ message: "Informe a data desejada." }, { status: 400 });
+  const url = new URL(request.url);
+  const date = readTrimmedString(url.searchParams.get("date"));
+
+  if (!isIsoDate(date)) {
+    return badRequest("Informe a data desejada.");
   }
 
   return proxyJsonToBackend({

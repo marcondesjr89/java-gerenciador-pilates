@@ -48,6 +48,28 @@ describe("billing api routes", () => {
     });
   });
 
+  it("retorna 400 quando o plano chega com valor invalido", async () => {
+    requireInternalApiSessionMock.mockResolvedValue({ accessToken: "internal-token" });
+
+    const response = await createPlan(
+      new Request("http://localhost/api/billing/plans", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+          name: "Pilates 2x",
+          priceAmount: "0",
+          billingCycleMonths: 2
+        })
+      })
+    );
+
+    expect(response.status).toBe(400);
+    await expect(response.json()).resolves.toEqual({ message: "Informe um valor valido para o plano." });
+    expect(proxyJsonToBackendMock).not.toHaveBeenCalled();
+  });
+
   it("encaminha criacao de assinatura com o aluno e o plano escolhidos", async () => {
     requireInternalApiSessionMock.mockResolvedValue({ accessToken: "internal-token" });
     proxyJsonToBackendMock.mockResolvedValue(new Response(JSON.stringify({ id: "subscription-1" }), { status: 201 }));
@@ -77,6 +99,28 @@ describe("billing api routes", () => {
       },
       errorMessage: "Nao foi possivel criar a assinatura."
     });
+  });
+
+  it("retorna 400 quando a assinatura chega sem data valida", async () => {
+    requireInternalApiSessionMock.mockResolvedValue({ accessToken: "internal-token" });
+
+    const response = await createSubscription(
+      new Request("http://localhost/api/billing/subscriptions", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+          studentId: "student-1",
+          planId: "plan-1",
+          startDate: "07/04/2026"
+        })
+      })
+    );
+
+    expect(response.status).toBe(400);
+    await expect(response.json()).resolves.toEqual({ message: "Informe uma data de inicio valida." });
+    expect(proxyJsonToBackendMock).not.toHaveBeenCalled();
   });
 
   it("encaminha registro de pagamento para a fatura correta", async () => {
@@ -113,5 +157,31 @@ describe("billing api routes", () => {
       },
       errorMessage: "Nao foi possivel registrar o pagamento."
     });
+  });
+
+  it("retorna 400 quando o pagamento chega com metodo invalido", async () => {
+    requireInternalApiSessionMock.mockResolvedValue({ accessToken: "internal-token" });
+
+    const response = await registerPayment(
+      new Request("http://localhost/api/billing/invoices/invoice-1/payments", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+          amountPaid: "220.00",
+          paymentMethod: "CHEQUE",
+          paidAt: "2026-04-07T13:30:00.000Z",
+          externalReference: null
+        })
+      }),
+      {
+        params: Promise.resolve({ invoiceId: "invoice-1" })
+      }
+    );
+
+    expect(response.status).toBe(400);
+    await expect(response.json()).resolves.toEqual({ message: "Informe um metodo de pagamento valido." });
+    expect(proxyJsonToBackendMock).not.toHaveBeenCalled();
   });
 });
