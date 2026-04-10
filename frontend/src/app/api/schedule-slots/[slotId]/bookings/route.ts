@@ -1,4 +1,5 @@
 import { proxyJsonToBackend, requireInternalApiSession } from "@/app/api/_lib/proxy";
+import { badRequest, readJsonBody, readTrimmedString } from "@/app/api/_lib/validation";
 
 type RouteContext = {
   params: Promise<{
@@ -14,6 +15,11 @@ export async function GET(_request: Request, context: RouteContext) {
   }
 
   const { slotId } = await context.params;
+
+  if (!slotId.trim()) {
+    return badRequest("Informe o horario para consultar reservas.");
+  }
+
   return proxyJsonToBackend({
     session,
     path: `/api/v1/schedule-slots/${slotId}/bookings`,
@@ -30,11 +36,33 @@ export async function POST(request: Request, context: RouteContext) {
   }
 
   const { slotId } = await context.params;
+
+  if (!slotId.trim()) {
+    return badRequest("Informe o horario para reservar aluno.");
+  }
+
+  const bodyResult = await readJsonBody(request);
+
+  if (!bodyResult.success) {
+    return bodyResult.response;
+  }
+
+  const body = bodyResult.data as {
+    studentId?: unknown;
+  };
+  const studentId = readTrimmedString(body.studentId);
+
+  if (!studentId) {
+    return badRequest("Informe o aluno da reserva.");
+  }
+
   return proxyJsonToBackend({
     session,
     path: `/api/v1/schedule-slots/${slotId}/bookings`,
     method: "POST",
-    body: await request.json(),
+    body: {
+      studentId
+    },
     errorMessage: "Nao foi possivel reservar o aluno.",
     successStatus: 201
   });

@@ -42,10 +42,18 @@ export function isPositiveInteger(value: unknown) {
   return Number.isInteger(value) && Number(value) > 0;
 }
 
+export function isIntegerInRange(value: unknown, minimum: number, maximum: number) {
+  return Number.isInteger(value) && Number(value) >= minimum && Number(value) <= maximum;
+}
+
 export function isIsoDate(value: string) {
   return /^\d{4}-\d{2}-\d{2}$/.test(value);
 }
 
 export function isIsoDateTime(value: string) {
   return !Number.isNaN(Date.parse(value));
+}
+
+export function isEmail(value: string) {
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
 }

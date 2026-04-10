@@ -1,4 +1,5 @@
 import { proxyJsonToBackend, requireInternalApiSession } from "@/app/api/_lib/proxy";
+import { badRequest, isIsoDate, isIsoDateTime, readJsonBody, readTrimmedString } from "@/app/api/_lib/validation";
 
 export async function GET(request: Request) {
   const session = await requireInternalApiSession(["ADMIN", "RECEPTION"], "Sessao invalida para consultar bloqueios.");
@@ -8,10 +9,14 @@ export async function GET(request: Request) {
   }
 
   const url = new URL(request.url);
-  const date = url.searchParams.get("date");
+  const date = readTrimmedString(url.searchParams.get("date"));
   const searchParams = new URLSearchParams();
 
   if (date) {
+    if (!isIsoDate(date)) {
+      return badRequest("Informe uma data valida para consultar bloqueios.");
+    }
+
     searchParams.set("date", date);
   }
 
@@ -30,11 +35,49 @@ export async function POST(request: Request) {
     return session;
   }
 
+  const bodyResult = await readJsonBody(request);
+
+  if (!bodyResult.success) {
+    return bodyResult.response;
+  }
+
+  const body = bodyResult.data as {
+    instructorUserId?: unknown;
+    startTime?: unknown;
+    endTime?: unknown;
+    reason?: unknown;
+  };
+  const instructorUserId = readTrimmedString(body.instructorUserId);
+  const startTime = readTrimmedString(body.startTime);
+  const endTime = readTrimmedString(body.endTime);
+  const reason = readTrimmedString(body.reason);
+
+  if (!instructorUserId) {
+    return badRequest("Informe o instrutor do bloqueio.");
+  }
+
+  if (!isIsoDateTime(startTime)) {
+    return badRequest("Informe a data e hora de inicio do bloqueio.");
+  }
+
+  if (!isIsoDateTime(endTime)) {
+    return badRequest("Informe a data e hora de fim do bloqueio.");
+  }
+
+  if (!reason) {
+    return badRequest("Informe o motivo do bloqueio.");
+  }
+
   return proxyJsonToBackend({
     session,
     path: "/api/v1/schedule-blocks",
     method: "POST",
-    body: await request.json(),
+    body: {
+      instructorUserId,
+      startTime,
+      endTime,
+      reason
+    },
     errorMessage: "Nao foi possivel criar o bloqueio.",
     successStatus: 201
   });

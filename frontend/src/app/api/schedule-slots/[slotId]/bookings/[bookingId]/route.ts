@@ -1,4 +1,5 @@
 import { proxyJsonToBackend, requireInternalApiSession } from "@/app/api/_lib/proxy";
+import { badRequest } from "@/app/api/_lib/validation";
 
 type RouteContext = {
   params: Promise<{
@@ -15,6 +16,15 @@ export async function DELETE(_request: Request, context: RouteContext) {
   }
 
   const { slotId, bookingId } = await context.params;
+
+  if (!slotId.trim()) {
+    return badRequest("Informe o horario da reserva.");
+  }
+
+  if (!bookingId.trim()) {
+    return badRequest("Informe a reserva a ser cancelada.");
+  }
+
   return proxyJsonToBackend({
     session,
     path: `/api/v1/schedule-slots/${slotId}/bookings/${bookingId}`,
