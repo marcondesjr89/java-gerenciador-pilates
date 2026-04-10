@@ -1,17 +1,6 @@
-import { API_BASE_URL } from "@/lib/api";
 import type { SessionUser } from "@/lib/auth";
-
-export type ScheduleSlot = {
-  id: string;
-  instructorUserId: string;
-  instructorName: string;
-  requiredSpecialty: string;
-  startTime: string;
-  endTime: string;
-  capacity: number;
-  bookedCount: number;
-  availableSpots: number;
-};
+import { fetchApiJson } from "@/lib/http";
+import type { ScheduleSlot } from "@/lib/schedule-types";
 
 export type ScheduleBlock = {
   id: string;
@@ -32,59 +21,20 @@ export type ScheduleBooking = {
 
 export async function fetchScheduleSlots(session: SessionUser, date: string) {
   const searchParams = new URLSearchParams({ date });
-  const response = await fetch(`${API_BASE_URL}/api/v1/schedule-slots?${searchParams.toString()}`, {
-    headers: {
-      Authorization: `Bearer ${session.accessToken}`
-    },
-    cache: "no-store"
+  return fetchApiJson<ScheduleSlot[]>(session, `/api/v1/schedule-slots?${searchParams.toString()}`, {
+    errorMessage: "Nao foi possivel carregar a agenda."
   });
-
-  if (response.status === 401 || response.status === 403) {
-    throw new Error("SESSION_FORBIDDEN");
-  }
-
-  if (!response.ok) {
-    throw new Error("Nao foi possivel carregar a agenda.");
-  }
-
-  return (await response.json()) as ScheduleSlot[];
 }
 
 export async function fetchScheduleBlocks(session: SessionUser, date: string) {
   const searchParams = new URLSearchParams({ date });
-  const response = await fetch(`${API_BASE_URL}/api/v1/schedule-blocks?${searchParams.toString()}`, {
-    headers: {
-      Authorization: `Bearer ${session.accessToken}`
-    },
-    cache: "no-store"
+  return fetchApiJson<ScheduleBlock[]>(session, `/api/v1/schedule-blocks?${searchParams.toString()}`, {
+    errorMessage: "Nao foi possivel carregar os bloqueios."
   });
-
-  if (response.status === 401 || response.status === 403) {
-    throw new Error("SESSION_FORBIDDEN");
-  }
-
-  if (!response.ok) {
-    throw new Error("Nao foi possivel carregar os bloqueios.");
-  }
-
-  return (await response.json()) as ScheduleBlock[];
 }
 
 export async function fetchSlotBookings(session: SessionUser, slotId: string) {
-  const response = await fetch(`${API_BASE_URL}/api/v1/schedule-slots/${slotId}/bookings`, {
-    headers: {
-      Authorization: `Bearer ${session.accessToken}`
-    },
-    cache: "no-store"
+  return fetchApiJson<ScheduleBooking[]>(session, `/api/v1/schedule-slots/${slotId}/bookings`, {
+    errorMessage: "Nao foi possivel carregar as reservas do horario."
   });
-
-  if (response.status === 401 || response.status === 403) {
-    throw new Error("SESSION_FORBIDDEN");
-  }
-
-  if (!response.ok) {
-    throw new Error("Nao foi possivel carregar as reservas do horario.");
-  }
-
-  return (await response.json()) as ScheduleBooking[];
 }

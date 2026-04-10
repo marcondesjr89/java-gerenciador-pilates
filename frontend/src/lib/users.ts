@@ -1,5 +1,5 @@
-import { API_BASE_URL } from "@/lib/api";
 import type { SessionUser } from "@/lib/auth";
+import { fetchApiJson } from "@/lib/http";
 
 export type InstructorUser = {
   id: string;
@@ -14,41 +14,15 @@ export type StudentUser = {
 };
 
 export async function fetchInstructors(session: SessionUser) {
-  const response = await fetch(`${API_BASE_URL}/api/v1/users/instructors`, {
-    headers: {
-      Authorization: `Bearer ${session.accessToken}`
-    },
-    cache: "no-store"
+  return fetchApiJson<InstructorUser[]>(session, "/api/v1/users/instructors", {
+    errorMessage: "Nao foi possivel carregar os instrutores."
   });
-
-  if (response.status === 401 || response.status === 403) {
-    throw new Error("SESSION_FORBIDDEN");
-  }
-
-  if (!response.ok) {
-    throw new Error("Nao foi possivel carregar os instrutores.");
-  }
-
-  return (await response.json()) as InstructorUser[];
 }
 
 export async function fetchActiveStudents(session: SessionUser) {
-  const response = await fetch(`${API_BASE_URL}/api/v1/students`, {
-    headers: {
-      Authorization: `Bearer ${session.accessToken}`
-    },
-    cache: "no-store"
+  const students = await fetchApiJson<StudentUser[]>(session, "/api/v1/students", {
+    errorMessage: "Nao foi possivel carregar os alunos."
   });
-
-  if (response.status === 401 || response.status === 403) {
-    throw new Error("SESSION_FORBIDDEN");
-  }
-
-  if (!response.ok) {
-    throw new Error("Nao foi possivel carregar os alunos.");
-  }
-
-  const students = (await response.json()) as StudentUser[];
 
   return students
     .filter((student) => student.status === "ACTIVE")

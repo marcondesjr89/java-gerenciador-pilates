@@ -1,5 +1,5 @@
-import { API_BASE_URL } from "@/lib/api";
 import type { SessionUser } from "@/lib/auth";
+import { fetchApiJson } from "@/lib/http";
 
 export type StudentLegalAcceptance = {
   id: string;
@@ -35,20 +35,7 @@ export type StudentLegalAcceptanceAttachment = {
 };
 
 export async function fetchStudentLegalAcceptances(session: SessionUser, studentId: string) {
-  const response = await fetch(`${API_BASE_URL}/api/v1/students/${studentId}/legal-acceptances`, {
-    headers: {
-      Authorization: `Bearer ${session.accessToken}`
-    },
-    cache: "no-store"
+  return fetchApiJson<StudentLegalAcceptance[]>(session, `/api/v1/students/${studentId}/legal-acceptances`, {
+    errorMessage: "Nao foi possivel carregar os termos legais do aluno."
   });
-
-  if (response.status === 401 || response.status === 403) {
-    throw new Error("SESSION_FORBIDDEN");
-  }
-
-  if (!response.ok) {
-    throw new Error("Nao foi possivel carregar os termos legais do aluno.");
-  }
-
-  return (await response.json()) as StudentLegalAcceptance[];
 }

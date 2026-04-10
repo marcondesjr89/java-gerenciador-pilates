@@ -1,5 +1,5 @@
-import { API_BASE_URL } from "@/lib/api";
 import type { SessionUser } from "@/lib/auth";
+import { fetchApiJson } from "@/lib/http";
 
 export type DashboardIndicator = {
   key: string;
@@ -17,20 +17,7 @@ export type DashboardKpiResponse = {
 
 export async function fetchDashboardKpis(session: SessionUser, startDate: string, endDate: string) {
   const searchParams = new URLSearchParams({ startDate, endDate });
-  const response = await fetch(`${API_BASE_URL}/api/v1/dashboard/kpis?${searchParams.toString()}`, {
-    headers: {
-      Authorization: `Bearer ${session.accessToken}`
-    },
-    cache: "no-store"
+  return fetchApiJson<DashboardKpiResponse>(session, `/api/v1/dashboard/kpis?${searchParams.toString()}`, {
+    errorMessage: "Nao foi possivel carregar os indicadores do dashboard."
   });
-
-  if (response.status === 401 || response.status === 403) {
-    throw new Error("SESSION_FORBIDDEN");
-  }
-
-  if (!response.ok) {
-    throw new Error("Nao foi possivel carregar os indicadores do dashboard.");
-  }
-
-  return (await response.json()) as DashboardKpiResponse;
 }

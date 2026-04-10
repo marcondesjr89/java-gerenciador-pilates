@@ -1,5 +1,5 @@
-import { API_BASE_URL } from "@/lib/api";
 import type { SessionUser } from "@/lib/auth";
+import { fetchApiJson } from "@/lib/http";
 
 export type ClinicalAttachment = {
   id: string;
@@ -54,20 +54,7 @@ export type ClinicalRecord = {
 };
 
 export async function fetchClinicalRecord(session: SessionUser, studentId: string) {
-  const response = await fetch(`${API_BASE_URL}/api/v1/students/${studentId}/clinical-record`, {
-    headers: {
-      Authorization: `Bearer ${session.accessToken}`
-    },
-    cache: "no-store"
+  return fetchApiJson<ClinicalRecord>(session, `/api/v1/students/${studentId}/clinical-record`, {
+    errorMessage: "Nao foi possivel carregar o prontuario clinico."
   });
-
-  if (response.status === 401 || response.status === 403) {
-    throw new Error("SESSION_FORBIDDEN");
-  }
-
-  if (!response.ok) {
-    throw new Error("Nao foi possivel carregar o prontuario clinico.");
-  }
-
-  return (await response.json()) as ClinicalRecord;
 }

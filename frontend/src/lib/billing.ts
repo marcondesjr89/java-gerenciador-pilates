@@ -1,5 +1,9 @@
-import { API_BASE_URL } from "@/lib/api";
 import type { SessionUser } from "@/lib/auth";
+import type { BillingInvoice, BillingSubscription } from "@/lib/billing-types";
+import { fetchApiJson } from "@/lib/http";
+
+export type { BillingInvoice, BillingSubscription };
+export type StudentSubscription = BillingSubscription;
 
 export type BillingPlan = {
   id: string;
@@ -7,29 +11,6 @@ export type BillingPlan = {
   priceAmount: string;
   billingCycleMonths: number;
   active: boolean;
-};
-
-export type StudentSubscription = {
-  id: string;
-  studentId: string;
-  studentName: string;
-  planId: string;
-  planName: string;
-  status: "ACTIVE" | "CANCELED";
-  startDate: string;
-  nextBillingDate: string;
-};
-
-export type BillingInvoice = {
-  id: string;
-  studentId: string;
-  studentName: string;
-  subscriptionId: string;
-  referenceMonth: string;
-  dueDate: string;
-  amountDue: string;
-  status: "OPEN" | "PAID" | "CANCELED";
-  paidAt: string | null;
 };
 
 export type DreSummary = {
@@ -50,22 +31,9 @@ export type FinancialExpense = {
 };
 
 async function apiGet<T>(session: SessionUser, path: string) {
-  const response = await fetch(`${API_BASE_URL}${path}`, {
-    headers: {
-      Authorization: `Bearer ${session.accessToken}`
-    },
-    cache: "no-store"
+  return fetchApiJson<T>(session, path, {
+    errorMessage: "Nao foi possivel carregar os dados financeiros."
   });
-
-  if (response.status === 401 || response.status === 403) {
-    throw new Error("SESSION_FORBIDDEN");
-  }
-
-  if (!response.ok) {
-    throw new Error("Nao foi possivel carregar os dados financeiros.");
-  }
-
-  return (await response.json()) as T;
 }
 
 export function fetchBillingPlans(session: SessionUser) {
@@ -77,7 +45,7 @@ export function fetchOverdueInvoices(session: SessionUser, baseDate: string) {
 }
 
 export function fetchStudentSubscriptions(session: SessionUser, studentId: string) {
-  return apiGet<StudentSubscription[]>(session, `/api/v1/billing/subscriptions/student/${studentId}`);
+  return apiGet<BillingSubscription[]>(session, `/api/v1/billing/subscriptions/student/${studentId}`);
 }
 
 export function fetchStudentInvoices(session: SessionUser, studentId: string) {
