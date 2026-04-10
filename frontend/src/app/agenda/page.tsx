@@ -140,14 +140,7 @@ export default async function AgendaPage({ searchParams }: AgendaPageProps) {
           description="Primeiro fluxo operacional da agenda ligado ao backend para abrir novos slots de atendimento."
         >
           {instructors.length > 0 ? (
-            <CreateSlotForm
-              selectedDate={selectedDate}
-              instructors={instructors.map((instructor) => ({
-                id: instructor.id,
-                fullName: instructor.fullName,
-                specialties: instructor.specialties
-              }))}
-            />
+            <CreateSlotForm selectedDate={selectedDate} instructors={instructors} />
           ) : (
             <div className="rounded-2xl border border-dashed border-brand-line bg-brand-surface px-5 py-8 text-sm text-brand-subtext">
               Nenhum instrutor ativo disponivel para criar horario.
@@ -160,14 +153,7 @@ export default async function AgendaPage({ searchParams }: AgendaPageProps) {
           description="Crie indisponibilidades do instrutor para impedir novos horarios em intervalos reservados."
         >
           {instructors.length > 0 ? (
-            <CreateBlockForm
-              selectedDate={selectedDate}
-              instructors={instructors.map((instructor) => ({
-                id: instructor.id,
-                fullName: instructor.fullName,
-                specialties: instructor.specialties
-              }))}
-            />
+            <CreateBlockForm selectedDate={selectedDate} instructors={instructors} />
           ) : (
             <div className="rounded-2xl border border-dashed border-brand-line bg-brand-surface px-5 py-8 text-sm text-brand-subtext">
               Nenhum instrutor ativo disponivel para bloquear agenda.
@@ -237,14 +223,7 @@ export default async function AgendaPage({ searchParams }: AgendaPageProps) {
               Nenhum bloqueio encontrado para a data selecionada.
             </div>
           ) : (
-            <ManageBlocksPanel
-              blocks={blocks}
-              instructors={instructors.map((instructor) => ({
-                id: instructor.id,
-                fullName: instructor.fullName
-              }))}
-              selectedDate={selectedDate}
-            />
+            <ManageBlocksPanel blocks={blocks} instructors={instructors} selectedDate={selectedDate} />
           )}
         </SectionCard>
       </div>

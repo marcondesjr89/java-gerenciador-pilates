@@ -3,16 +3,11 @@
 import { useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { Ban, LoaderCircle } from "lucide-react";
-
-type InstructorOption = {
-  id: string;
-  fullName: string;
-  specialties: string[];
-};
+import type { InstructorUser } from "@/lib/users";
 
 type CreateBlockFormProps = {
   selectedDate: string;
-  instructors: InstructorOption[];
+  instructors: InstructorUser[];
 };
 
 function toIsoDateTime(date: string, time: string) {

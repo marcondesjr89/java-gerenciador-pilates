@@ -9,3 +9,29 @@ export type ScheduleSlot = {
   bookedCount: number;
   availableSpots: number;
 };
+
+export type ScheduleBlock = {
+  id: string;
+  instructorUserId: string;
+  instructorName: string;
+  startTime: string;
+  endTime: string;
+  reason: string;
+};
+
+export type ScheduleBooking = {
+  id: string;
+  slotId: string;
+  studentId: string;
+  studentName: string;
+  status: string;
+};
+
+export type ScheduleWaitlistEntry = {
+  id: string;
+  slotId: string;
+  studentId: string;
+  studentName: string;
+  status: string;
+  promotedAt: string | null;
+};

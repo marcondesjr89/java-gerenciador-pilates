@@ -3,24 +3,12 @@
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { LoaderCircle, PencilLine, Trash2, X } from "lucide-react";
-
-type ScheduleBlock = {
-  id: string;
-  instructorUserId: string;
-  instructorName: string;
-  startTime: string;
-  endTime: string;
-  reason: string;
-};
-
-type InstructorOption = {
-  id: string;
-  fullName: string;
-};
+import type { ScheduleBlock } from "@/lib/schedule";
+import type { InstructorUser } from "@/lib/users";
 
 type ManageBlocksPanelProps = {
   blocks: ScheduleBlock[];
-  instructors: InstructorOption[];
+  instructors: InstructorUser[];
   selectedDate: string;
 };
 

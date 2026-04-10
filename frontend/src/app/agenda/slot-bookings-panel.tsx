@@ -3,39 +3,19 @@
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { LoaderCircle, Plus, RefreshCw, Trash2, Users } from "lucide-react";
-
-type Booking = {
-  id: string;
-  slotId: string;
-  studentId: string;
-  studentName: string;
-  status: string;
-};
-
-type WaitlistEntry = {
-  id: string;
-  slotId: string;
-  studentId: string;
-  studentName: string;
-  status: string;
-  promotedAt: string | null;
-};
-
-type StudentOption = {
-  id: string;
-  fullName: string;
-};
+import type { ScheduleBooking, ScheduleWaitlistEntry } from "@/lib/schedule-types";
+import type { StudentUser } from "@/lib/users";
 
 type SlotBookingsPanelProps = {
   slotId: string;
   availableSpots: number;
-  students: StudentOption[];
+  students: StudentUser[];
 };
 
 export function SlotBookingsPanel({ slotId, availableSpots, students }: SlotBookingsPanelProps) {
   const router = useRouter();
-  const [bookings, setBookings] = useState<Booking[] | null>(null);
-  const [waitlist, setWaitlist] = useState<WaitlistEntry[] | null>(null);
+  const [bookings, setBookings] = useState<ScheduleBooking[] | null>(null);
+  const [waitlist, setWaitlist] = useState<ScheduleWaitlistEntry[] | null>(null);
   const [selectedStudentId, setSelectedStudentId] = useState(students[0]?.id ?? "");
   const [errorMessage, setErrorMessage] = useState("");
   const [successMessage, setSuccessMessage] = useState("");
@@ -52,7 +32,7 @@ export function SlotBookingsPanel({ slotId, availableSpots, students }: SlotBook
       throw new Error(payload.message || "Nao foi possivel carregar as reservas.");
     }
 
-    return (await response.json()) as Booking[];
+    return (await response.json()) as ScheduleBooking[];
   }
 
   async function fetchWaitlist() {
@@ -65,7 +45,7 @@ export function SlotBookingsPanel({ slotId, availableSpots, students }: SlotBook
       throw new Error(payload.message || "Nao foi possivel carregar a fila de espera.");
     }
 
-    return (await response.json()) as WaitlistEntry[];
+    return (await response.json()) as ScheduleWaitlistEntry[];
   }
 
   function loadBookings() {
@@ -115,7 +95,7 @@ export function SlotBookingsPanel({ slotId, availableSpots, students }: SlotBook
         return;
       }
 
-      const payload = (await response.json()) as Booking;
+      const payload = (await response.json()) as ScheduleBooking;
       if (bookings) {
         setBookings([...bookings, payload]);
       }
@@ -152,7 +132,7 @@ export function SlotBookingsPanel({ slotId, availableSpots, students }: SlotBook
         return;
       }
 
-      const payload = (await response.json()) as WaitlistEntry;
+      const payload = (await response.json()) as ScheduleWaitlistEntry;
       if (waitlist) {
         setWaitlist([...waitlist, payload]);
       }

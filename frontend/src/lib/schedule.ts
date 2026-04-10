@@ -1,23 +1,8 @@
 import type { SessionUser } from "@/lib/auth";
 import { fetchApiJson } from "@/lib/http";
-import type { ScheduleSlot } from "@/lib/schedule-types";
+import type { ScheduleBlock, ScheduleBooking, ScheduleSlot } from "@/lib/schedule-types";
 
-export type ScheduleBlock = {
-  id: string;
-  instructorUserId: string;
-  instructorName: string;
-  startTime: string;
-  endTime: string;
-  reason: string;
-};
-
-export type ScheduleBooking = {
-  id: string;
-  slotId: string;
-  studentId: string;
-  studentName: string;
-  status: string;
-};
+export type { ScheduleBlock, ScheduleBooking, ScheduleSlot } from "@/lib/schedule-types";
 
 export async function fetchScheduleSlots(session: SessionUser, date: string) {
   const searchParams = new URLSearchParams({ date });

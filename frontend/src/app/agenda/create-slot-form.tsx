@@ -3,16 +3,11 @@
 import { useMemo, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { LoaderCircle, Plus } from "lucide-react";
-
-type InstructorOption = {
-  id: string;
-  fullName: string;
-  specialties: string[];
-};
+import type { InstructorUser } from "@/lib/users";
 
 type CreateSlotFormProps = {
   selectedDate: string;
-  instructors: InstructorOption[];
+  instructors: InstructorUser[];
 };
 
 const specialtyLabels: Record<string, string> = {
