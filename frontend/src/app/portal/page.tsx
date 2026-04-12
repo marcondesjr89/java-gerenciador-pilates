@@ -3,6 +3,8 @@ import { requireStudentPortalSession } from "@/lib/student-portal-auth";
 import { fetchStudentPortalBookings } from "@/lib/student-portal-bookings";
 import { fetchStudentPortalScheduleSlots } from "@/lib/student-portal-schedule";
 import { fetchStudentPortalBilling } from "@/lib/student-portal-billing";
+import { formatCurrency, formatDate, formatDateTime, formatSpecialty, getTodayIsoDate } from "@/lib/formatters";
+import { formatBillingStatus, getStatusBadgeClass } from "@/lib/status";
 import { PortalLogoutButton } from "@/app/portal/portal-logout-button";
 import { CancelBookingButton } from "@/app/portal/cancel-booking-button";
 import { RescheduleBookingPanel } from "@/app/portal/reschedule-booking-panel";
@@ -15,38 +17,10 @@ type StudentPortalPageProps = {
   }>;
 };
 
-function formatDateTime(value: string) {
-  return new Date(value).toLocaleString("pt-BR", {
-    dateStyle: "full",
-    timeStyle: "short"
-  });
-}
-
-function formatSpecialty(value: string) {
-  return value
-    .toLowerCase()
-    .split("_")
-    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
-    .join(" ");
-}
-
-function getToday() {
-  return new Intl.DateTimeFormat("en-CA", {
-    timeZone: "America/Fortaleza"
-  }).format(new Date());
-}
-
-function formatCurrency(value: string) {
-  return Number(value).toLocaleString("pt-BR", {
-    style: "currency",
-    currency: "BRL"
-  });
-}
-
 export default async function StudentPortalPage({ searchParams }: StudentPortalPageProps) {
   const session = await requireStudentPortalSession();
   const params = await searchParams;
-  const selectedDate = params?.date ?? getToday();
+  const selectedDate = params?.date ?? getTodayIsoDate();
   const [bookings, slots, billing] = await Promise.all([
     fetchStudentPortalBookings(session),
     fetchStudentPortalScheduleSlots(session, selectedDate),
@@ -97,7 +71,9 @@ export default async function StudentPortalPage({ searchParams }: StudentPortalP
               <div>
                 <p className="text-sm font-medium text-brand-subtext">Próximo compromisso</p>
                 <p className="mt-3 font-display text-lg text-brand-ink">
-                  {bookings[0] ? formatDateTime(bookings[0].startTime) : "Nenhum horario ativo"}
+                  {bookings[0]
+                    ? formatDateTime(bookings[0].startTime, { dateStyle: "full", timeStyle: "short" })
+                    : "Nenhum horario ativo"}
                 </p>
                 <p className="mt-3 text-sm leading-6 text-brand-subtext">
                   {bookings[0] ? `Instrutor: ${bookings[0].instructorName}` : "Quando houver reservas, elas aparecerao aqui."}
@@ -153,10 +129,10 @@ export default async function StudentPortalPage({ searchParams }: StudentPortalP
               <div className="mt-5 rounded-[24px] border border-brand-line bg-brand-panel px-5 py-5">
                 <p className="font-display text-2xl text-brand-secondary">{activeSubscription.planName}</p>
                 <p className="mt-2 text-sm text-brand-subtext">
-                  Inicio em {new Date(`${activeSubscription.startDate}T12:00:00`).toLocaleDateString("pt-BR")}
+                  Inicio em {formatDate(activeSubscription.startDate)}
                 </p>
                 <p className="mt-2 text-sm text-brand-subtext">
-                  Proxima cobranca em {new Date(`${activeSubscription.nextBillingDate}T12:00:00`).toLocaleDateString("pt-BR")}
+                  Proxima cobranca em {formatDate(activeSubscription.nextBillingDate)}
                 </p>
                 <span className="mt-4 inline-flex rounded-full bg-[rgba(25,135,84,0.12)] px-3 py-1 text-xs font-semibold text-brand-success">
                   Assinatura ativa
@@ -180,14 +156,14 @@ export default async function StudentPortalPage({ searchParams }: StudentPortalP
                     <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
                       <div>
                         <p className="font-semibold text-brand-ink">
-                          Competencia {new Date(`${invoice.referenceMonth}T12:00:00`).toLocaleDateString("pt-BR")}
+                          Competencia {formatDate(invoice.referenceMonth)}
                         </p>
                         <p className="mt-1 text-sm text-brand-subtext">
-                          Vencimento em {new Date(`${invoice.dueDate}T12:00:00`).toLocaleDateString("pt-BR")}
+                          Vencimento em {formatDate(invoice.dueDate)}
                         </p>
                         {invoice.paidAt ? (
                           <p className="mt-1 text-sm text-brand-subtext">
-                            Pago em {new Date(invoice.paidAt).toLocaleString("pt-BR", { dateStyle: "short", timeStyle: "short" })}
+                            Pago em {formatDateTime(invoice.paidAt, { dateStyle: "short", timeStyle: "short" })}
                           </p>
                         ) : null}
                       </div>
@@ -195,15 +171,9 @@ export default async function StudentPortalPage({ searchParams }: StudentPortalP
                       <div className="flex flex-col gap-2 md:items-end">
                         <span className="font-semibold text-brand-secondary">{formatCurrency(invoice.amountDue)}</span>
                         <span
-                          className={
-                            invoice.status === "PAID"
-                              ? "rounded-full bg-[rgba(25,135,84,0.12)] px-3 py-1 text-xs font-semibold text-brand-success"
-                              : invoice.status === "OPEN"
-                                ? "rounded-full bg-[rgba(255,193,7,0.18)] px-3 py-1 text-xs font-semibold text-[#8a6200]"
-                                : "rounded-full bg-[rgba(220,53,69,0.08)] px-3 py-1 text-xs font-semibold text-brand-danger"
-                          }
+                          className={getStatusBadgeClass(invoice.status)}
                         >
-                          {invoice.status === "PAID" ? "Paga" : invoice.status === "OPEN" ? "Em aberto" : "Cancelada"}
+                          {invoice.status === "OPEN" ? "Em aberto" : formatBillingStatus(invoice.status)}
                         </span>
                       </div>
                     </div>
@@ -256,10 +226,10 @@ export default async function StudentPortalPage({ searchParams }: StudentPortalP
                   <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
                     <div className="space-y-2">
                       <p className="font-display text-2xl text-brand-secondary">
-                        {formatDateTime(slot.startTime)}
+                        {formatDateTime(slot.startTime, { dateStyle: "full", timeStyle: "short" })}
                       </p>
                       <p className="text-sm text-brand-subtext">
-                        ate {new Date(slot.endTime).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}
+                        ate {formatDateTime(slot.endTime, { timeStyle: "short" })}
                       </p>
                       <p className="text-sm text-brand-subtext">Instrutor: {slot.instructorName}</p>
                       <p className="text-sm text-brand-subtext">Especialidade: {formatSpecialty(slot.requiredSpecialty)}</p>
@@ -267,11 +237,7 @@ export default async function StudentPortalPage({ searchParams }: StudentPortalP
 
                     <div className="flex flex-col gap-3 lg:items-end">
                       <span
-                        className={
-                          slot.availableSpots > 0
-                            ? "rounded-full bg-[rgba(25,135,84,0.12)] px-3 py-1 text-xs font-semibold text-brand-success"
-                            : "rounded-full bg-[rgba(255,193,7,0.18)] px-3 py-1 text-xs font-semibold text-[#8a6200]"
-                        }
+                        className={slot.availableSpots > 0 ? getStatusBadgeClass("ACTIVE") : getStatusBadgeClass("OPEN")}
                       >
                         {slot.availableSpots > 0 ? `${slot.availableSpots} vaga(s)` : "Lotado"}
                       </span>
@@ -309,12 +275,12 @@ export default async function StudentPortalPage({ searchParams }: StudentPortalP
                 <article key={booking.id} className="rounded-[24px] border border-brand-line bg-brand-panel px-5 py-5">
                   <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
                     <div className="space-y-2">
-                      <p className="font-display text-2xl text-brand-secondary">{formatDateTime(booking.startTime)}</p>
+                      <p className="font-display text-2xl text-brand-secondary">
+                        {formatDateTime(booking.startTime, { dateStyle: "full", timeStyle: "short" })}
+                      </p>
                       <p className="text-sm text-brand-subtext">
-                        {formatDateTime(booking.startTime)} ate {new Date(booking.endTime).toLocaleTimeString("pt-BR", {
-                          hour: "2-digit",
-                          minute: "2-digit"
-                        })}
+                        {formatDateTime(booking.startTime, { dateStyle: "full", timeStyle: "short" })} ate{" "}
+                        {formatDateTime(booking.endTime, { timeStyle: "short" })}
                       </p>
                       <p className="text-sm text-brand-subtext">Instrutor: {booking.instructorName}</p>
                       <p className="text-sm text-brand-subtext">Especialidade: {formatSpecialty(booking.requiredSpecialty)}</p>

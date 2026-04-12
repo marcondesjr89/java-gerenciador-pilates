@@ -2,24 +2,15 @@ import { BellRing, CircleAlert, Send, TimerReset } from "lucide-react";
 import { AppShell } from "@/components/ui/app-shell";
 import { SectionCard } from "@/components/ui/section-card";
 import { requireInternalSession } from "@/lib/auth";
+import { formatNullableDateTime } from "@/lib/formatters";
 import { fetchNotificationOutbox } from "@/lib/notifications";
+import { formatNotificationStatus, getStatusBadgeClass } from "@/lib/status";
 
 type NotificationsPageProps = {
   searchParams?: Promise<{
     status?: string;
   }>;
 };
-
-function formatDateTime(value: string | null) {
-  if (!value) {
-    return "Nao registrado";
-  }
-
-  return new Date(value).toLocaleString("pt-BR", {
-    dateStyle: "short",
-    timeStyle: "short"
-  });
-}
 
 export default async function NotificationsPage({ searchParams }: NotificationsPageProps) {
   const session = await requireInternalSession();
@@ -120,22 +111,22 @@ export default async function NotificationsPage({ searchParams }: NotificationsP
                       <div className="flex flex-wrap items-center gap-2">
                         <p className="font-semibold text-brand-ink">{entry.messageTemplate}</p>
                         <span
-                          className={
-                            entry.status === "SENT"
-                              ? "rounded-full bg-[rgba(25,135,84,0.12)] px-3 py-1 text-xs font-semibold text-brand-success"
-                              : entry.status === "PENDING"
-                                ? "rounded-full bg-brand-soft px-3 py-1 text-xs font-semibold text-brand-secondary"
-                                : "rounded-full bg-[rgba(220,53,69,0.08)] px-3 py-1 text-xs font-semibold text-brand-danger"
-                          }
+                          className={getStatusBadgeClass(entry.status)}
                         >
-                          {entry.status === "SENT" ? "Enviada" : entry.status === "PENDING" ? "Pendente" : "Falhou"}
+                          {formatNotificationStatus(entry.status)}
                         </span>
                       </div>
                       <p className="text-sm text-brand-subtext">Canal: {entry.channel}</p>
                       <p className="text-sm text-brand-subtext">Referencia do destinatario: {entry.recipientReference}</p>
-                      <p className="text-sm text-brand-subtext">Criada em {formatDateTime(entry.createdAt)}</p>
-                      <p className="text-sm text-brand-subtext">Tentativa: {formatDateTime(entry.attemptedAt)}</p>
-                      <p className="text-sm text-brand-subtext">Envio: {formatDateTime(entry.sentAt)}</p>
+                      <p className="text-sm text-brand-subtext">
+                        Criada em {formatNullableDateTime(entry.createdAt, { dateStyle: "short", timeStyle: "short" })}
+                      </p>
+                      <p className="text-sm text-brand-subtext">
+                        Tentativa: {formatNullableDateTime(entry.attemptedAt, { dateStyle: "short", timeStyle: "short" })}
+                      </p>
+                      <p className="text-sm text-brand-subtext">
+                        Envio: {formatNullableDateTime(entry.sentAt, { dateStyle: "short", timeStyle: "short" })}
+                      </p>
                       {entry.errorMessage ? (
                         <p className="text-sm text-brand-danger">Erro: {entry.errorMessage}</p>
                       ) : null}

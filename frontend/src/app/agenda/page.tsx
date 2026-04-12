@@ -5,6 +5,7 @@ import { SlotBookingsPanel } from "@/app/agenda/slot-bookings-panel";
 import { CreateBlockForm } from "@/app/agenda/create-block-form";
 import { ManageBlocksPanel } from "@/app/agenda/manage-blocks-panel";
 import { requireInternalSession } from "@/lib/auth";
+import { formatDate, formatPercent, formatSpecialty, formatUtcHour, getTodayIsoDate } from "@/lib/formatters";
 import { fetchScheduleBlocks, fetchScheduleSlots } from "@/lib/schedule";
 import { fetchActiveStudents, fetchInstructors } from "@/lib/users";
 import { CreateSlotForm } from "@/app/agenda/create-slot-form";
@@ -15,34 +16,12 @@ type AgendaPageProps = {
   }>;
 };
 
-function getTodayIsoDate() {
-  return new Intl.DateTimeFormat("en-CA", {
-    timeZone: "America/Fortaleza"
-  }).format(new Date());
-}
-
 function formatDayLabel(date: string) {
-  return new Date(`${date}T12:00:00`).toLocaleDateString("pt-BR", {
+  return formatDate(date, {
     weekday: "long",
     day: "2-digit",
     month: "long"
   });
-}
-
-function formatHour(isoDateTime: string) {
-  return new Date(isoDateTime).toLocaleTimeString("pt-BR", {
-    hour: "2-digit",
-    minute: "2-digit",
-    timeZone: "UTC"
-  });
-}
-
-function formatSpecialty(value: string) {
-  return value
-    .toLowerCase()
-    .split("_")
-    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
-    .join(" ");
 }
 
 export default async function AgendaPage({ searchParams }: AgendaPageProps) {
@@ -122,7 +101,7 @@ export default async function AgendaPage({ searchParams }: AgendaPageProps) {
               <div>
                 <p className="text-sm font-medium text-brand-subtext">Ocupacao do dia</p>
                 <p className="mt-3 font-display text-4xl text-brand-ink">
-                  {occupancyRate.toFixed(2).replace(".", ",")}%
+                  {formatPercent(occupancyRate)}%
                 </p>
                 <p className="mt-3 text-sm leading-6 text-brand-subtext">
                   {totalBooked} reservas confirmadas em {totalCapacity} vagas totais.
@@ -179,13 +158,13 @@ export default async function AgendaPage({ searchParams }: AgendaPageProps) {
                     <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
                       <div className="flex items-start gap-4">
                         <div className="rounded-2xl bg-brand-primary px-3 py-2 text-sm font-semibold text-white">
-                          {formatHour(slot.startTime)}
+                          {formatUtcHour(slot.startTime)}
                         </div>
                         <div className="space-y-1">
                           <p className="font-semibold text-brand-ink">{formatSpecialty(slot.requiredSpecialty)}</p>
                           <p className="text-sm text-brand-subtext">Instrutor: {slot.instructorName}</p>
                           <p className="text-sm text-brand-subtext">
-                            {formatHour(slot.startTime)} - {formatHour(slot.endTime)}
+                            {formatUtcHour(slot.startTime)} - {formatUtcHour(slot.endTime)}
                           </p>
                         </div>
                       </div>

@@ -1,4 +1,5 @@
 import { statusClass } from "@/app/financeiro/helpers";
+import { formatStudentStatus } from "@/lib/status";
 import type { Student } from "@/lib/students";
 
 type FinanceStudentListProps = {
@@ -37,7 +38,7 @@ export function FinanceStudentList({ students, selectedStudentId, startDate, end
                 <p className="font-semibold text-brand-ink">{student.fullName}</p>
                 <p className="mt-1 text-sm text-brand-subtext">{student.email}</p>
               </div>
-              <span className={statusClass(student.status)}>{student.status === "ACTIVE" ? "Ativo" : "Inativo"}</span>
+              <span className={statusClass(student.status)}>{formatStudentStatus(student.status)}</span>
             </div>
           </a>
         );

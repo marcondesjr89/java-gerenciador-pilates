@@ -1,3 +1,7 @@
+import { formatDate, formatDateTime } from "@/lib/formatters";
+
+export { formatDate, formatDateTime };
+
 export function formatCpf(value: string) {
   const digits = value.replace(/\D/g, "");
   return digits.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, "$1.$2.$3-$4");
@@ -16,16 +20,8 @@ export function formatPhone(value: string) {
   return value;
 }
 
-export function formatDate(value: string) {
-  return new Date(`${value}T12:00:00`).toLocaleDateString("pt-BR");
-}
-
-export function formatDateTime(value: string) {
-  return new Date(value).toLocaleString("pt-BR");
-}
-
 export function formatDateTimeWithTimezone(value: string) {
-  return new Date(value).toLocaleString("pt-BR", {
+  return formatDateTime(value, {
     dateStyle: "short",
     timeStyle: "short"
   });

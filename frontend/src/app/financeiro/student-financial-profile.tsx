@@ -1,8 +1,9 @@
 import { CreateSubscriptionForm } from "@/app/financeiro/create-subscription-form";
 import { GenerateInvoiceForm } from "@/app/financeiro/generate-invoice-form";
-import { getToday, formatCurrency, formatDate, formatDateTime, statusClass, statusLabel } from "@/app/financeiro/helpers";
+import { getToday, formatCurrency, formatDate, formatDateTimeWithTime, statusClass, statusLabel } from "@/app/financeiro/helpers";
 import { RegisterPaymentForm } from "@/app/financeiro/register-payment-form";
 import type { BillingInvoice, BillingPlan, StudentSubscription } from "@/lib/billing";
+import { formatStudentStatus } from "@/lib/status";
 import type { Student } from "@/lib/students";
 
 type StudentFinancialProfileProps = {
@@ -35,7 +36,7 @@ export function StudentFinancialProfile({
             <h2 className="mt-2 font-display text-3xl text-brand-secondary">{student.fullName}</h2>
             <p className="mt-2 text-sm text-brand-subtext">{student.email}</p>
           </div>
-          <span className={statusClass(student.status)}>{student.status === "ACTIVE" ? "Ativo" : "Inativo"}</span>
+          <span className={statusClass(student.status)}>{formatStudentStatus(student.status)}</span>
         </div>
       </div>
 
@@ -102,7 +103,7 @@ export function StudentFinancialProfile({
                   <p className="mt-1 text-sm text-brand-subtext">
                     Vencimento em {formatDate(invoice.dueDate)} com valor de {formatCurrency(invoice.amountDue)}
                   </p>
-                  {invoice.paidAt ? <p className="mt-1 text-sm text-brand-subtext">Pago em {formatDateTime(invoice.paidAt)}</p> : null}
+                  {invoice.paidAt ? <p className="mt-1 text-sm text-brand-subtext">Pago em {formatDateTimeWithTime(invoice.paidAt)}</p> : null}
                 </div>
                 <span className={statusClass(invoice.status)}>{statusLabel(invoice.status)}</span>
               </div>

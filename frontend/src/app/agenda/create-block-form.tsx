@@ -3,16 +3,13 @@
 import { useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { Ban, LoaderCircle } from "lucide-react";
+import { toUtcIsoDateTime } from "@/lib/formatters";
 import type { InstructorUser } from "@/lib/users";
 
 type CreateBlockFormProps = {
   selectedDate: string;
   instructors: InstructorUser[];
 };
-
-function toIsoDateTime(date: string, time: string) {
-  return `${date}T${time}:00Z`;
-}
 
 export function CreateBlockForm({ selectedDate, instructors }: CreateBlockFormProps) {
   const router = useRouter();
@@ -41,8 +38,8 @@ export function CreateBlockForm({ selectedDate, instructors }: CreateBlockFormPr
             },
             body: JSON.stringify({
               instructorUserId,
-              startTime: toIsoDateTime(selectedDate, startLocalTime),
-              endTime: toIsoDateTime(selectedDate, endLocalTime),
+              startTime: toUtcIsoDateTime(selectedDate, startLocalTime),
+              endTime: toUtcIsoDateTime(selectedDate, endLocalTime),
               reason
             })
           });

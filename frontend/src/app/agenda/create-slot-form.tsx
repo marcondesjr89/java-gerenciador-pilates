@@ -3,24 +3,13 @@
 import { useMemo, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { LoaderCircle, Plus } from "lucide-react";
+import { formatSpecialty, toUtcIsoDateTime } from "@/lib/formatters";
 import type { InstructorUser } from "@/lib/users";
 
 type CreateSlotFormProps = {
   selectedDate: string;
   instructors: InstructorUser[];
 };
-
-const specialtyLabels: Record<string, string> = {
-  PILATES_SOLO: "Pilates Solo",
-  PILATES_APARELHOS: "Pilates Aparelhos",
-  PILATES_GESTANTES: "Pilates Gestantes",
-  PILATES_REABILITACAO: "Pilates Reabilitacao",
-  PILATES_IDOSOS: "Pilates Idosos"
-};
-
-function toIsoDateTime(date: string, time: string) {
-  return `${date}T${time}:00Z`;
-}
 
 export function CreateSlotForm({ selectedDate, instructors }: CreateSlotFormProps) {
   const router = useRouter();
@@ -57,8 +46,8 @@ export function CreateSlotForm({ selectedDate, instructors }: CreateSlotFormProp
             body: JSON.stringify({
               instructorUserId,
               requiredSpecialty,
-              startTime: toIsoDateTime(selectedDate, startLocalTime),
-              endTime: toIsoDateTime(selectedDate, endLocalTime),
+              startTime: toUtcIsoDateTime(selectedDate, startLocalTime),
+              endTime: toUtcIsoDateTime(selectedDate, endLocalTime),
               capacity
             })
           });
@@ -111,7 +100,7 @@ export function CreateSlotForm({ selectedDate, instructors }: CreateSlotFormProp
         >
           {availableSpecialties.map((specialty) => (
             <option key={specialty} value={specialty}>
-              {specialtyLabels[specialty] ?? specialty}
+              {formatSpecialty(specialty)}
             </option>
           ))}
         </select>

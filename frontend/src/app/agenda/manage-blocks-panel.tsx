@@ -3,6 +3,7 @@
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { LoaderCircle, PencilLine, Trash2, X } from "lucide-react";
+import { formatUtcHour, toUtcIsoDateTime } from "@/lib/formatters";
 import type { ScheduleBlock } from "@/lib/schedule";
 import type { InstructorUser } from "@/lib/users";
 
@@ -20,19 +21,6 @@ type EditingState = {
   reason: string;
 };
 
-function formatHour(isoDateTime: string) {
-  return new Date(isoDateTime).toLocaleTimeString("pt-BR", {
-    hour: "2-digit",
-    minute: "2-digit",
-    hour12: false,
-    timeZone: "UTC"
-  });
-}
-
-function toIsoDateTime(date: string, time: string) {
-  return `${date}T${time}:00Z`;
-}
-
 export function ManageBlocksPanel({ blocks, instructors, selectedDate }: ManageBlocksPanelProps) {
   const router = useRouter();
   const [editing, setEditing] = useState<EditingState | null>(null);
@@ -46,8 +34,8 @@ export function ManageBlocksPanel({ blocks, instructors, selectedDate }: ManageB
     setEditing({
       blockId: block.id,
       instructorUserId: block.instructorUserId,
-      startLocalTime: formatHour(block.startTime),
-      endLocalTime: formatHour(block.endTime),
+      startLocalTime: formatUtcHour(block.startTime),
+      endLocalTime: formatUtcHour(block.endTime),
       reason: block.reason
     });
   }
@@ -77,8 +65,8 @@ export function ManageBlocksPanel({ blocks, instructors, selectedDate }: ManageB
         },
         body: JSON.stringify({
           instructorUserId: editing.instructorUserId,
-          startTime: toIsoDateTime(selectedDate, editing.startLocalTime),
-          endTime: toIsoDateTime(selectedDate, editing.endLocalTime),
+          startTime: toUtcIsoDateTime(selectedDate, editing.startLocalTime),
+          endTime: toUtcIsoDateTime(selectedDate, editing.endLocalTime),
           reason: editing.reason.trim()
         })
       });
@@ -144,13 +132,13 @@ export function ManageBlocksPanel({ blocks, instructors, selectedDate }: ManageB
             <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
               <div className="flex items-start gap-4">
                 <div className="rounded-2xl bg-[rgba(220,53,69,0.08)] px-3 py-2 text-sm font-semibold text-brand-danger">
-                  {formatHour(block.startTime)}
+                  {formatUtcHour(block.startTime)}
                 </div>
                 <div className="space-y-1">
                   <p className="font-semibold text-brand-ink">{block.reason}</p>
                   <p className="text-sm text-brand-subtext">Instrutor: {block.instructorName}</p>
                   <p className="text-sm text-brand-subtext">
-                    {formatHour(block.startTime)} - {formatHour(block.endTime)}
+                    {formatUtcHour(block.startTime)} - {formatUtcHour(block.endTime)}
                   </p>
                 </div>
               </div>

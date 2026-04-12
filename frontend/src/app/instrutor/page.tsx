@@ -2,6 +2,7 @@ import { CalendarDays, ChevronRight, ClipboardPen, TimerReset, UserRound } from 
 import { requireInstructorSession } from "@/lib/auth";
 import { fetchScheduleSlots, fetchSlotBookings } from "@/lib/schedule";
 import { fetchClinicalRecord } from "@/lib/clinical";
+import { formatDateTime, formatSpecialty, formatUtcHour, getTodayIsoDate } from "@/lib/formatters";
 import { ProgressEntryForm } from "@/app/instrutor/progress-entry-form";
 
 type InstructorPageProps = {
@@ -12,32 +13,10 @@ type InstructorPageProps = {
   }>;
 };
 
-function getToday() {
-  return new Intl.DateTimeFormat("en-CA", {
-    timeZone: "America/Fortaleza"
-  }).format(new Date());
-}
-
-function formatHour(isoDateTime: string) {
-  return new Date(isoDateTime).toLocaleTimeString("pt-BR", {
-    hour: "2-digit",
-    minute: "2-digit",
-    timeZone: "UTC"
-  });
-}
-
-function formatSpecialty(value: string) {
-  return value
-    .toLowerCase()
-    .split("_")
-    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
-    .join(" ");
-}
-
 export default async function InstructorPage({ searchParams }: InstructorPageProps) {
   const session = await requireInstructorSession();
   const params = await searchParams;
-  const selectedDate = params?.date ?? getToday();
+  const selectedDate = params?.date ?? getTodayIsoDate();
   const allSlots = await fetchScheduleSlots(session, selectedDate);
   const instructorSlots = allSlots.filter((slot) => slot.instructorUserId === session.userId);
   const bookingsBySlot = await Promise.all(
@@ -148,7 +127,7 @@ export default async function InstructorPage({ searchParams }: InstructorPagePro
               <div>
                 <p className="text-sm font-medium text-brand-subtext">Proxima aula</p>
                 <p className="mt-3 font-display text-2xl text-brand-ink">
-                  {nextSlot ? `${formatHour(nextSlot.startTime)} - ${formatHour(nextSlot.endTime)}` : "Sem aulas"}
+                  {nextSlot ? `${formatUtcHour(nextSlot.startTime)} - ${formatUtcHour(nextSlot.endTime)}` : "Sem aulas"}
                 </p>
                 <p className="mt-2 text-sm text-brand-subtext">
                   {nextSlot ? formatSpecialty(nextSlot.requiredSpecialty) : "Nenhum horario futuro hoje."}
@@ -191,10 +170,10 @@ export default async function InstructorPage({ searchParams }: InstructorPagePro
                       <div className="flex items-start justify-between gap-3">
                         <div>
                           <p className="font-display text-2xl text-brand-secondary">
-                            {formatHour(slot.startTime)}
+                            {formatUtcHour(slot.startTime)}
                           </p>
                           <p className="mt-1 text-sm text-brand-subtext">
-                            {formatHour(slot.startTime)} - {formatHour(slot.endTime)}
+                            {formatUtcHour(slot.startTime)} - {formatUtcHour(slot.endTime)}
                           </p>
                           <p className="mt-2 text-sm font-semibold text-brand-ink">
                             {formatSpecialty(slot.requiredSpecialty)}
@@ -225,7 +204,7 @@ export default async function InstructorPage({ searchParams }: InstructorPagePro
                           Slot selecionado
                         </p>
                         <h2 className="mt-2 font-display text-4xl text-brand-secondary">
-                          {formatHour(selectedSlot.startTime)} - {formatHour(selectedSlot.endTime)}
+                          {formatUtcHour(selectedSlot.startTime)} - {formatUtcHour(selectedSlot.endTime)}
                         </h2>
                         <p className="mt-2 text-sm text-brand-subtext">
                           {formatSpecialty(selectedSlot.requiredSpecialty)} com {selectedSlot.bookedCount}/{selectedSlot.capacity} aluno(s) confirmados.
@@ -327,7 +306,7 @@ export default async function InstructorPage({ searchParams }: InstructorPagePro
                             {latestEntry ? (
                               <div className="mt-3 space-y-2">
                                 <p className="text-sm text-brand-subtext">
-                                  {new Date(latestEntry.recordedAt).toLocaleString("pt-BR", {
+                                  {formatDateTime(latestEntry.recordedAt, {
                                     dateStyle: "short",
                                     timeStyle: "short"
                                   })}

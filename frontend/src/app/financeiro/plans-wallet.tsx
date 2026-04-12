@@ -1,4 +1,5 @@
 import { formatCurrency, statusClass } from "@/app/financeiro/helpers";
+import { formatStudentStatus } from "@/lib/status";
 import type { BillingPlan } from "@/lib/billing";
 
 type PlansWalletProps = {
@@ -25,7 +26,9 @@ export function PlansWallet({ plans }: PlansWalletProps) {
                 {formatCurrency(plan.priceAmount)} a cada {plan.billingCycleMonths} mes(es)
               </p>
             </div>
-            <span className={statusClass(plan.active ? "ACTIVE" : "CANCELED")}>{plan.active ? "Ativo" : "Inativo"}</span>
+            <span className={statusClass(plan.active ? "ACTIVE" : "CANCELED")}>
+              {formatStudentStatus(plan.active ? "ACTIVE" : "CANCELED")}
+            </span>
           </div>
         </article>
       ))}
