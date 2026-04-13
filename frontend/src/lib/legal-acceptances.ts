@@ -16,6 +16,10 @@ export type StudentLegalAcceptance = {
   evidenceNote: string | null;
   capturedByUserId: string | null;
   capturedByUserName: string | null;
+  auditIpAddress: string | null;
+  auditUserAgent: string | null;
+  auditSessionKey: string | null;
+  auditCollectionOrigin: string | null;
   attachments: StudentLegalAcceptanceAttachment[];
   createdAt: string;
   updatedAt: string;

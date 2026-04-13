@@ -10,6 +10,7 @@ type ProxyJsonOptions = {
   path: string;
   method?: string;
   body?: unknown;
+  extraHeaders?: Record<string, string>;
   errorMessage: string;
   successStatus?: number;
   passThroughErrorBody?: boolean;
@@ -20,6 +21,7 @@ type ProxyFormDataOptions = {
   path: string;
   method?: string;
   formData: FormData;
+  extraHeaders?: Record<string, string>;
   errorMessage: string;
   successStatus?: number;
 };
@@ -78,6 +80,7 @@ export async function proxyJsonToBackend({
   path,
   method = "GET",
   body,
+  extraHeaders,
   errorMessage,
   successStatus,
   passThroughErrorBody = false
@@ -86,6 +89,7 @@ export async function proxyJsonToBackend({
     method,
     headers: {
       ...(body !== undefined ? { "Content-Type": "application/json" } : {}),
+      ...extraHeaders,
       Authorization: `Bearer ${session.accessToken}`
     },
     body: body !== undefined ? JSON.stringify(body) : undefined,
@@ -112,12 +116,14 @@ export async function proxyFormDataToBackend({
   path,
   method = "POST",
   formData,
+  extraHeaders,
   errorMessage,
   successStatus
 }: ProxyFormDataOptions) {
   const response = await fetch(`${API_BASE_URL}${path}`, {
     method,
     headers: {
+      ...extraHeaders,
       Authorization: `Bearer ${session.accessToken}`
     },
     body: formData,

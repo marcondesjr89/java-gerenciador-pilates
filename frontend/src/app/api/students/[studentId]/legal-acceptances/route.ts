@@ -32,6 +32,25 @@ type LegalAcceptancePayload = {
   evidenceNote?: unknown;
 };
 
+function buildLegalAcceptanceAuditHeaders(request: Request) {
+  const userAgent = request.headers.get("user-agent")?.trim() ?? "";
+  const forwardedFor = request.headers.get("x-forwarded-for")?.trim() ?? "";
+  const realIp = request.headers.get("x-real-ip")?.trim() ?? "";
+  const normalizedUserAgent = userAgent.toLowerCase();
+  const collectionOrigin = normalizedUserAgent.includes("ipad") || normalizedUserAgent.includes("tablet")
+    ? "internal-web-tablet"
+    : normalizedUserAgent.includes("mobi") || normalizedUserAgent.includes("android")
+      ? "internal-web-mobile"
+      : "internal-web-desktop";
+
+  return {
+    ...(userAgent ? { "X-GP-Client-User-Agent": userAgent } : {}),
+    ...(forwardedFor ? { "X-Forwarded-For": forwardedFor } : {}),
+    ...(realIp ? { "X-Real-IP": realIp } : {}),
+    "X-GP-Collection-Origin": collectionOrigin
+  };
+}
+
 function validateLegalAcceptancePayload(body: LegalAcceptancePayload) {
   const termType = readTrimmedString(body.termType);
   const title = readTrimmedString(body.title);
@@ -104,6 +123,7 @@ export async function POST(request: Request, context: { params: Promise<{ studen
 
   const { studentId } = await context.params;
   const studentIdError = requireRouteParam(studentId, "Informe o aluno do termo legal.");
+  const auditHeaders = buildLegalAcceptanceAuditHeaders(request);
 
   if (studentIdError) {
     return studentIdError;
@@ -181,6 +201,7 @@ export async function POST(request: Request, context: { params: Promise<{ studen
       session,
       path: `/api/v1/students/${studentId}/legal-acceptances`,
       formData: backendFormData,
+      extraHeaders: auditHeaders,
       errorMessage: "Nao foi possivel registrar o termo legal."
     });
   }
@@ -202,6 +223,7 @@ export async function POST(request: Request, context: { params: Promise<{ studen
     path: `/api/v1/students/${studentId}/legal-acceptances`,
     method: "POST",
     body: validatedPayload.data,
+    extraHeaders: auditHeaders,
     errorMessage: "Nao foi possivel registrar o termo legal."
   });
 }

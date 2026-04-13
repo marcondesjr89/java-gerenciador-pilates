@@ -60,6 +60,18 @@ public class StudentLegalAcceptance {
     @Column(name = "captured_by_user_name")
     private String capturedByUserName;
 
+    @Column(name = "audit_ip_address", length = 255)
+    private String auditIpAddress;
+
+    @Column(name = "audit_user_agent", length = 1000)
+    private String auditUserAgent;
+
+    @Column(name = "audit_session_key", length = 64)
+    private String auditSessionKey;
+
+    @Column(name = "audit_collection_origin", length = 120)
+    private String auditCollectionOrigin;
+
     @Column(name = "created_at", nullable = false)
     private OffsetDateTime createdAt;
 
@@ -83,7 +95,11 @@ public class StudentLegalAcceptance {
             OffsetDateTime acceptedAt,
             String evidenceNote,
             UUID capturedByUserId,
-            String capturedByUserName
+            String capturedByUserName,
+            String auditIpAddress,
+            String auditUserAgent,
+            String auditSessionKey,
+            String auditCollectionOrigin
     ) {
         this.id = id;
         this.studentId = studentId;
@@ -99,6 +115,10 @@ public class StudentLegalAcceptance {
         this.evidenceNote = evidenceNote;
         this.capturedByUserId = capturedByUserId;
         this.capturedByUserName = capturedByUserName;
+        this.auditIpAddress = auditIpAddress;
+        this.auditUserAgent = auditUserAgent;
+        this.auditSessionKey = auditSessionKey;
+        this.auditCollectionOrigin = auditCollectionOrigin;
     }
 
     @PrePersist
@@ -167,6 +187,22 @@ public class StudentLegalAcceptance {
 
     public String getCapturedByUserName() {
         return capturedByUserName;
+    }
+
+    public String getAuditIpAddress() {
+        return auditIpAddress;
+    }
+
+    public String getAuditUserAgent() {
+        return auditUserAgent;
+    }
+
+    public String getAuditSessionKey() {
+        return auditSessionKey;
+    }
+
+    public String getAuditCollectionOrigin() {
+        return auditCollectionOrigin;
     }
 
     public OffsetDateTime getCreatedAt() {

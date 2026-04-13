@@ -201,6 +201,18 @@ export function StudentProfile({
                     {acceptance.acceptedAt ? formatDateTimeWithTimezone(acceptance.acceptedAt) : "aguardando assinatura"}
                   </p>
                   <p>Evidencia: {acceptance.evidenceNote || "Nenhuma observacao adicional registrada."}</p>
+                  <p>Origem tecnica: {acceptance.auditCollectionOrigin || "Nao registrada"}</p>
+                  <p>IP da coleta: {acceptance.auditIpAddress || "Nao registrado"}</p>
+                  <p>
+                    Sessao tecnica:{" "}
+                    {acceptance.auditSessionKey ? acceptance.auditSessionKey.slice(0, 16) : "Nao registrada"}
+                  </p>
+                  <p>
+                    User-Agent:{" "}
+                    {acceptance.auditUserAgent
+                      ? acceptance.auditUserAgent.slice(0, 120)
+                      : "Nao registrado"}
+                  </p>
                 </div>
 
                 <div className="mt-4 space-y-2">

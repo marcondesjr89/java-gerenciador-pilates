@@ -62,11 +62,12 @@ public class StudentLegalAcceptanceService {
     public StudentLegalAcceptanceResponse register(
             UUID studentId,
             Authentication authentication,
-            RegisterStudentLegalAcceptanceRequest request
+            RegisterStudentLegalAcceptanceRequest request,
+            StudentLegalAcceptanceAuditMetadata auditMetadata
     ) {
         AuthenticatedActor actor = SecurityActorUtils.requireActor(authentication);
         StudentLegalAcceptance savedAcceptance = studentLegalAcceptanceRepository.save(
-                createAcceptance(studentId, actor, request)
+                createAcceptance(studentId, actor, request, auditMetadata)
         );
         return StudentLegalAcceptanceResponse.from(savedAcceptance, List.of());
     }
@@ -76,6 +77,7 @@ public class StudentLegalAcceptanceService {
             UUID studentId,
             Authentication authentication,
             RegisterStudentLegalAcceptanceRequest request,
+            StudentLegalAcceptanceAuditMetadata auditMetadata,
             MultipartFile tabletSignatureFile,
             MultipartFile printedTermFile
     ) {
@@ -83,7 +85,7 @@ public class StudentLegalAcceptanceService {
         validateEvidenceConsistency(request, tabletSignatureFile, printedTermFile);
 
         StudentLegalAcceptance savedAcceptance = studentLegalAcceptanceRepository.save(
-                createAcceptance(studentId, actor, request)
+                createAcceptance(studentId, actor, request, auditMetadata)
         );
 
         return StudentLegalAcceptanceResponse.from(
@@ -107,7 +109,8 @@ public class StudentLegalAcceptanceService {
     private StudentLegalAcceptance createAcceptance(
             UUID studentId,
             AuthenticatedActor actor,
-            RegisterStudentLegalAcceptanceRequest request
+            RegisterStudentLegalAcceptanceRequest request,
+            StudentLegalAcceptanceAuditMetadata auditMetadata
     ) {
         Student student = studentRepository.findById(studentId)
                 .orElseThrow(() -> new ResourceNotFoundException("Aluno nao encontrado."));
@@ -131,7 +134,11 @@ public class StudentLegalAcceptanceService {
                 status == StudentLegalAcceptanceStatus.ACCEPTED ? OffsetDateTime.now() : null,
                 trimToNull(request.evidenceNote()),
                 actor.principalId(),
-                actor.name()
+                actor.name(),
+                trimToNull(auditMetadata.ipAddress()),
+                trimToNull(auditMetadata.userAgent()),
+                trimToNull(auditMetadata.sessionKey()),
+                trimToNull(auditMetadata.collectionOrigin())
         );
 
         if (request.termType() == StudentLegalTermType.LGPD_DATA_PROCESSING

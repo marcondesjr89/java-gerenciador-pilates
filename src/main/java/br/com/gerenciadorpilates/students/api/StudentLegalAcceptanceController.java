@@ -2,10 +2,16 @@ package br.com.gerenciadorpilates.students.api;
 
 import br.com.gerenciadorpilates.platform.security.SecurityActorUtils;
 import br.com.gerenciadorpilates.students.application.StudentLegalAcceptanceAttachmentService;
+import br.com.gerenciadorpilates.students.application.StudentLegalAcceptanceAuditMetadata;
 import br.com.gerenciadorpilates.students.application.StudentLegalAcceptanceService;
 import jakarta.validation.Valid;
+import jakarta.servlet.http.HttpServletRequest;
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
 import java.util.List;
 import java.util.UUID;
+import java.util.HexFormat;
 import org.springframework.core.io.Resource;
 import org.springframework.http.ContentDisposition;
 import org.springframework.http.HttpHeaders;
@@ -48,9 +54,15 @@ public class StudentLegalAcceptanceController {
     public StudentLegalAcceptanceResponse register(
             @PathVariable UUID studentId,
             @Valid @RequestBody RegisterStudentLegalAcceptanceRequest request,
-            Authentication authentication
+            Authentication authentication,
+            HttpServletRequest httpServletRequest
     ) {
-        return studentLegalAcceptanceService.register(studentId, authentication, request);
+        return studentLegalAcceptanceService.register(
+                studentId,
+                authentication,
+                request,
+                buildAuditMetadata(httpServletRequest)
+        );
     }
 
     @PostMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
@@ -60,12 +72,14 @@ public class StudentLegalAcceptanceController {
             @Valid @RequestPart("request") RegisterStudentLegalAcceptanceRequest request,
             @RequestPart(value = "tabletSignatureFile", required = false) MultipartFile tabletSignatureFile,
             @RequestPart(value = "printedTermFile", required = false) MultipartFile printedTermFile,
-            Authentication authentication
+            Authentication authentication,
+            HttpServletRequest httpServletRequest
     ) {
         return studentLegalAcceptanceService.register(
                 studentId,
                 authentication,
                 request,
+                buildAuditMetadata(httpServletRequest),
                 tabletSignatureFile,
                 printedTermFile
         );
@@ -113,5 +127,82 @@ public class StudentLegalAcceptanceController {
                         .build()
                         .toString())
                 .body(result.file().resource());
+    }
+
+    private StudentLegalAcceptanceAuditMetadata buildAuditMetadata(HttpServletRequest request) {
+        String clientIp = firstNonBlank(
+                extractForwardedIp(request.getHeader("X-Forwarded-For")),
+                request.getHeader("X-Real-IP"),
+                request.getRemoteAddr()
+        );
+        String clientUserAgent = firstNonBlank(
+                request.getHeader("X-GP-Client-User-Agent"),
+                request.getHeader(HttpHeaders.USER_AGENT)
+        );
+        String collectionOrigin = firstNonBlank(
+                request.getHeader("X-GP-Collection-Origin"),
+                inferCollectionOrigin(clientUserAgent)
+        );
+
+        return new StudentLegalAcceptanceAuditMetadata(
+                clientIp,
+                clientUserAgent,
+                fingerprintAuthorizationHeader(request.getHeader(HttpHeaders.AUTHORIZATION)),
+                collectionOrigin
+        );
+    }
+
+    private String extractForwardedIp(String forwardedFor) {
+        if (forwardedFor == null || forwardedFor.isBlank()) {
+            return null;
+        }
+
+        String[] ips = forwardedFor.split(",");
+        return ips.length > 0 ? ips[0].trim() : null;
+    }
+
+    private String inferCollectionOrigin(String userAgent) {
+        if (userAgent == null || userAgent.isBlank()) {
+            return "internal-web-unknown";
+        }
+
+        String normalized = userAgent.toLowerCase();
+        if (normalized.contains("ipad") || normalized.contains("tablet")) {
+          return "internal-web-tablet";
+        }
+
+        if (normalized.contains("mobi") || normalized.contains("android")) {
+            return "internal-web-mobile";
+        }
+
+        return "internal-web-desktop";
+    }
+
+    private String fingerprintAuthorizationHeader(String authorizationHeader) {
+        if (authorizationHeader == null || !authorizationHeader.startsWith("Bearer ")) {
+            return null;
+        }
+
+        String token = authorizationHeader.substring("Bearer ".length()).trim();
+        if (token.isEmpty()) {
+            return null;
+        }
+
+        try {
+            MessageDigest digest = MessageDigest.getInstance("SHA-256");
+            return HexFormat.of().formatHex(digest.digest(token.getBytes(StandardCharsets.UTF_8)));
+        } catch (NoSuchAlgorithmException exception) {
+            throw new IllegalStateException("SHA-256 indisponivel no ambiente atual.", exception);
+        }
+    }
+
+    private String firstNonBlank(String... values) {
+        for (String value : values) {
+            if (value != null && !value.isBlank()) {
+                return value.trim();
+            }
+        }
+
+        return null;
     }
 }

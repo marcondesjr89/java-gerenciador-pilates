@@ -281,12 +281,21 @@ describe("student api routes", () => {
 
     expect(proxyFormDataToBackendMock).toHaveBeenCalledTimes(1);
     const [call] = proxyFormDataToBackendMock.mock.calls[0] as [
-      { session: { accessToken: string }; path: string; formData: FormData; errorMessage: string }
+      {
+        session: { accessToken: string };
+        path: string;
+        formData: FormData;
+        errorMessage: string;
+        extraHeaders: Record<string, string>;
+      }
     ];
 
     expect(call.session).toEqual({ accessToken: "internal-token" });
     expect(call.path).toBe("/api/v1/students/student-1/legal-acceptances");
     expect(call.errorMessage).toBe("Nao foi possivel registrar o termo legal.");
+    expect(call.extraHeaders).toMatchObject({
+      "X-GP-Collection-Origin": "internal-web-desktop"
+    });
 
     const requestPart = call.formData.get("request");
     expect(requestPart).toBeInstanceOf(Blob);

@@ -23,6 +23,10 @@ public record StudentLegalAcceptanceResponse(
         String evidenceNote,
         UUID capturedByUserId,
         String capturedByUserName,
+        String auditIpAddress,
+        String auditUserAgent,
+        String auditSessionKey,
+        String auditCollectionOrigin,
         List<StudentLegalAcceptanceAttachmentResponse> attachments,
         OffsetDateTime createdAt,
         OffsetDateTime updatedAt
@@ -47,6 +51,10 @@ public record StudentLegalAcceptanceResponse(
                 acceptance.getEvidenceNote(),
                 acceptance.getCapturedByUserId(),
                 acceptance.getCapturedByUserName(),
+                acceptance.getAuditIpAddress(),
+                acceptance.getAuditUserAgent(),
+                acceptance.getAuditSessionKey(),
+                acceptance.getAuditCollectionOrigin(),
                 attachments,
                 acceptance.getCreatedAt(),
                 acceptance.getUpdatedAt()
