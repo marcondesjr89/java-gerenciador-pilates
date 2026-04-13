@@ -1,5 +1,19 @@
 import { NextResponse } from "next/server";
 import { proxyFormDataToBackend, requireInternalApiSession } from "@/app/api/_lib/proxy";
+import {
+  badRequest,
+  hasAllowedFileType,
+  isNonEmptyFile,
+  readFormDataBody,
+  requireRouteParam
+} from "@/app/api/_lib/validation";
+
+const CLINICAL_ATTACHMENT_CONTENT_TYPES = [
+  "application/pdf",
+  "image/png",
+  "image/jpeg",
+  "image/webp"
+] as const;
 
 export async function POST(
   request: Request,
@@ -12,11 +26,33 @@ export async function POST(
   }
 
   const { studentId, progressEntryId } = await context.params;
-  const formData = await request.formData();
+  const studentIdError = requireRouteParam(studentId, "Informe o aluno do anexo clinico.");
+
+  if (studentIdError) {
+    return studentIdError;
+  }
+
+  const progressEntryIdError = requireRouteParam(progressEntryId, "Informe a evolucao do anexo clinico.");
+
+  if (progressEntryIdError) {
+    return progressEntryIdError;
+  }
+
+  const formDataResult = await readFormDataBody(request);
+
+  if (!formDataResult.success) {
+    return formDataResult.response;
+  }
+
+  const formData = formDataResult.data;
   const file = formData.get("file");
 
-  if (!(file instanceof File)) {
+  if (!isNonEmptyFile(file)) {
     return NextResponse.json({ message: "Arquivo clinico nao informado." }, { status: 400 });
+  }
+
+  if (!hasAllowedFileType(file, CLINICAL_ATTACHMENT_CONTENT_TYPES)) {
+    return badRequest("Informe um PDF ou imagem valida para o anexo clinico.");
   }
 
   const backendFormData = new FormData();

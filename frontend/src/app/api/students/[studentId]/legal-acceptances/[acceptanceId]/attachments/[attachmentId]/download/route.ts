@@ -1,4 +1,5 @@
 import { proxyBinaryToBackend, requireInternalApiSession } from "@/app/api/_lib/proxy";
+import { requireRouteParam } from "@/app/api/_lib/validation";
 
 export async function GET(
   _request: Request,
@@ -14,6 +15,24 @@ export async function GET(
   }
 
   const { studentId, acceptanceId, attachmentId } = await context.params;
+  const studentIdError = requireRouteParam(studentId, "Informe o aluno da evidencia do termo.");
+
+  if (studentIdError) {
+    return studentIdError;
+  }
+
+  const acceptanceIdError = requireRouteParam(acceptanceId, "Informe o aceite legal da evidencia.");
+
+  if (acceptanceIdError) {
+    return acceptanceIdError;
+  }
+
+  const attachmentIdError = requireRouteParam(attachmentId, "Informe o anexo da evidencia.");
+
+  if (attachmentIdError) {
+    return attachmentIdError;
+  }
+
   return proxyBinaryToBackend({
     session,
     path: `/api/v1/students/${studentId}/legal-acceptances/${acceptanceId}/attachments/${attachmentId}/download`,
