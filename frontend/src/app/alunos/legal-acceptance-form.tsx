@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState, useTransition } from "react";
+import { useEffect, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { FileSignature, LoaderCircle } from "lucide-react";
 import { SignaturePad } from "@/app/alunos/signature-pad";
@@ -10,15 +10,61 @@ type LegalAcceptanceFormProps = {
   studentName: string;
 };
 
+const TERM_TEMPLATES = {
+  LGPD_DATA_PROCESSING: {
+    title: "Termo de consentimento para tratamento de dados pessoais",
+    termsVersion: "v1.0-abr-2026",
+    legalBasis: "Consentimento do titular para tratamento de dados pessoais e sensiveis no contexto assistencial.",
+    termBody:
+      "Autorizo o Studio Gerenciador Pilates a coletar, armazenar e tratar meus dados pessoais e dados sensiveis estritamente para cadastro, agendamento, prontuario clinico, faturamento e comunicacoes operacionais relacionadas ao atendimento."
+  },
+  WHATSAPP_COMMUNICATION: {
+    title: "Termo de consentimento para comunicacao por WhatsApp",
+    termsVersion: "v1.0-abr-2026",
+    legalBasis: "Consentimento do titular para envio de comunicacoes operacionais e lembretes por WhatsApp.",
+    termBody:
+      "Autorizo o Studio Gerenciador Pilates a utilizar meu numero de telefone para envio de avisos de agenda, confirmacoes, remarcacoes, pendencias financeiras e comunicacoes operacionais por WhatsApp."
+  },
+  CLINICAL_RECORD_SHARING: {
+    title: "Termo de consentimento para compartilhamento clinico",
+    termsVersion: "v1.0-abr-2026",
+    legalBasis: "Consentimento especifico para compartilhamento controlado de informacoes clinicas quando necessario ao cuidado.",
+    termBody:
+      "Autorizo, quando necessario ao meu cuidado e dentro dos limites informados, o compartilhamento controlado de informacoes do meu prontuario clinico com profissionais envolvidos diretamente no meu atendimento."
+  },
+  EVOLUTION_IMAGE_CAPTURE: {
+    title: "Termo de consentimento para captura de imagem de evolucao",
+    termsVersion: "v1.0-abr-2026",
+    legalBasis: "Consentimento especifico para registro de imagens e videos estritamente destinados ao acompanhamento clinico e funcional da evolucao do aluno.",
+    termBody:
+      "Autorizo o Studio Gerenciador Pilates a capturar e armazenar imagens e videos exclusivamente para acompanhamento da minha evolucao fisica, comparacao tecnica entre sessoes, registro assistencial e alinhamento do cuidado pela equipe responsavel, sem uso para divulgacao publica ou marketing."
+  }
+} as const;
+
+type TermType = keyof typeof TERM_TEMPLATES;
+
 export function LegalAcceptanceForm({ studentId, studentName }: LegalAcceptanceFormProps) {
   const router = useRouter();
   const formRef = useRef<HTMLFormElement>(null);
   const [errorMessage, setErrorMessage] = useState("");
   const [successMessage, setSuccessMessage] = useState("");
+  const [termType, setTermType] = useState<TermType>("LGPD_DATA_PROCESSING");
+  const [title, setTitle] = useState(TERM_TEMPLATES.LGPD_DATA_PROCESSING.title);
+  const [termsVersion, setTermsVersion] = useState(TERM_TEMPLATES.LGPD_DATA_PROCESSING.termsVersion);
+  const [legalBasis, setLegalBasis] = useState(TERM_TEMPLATES.LGPD_DATA_PROCESSING.legalBasis);
+  const [termBody, setTermBody] = useState(TERM_TEMPLATES.LGPD_DATA_PROCESSING.termBody);
   const [status, setStatus] = useState("PENDING_SIGNATURE");
   const [collectionMethod, setCollectionMethod] = useState("TABLET_SIGNATURE");
   const [signatureResetKey, setSignatureResetKey] = useState(0);
   const [isPending, startTransition] = useTransition();
+
+  useEffect(() => {
+    const template = TERM_TEMPLATES[termType];
+    setTitle(template.title);
+    setTermsVersion(template.termsVersion);
+    setLegalBasis(template.legalBasis);
+    setTermBody(template.termBody);
+  }, [termType]);
 
   async function dataUrlToFile(dataUrl: string, fileName: string) {
     const response = await fetch(dataUrl);
@@ -83,6 +129,11 @@ export function LegalAcceptanceForm({ studentId, studentName }: LegalAcceptanceF
           }
 
           formRef.current?.reset();
+          setTermType("LGPD_DATA_PROCESSING");
+          setTitle(TERM_TEMPLATES.LGPD_DATA_PROCESSING.title);
+          setTermsVersion(TERM_TEMPLATES.LGPD_DATA_PROCESSING.termsVersion);
+          setLegalBasis(TERM_TEMPLATES.LGPD_DATA_PROCESSING.legalBasis);
+          setTermBody(TERM_TEMPLATES.LGPD_DATA_PROCESSING.termBody);
           setStatus("PENDING_SIGNATURE");
           setCollectionMethod("TABLET_SIGNATURE");
           setSignatureResetKey((current) => current + 1);
@@ -102,12 +153,14 @@ export function LegalAcceptanceForm({ studentId, studentName }: LegalAcceptanceF
           <span className="text-sm font-semibold text-brand-secondary">Tipo do termo</span>
           <select
             name="termType"
-            defaultValue="LGPD_DATA_PROCESSING"
+            value={termType}
+            onChange={(event) => setTermType(event.target.value as TermType)}
             className="w-full rounded-2xl border border-brand-line bg-brand-panel px-4 py-3 text-brand-ink outline-none"
           >
             <option value="LGPD_DATA_PROCESSING">Tratamento de dados LGPD</option>
             <option value="WHATSAPP_COMMUNICATION">Comunicacao por WhatsApp</option>
             <option value="CLINICAL_RECORD_SHARING">Compartilhamento clinico</option>
+            <option value="EVOLUTION_IMAGE_CAPTURE">Imagem para evolucao clinica</option>
           </select>
         </label>
 
@@ -116,10 +169,10 @@ export function LegalAcceptanceForm({ studentId, studentName }: LegalAcceptanceF
           <input
             name="termsVersion"
             type="text"
-            defaultValue="v1"
+            value={termsVersion}
+            onChange={(event) => setTermsVersion(event.target.value)}
             maxLength={60}
             className="w-full rounded-2xl border border-brand-line bg-brand-panel px-4 py-3 text-brand-ink outline-none"
-            placeholder="Ex.: v1.0-mar-2026"
             required
           />
         </label>
@@ -130,12 +183,17 @@ export function LegalAcceptanceForm({ studentId, studentName }: LegalAcceptanceF
         <input
           name="title"
           type="text"
+          value={title}
+          onChange={(event) => setTitle(event.target.value)}
           maxLength={255}
           className="w-full rounded-2xl border border-brand-line bg-brand-panel px-4 py-3 text-brand-ink outline-none"
-          placeholder="Termo de tratamento de dados pessoais"
           required
         />
       </label>
+
+      <div className="rounded-2xl border border-brand-line bg-brand-soft px-4 py-3 text-sm text-brand-secondary">
+        Modelo juridico padrao carregado automaticamente. Revise e ajuste apenas se houver excecao operacional.
+      </div>
 
       <div className="grid gap-4 md:grid-cols-2">
         <label className="space-y-2">
@@ -195,9 +253,10 @@ export function LegalAcceptanceForm({ studentId, studentName }: LegalAcceptanceF
         <input
           name="legalBasis"
           type="text"
+          value={legalBasis}
+          onChange={(event) => setLegalBasis(event.target.value)}
           maxLength={255}
           className="w-full rounded-2xl border border-brand-line bg-brand-panel px-4 py-3 text-brand-ink outline-none"
-          placeholder="Ex.: consentimento especifico para comunicacao e prontuario"
         />
       </label>
 
@@ -205,9 +264,10 @@ export function LegalAcceptanceForm({ studentId, studentName }: LegalAcceptanceF
         <span className="text-sm font-semibold text-brand-secondary">Texto exibido ao aluno</span>
         <textarea
           name="termBody"
+          value={termBody}
+          onChange={(event) => setTermBody(event.target.value)}
           rows={7}
           className="w-full rounded-[22px] border border-brand-line bg-brand-panel px-4 py-3 text-sm leading-6 text-brand-ink outline-none"
-          placeholder="Cole aqui o texto integral do termo exibido ou impresso para o aluno."
           required
         />
       </label>

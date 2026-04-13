@@ -2,19 +2,28 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { POST as createStudent } from "@/app/api/students/route";
 import { POST as createPortalAccount } from "@/app/api/students/[studentId]/portal-account/route";
 import { POST as createProgressEntry } from "@/app/api/students/[studentId]/progress-entries/route";
+import { POST as createLegalAcceptance } from "@/app/api/students/[studentId]/legal-acceptances/route";
+import { POST as uploadClinicalAttachment } from "@/app/api/students/[studentId]/progress-entries/[progressEntryId]/attachments/route";
+import { GET as downloadLegalAttachment } from "@/app/api/students/[studentId]/legal-acceptances/[acceptanceId]/attachments/[attachmentId]/download/route";
 
 const requireInternalApiSessionMock = vi.fn();
 const proxyJsonToBackendMock = vi.fn();
+const proxyFormDataToBackendMock = vi.fn();
+const proxyBinaryToBackendMock = vi.fn();
 
 vi.mock("@/app/api/_lib/proxy", () => ({
   requireInternalApiSession: (...args: unknown[]) => requireInternalApiSessionMock(...args),
-  proxyJsonToBackend: (...args: unknown[]) => proxyJsonToBackendMock(...args)
+  proxyJsonToBackend: (...args: unknown[]) => proxyJsonToBackendMock(...args),
+  proxyFormDataToBackend: (...args: unknown[]) => proxyFormDataToBackendMock(...args),
+  proxyBinaryToBackend: (...args: unknown[]) => proxyBinaryToBackendMock(...args)
 }));
 
 describe("student api routes", () => {
   beforeEach(() => {
     requireInternalApiSessionMock.mockReset();
     proxyJsonToBackendMock.mockReset();
+    proxyFormDataToBackendMock.mockReset();
+    proxyBinaryToBackendMock.mockReset();
   });
 
   it("retorna 400 quando o cadastro do aluno chega com CPF invalido", async () => {
@@ -203,6 +212,172 @@ describe("student api routes", () => {
         painLevel: 3
       },
       errorMessage: "Nao foi possivel registrar a evolucao."
+    });
+  });
+
+  it("retorna 400 quando o multipart do termo legal chega sem payload request", async () => {
+    requireInternalApiSessionMock.mockResolvedValue({ accessToken: "internal-token" });
+
+    const formData = new FormData();
+    formData.set("tabletSignatureFile", new File(["img"], "assinatura.png", { type: "image/png" }));
+    const request = new Request("http://localhost/api/students/student-1/legal-acceptances", {
+      method: "POST",
+      headers: {
+        "Content-Type": "multipart/form-data; boundary=test"
+      }
+    });
+    vi.spyOn(request, "formData").mockResolvedValue(formData);
+
+    const response = await createLegalAcceptance(
+      request,
+      {
+        params: Promise.resolve({ studentId: "student-1" })
+      }
+    );
+
+    expect(response.status).toBe(400);
+    await expect(response.json()).resolves.toEqual({ message: "Informe o payload do termo legal." });
+    expect(proxyFormDataToBackendMock).not.toHaveBeenCalled();
+  });
+
+  it("encaminha aceite legal multipart com payload normalizado", async () => {
+    requireInternalApiSessionMock.mockResolvedValue({ accessToken: "internal-token" });
+    proxyFormDataToBackendMock.mockResolvedValue(new Response(JSON.stringify({ id: "acceptance-1" }), { status: 201 }));
+
+    const formData = new FormData();
+    formData.set(
+      "request",
+      new Blob(
+        [
+          JSON.stringify({
+            termType: "LGPD_DATA_PROCESSING",
+            title: "  Termo LGPD  ",
+            termsVersion: "  v1.0-abr-2026 ",
+            legalBasis: "  Consentimento  ",
+            termBody: "  Texto do termo  ",
+            status: "ACCEPTED",
+            collectionMethod: "TABLET_SIGNATURE",
+            evidenceNote: "  Coletado na recepcao  "
+          })
+        ],
+        { type: "application/json" }
+      )
+    );
+    formData.set("tabletSignatureFile", new File(["img"], "assinatura.png", { type: "image/png" }));
+    const request = new Request("http://localhost/api/students/student-1/legal-acceptances", {
+      method: "POST",
+      headers: {
+        "Content-Type": "multipart/form-data; boundary=test"
+      }
+    });
+    vi.spyOn(request, "formData").mockResolvedValue(formData);
+
+    await createLegalAcceptance(
+      request,
+      {
+        params: Promise.resolve({ studentId: "student-1" })
+      }
+    );
+
+    expect(proxyFormDataToBackendMock).toHaveBeenCalledTimes(1);
+    const [call] = proxyFormDataToBackendMock.mock.calls[0] as [
+      { session: { accessToken: string }; path: string; formData: FormData; errorMessage: string }
+    ];
+
+    expect(call.session).toEqual({ accessToken: "internal-token" });
+    expect(call.path).toBe("/api/v1/students/student-1/legal-acceptances");
+    expect(call.errorMessage).toBe("Nao foi possivel registrar o termo legal.");
+
+    const requestPart = call.formData.get("request");
+    expect(requestPart).toBeInstanceOf(Blob);
+    await expect((requestPart as Blob).text()).resolves.toBe(
+      JSON.stringify({
+        termType: "LGPD_DATA_PROCESSING",
+        title: "Termo LGPD",
+        termsVersion: "v1.0-abr-2026",
+        legalBasis: "Consentimento",
+        termBody: "Texto do termo",
+        status: "ACCEPTED",
+        collectionMethod: "TABLET_SIGNATURE",
+        evidenceNote: "Coletado na recepcao"
+      })
+    );
+    expect(call.formData.get("tabletSignatureFile")).toBeInstanceOf(File);
+  });
+
+  it("retorna 400 quando o anexo clinico chega sem arquivo", async () => {
+    requireInternalApiSessionMock.mockResolvedValue({ accessToken: "internal-token" });
+    const request = new Request("http://localhost/api/students/student-1/progress-entries/entry-1/attachments", {
+      method: "POST"
+    });
+    vi.spyOn(request, "formData").mockResolvedValue(new FormData());
+
+    const response = await uploadClinicalAttachment(
+      request,
+      {
+        params: Promise.resolve({ studentId: "student-1", progressEntryId: "entry-1" })
+      }
+    );
+
+    expect(response.status).toBe(400);
+    await expect(response.json()).resolves.toEqual({ message: "Arquivo clinico nao informado." });
+    expect(proxyFormDataToBackendMock).not.toHaveBeenCalled();
+  });
+
+  it("encaminha o anexo clinico validado", async () => {
+    requireInternalApiSessionMock.mockResolvedValue({ accessToken: "internal-token" });
+    proxyFormDataToBackendMock.mockResolvedValue(new Response(JSON.stringify({ ok: true }), { status: 201 }));
+
+    const formData = new FormData();
+    formData.set("file", new File(["pdf"], "evolucao.pdf", { type: "application/pdf" }));
+    const request = new Request("http://localhost/api/students/student-1/progress-entries/entry-1/attachments", {
+      method: "POST"
+    });
+    vi.spyOn(request, "formData").mockResolvedValue(formData);
+
+    await uploadClinicalAttachment(
+      request,
+      {
+        params: Promise.resolve({ studentId: "student-1", progressEntryId: "entry-1" })
+      }
+    );
+
+    expect(proxyFormDataToBackendMock).toHaveBeenCalledWith({
+      session: { accessToken: "internal-token" },
+      path: "/api/v1/students/student-1/progress-entries/entry-1/attachments",
+      formData: expect.any(FormData),
+      errorMessage: "Nao foi possivel anexar o arquivo clinico."
+    });
+  });
+
+  it("retorna 400 quando falta o anexo no download da evidencia legal", async () => {
+    requireInternalApiSessionMock.mockResolvedValue({ accessToken: "internal-token" });
+
+    const response = await downloadLegalAttachment(new Request("http://localhost/api/students/student-1/legal-acceptances/a-1/attachments//download"), {
+      params: Promise.resolve({ studentId: "student-1", acceptanceId: "acceptance-1", attachmentId: " " })
+    });
+
+    expect(response.status).toBe(400);
+    await expect(response.json()).resolves.toEqual({ message: "Informe o anexo da evidencia." });
+    expect(proxyBinaryToBackendMock).not.toHaveBeenCalled();
+  });
+
+  it("encaminha o download da evidencia legal com parametros validados", async () => {
+    requireInternalApiSessionMock.mockResolvedValue({ accessToken: "internal-token" });
+    proxyBinaryToBackendMock.mockResolvedValue(new Response("ok", { status: 200 }));
+
+    await downloadLegalAttachment(new Request("http://localhost/api/students/student-1/legal-acceptances/acceptance-1/attachments/attachment-1/download"), {
+      params: Promise.resolve({
+        studentId: "student-1",
+        acceptanceId: "acceptance-1",
+        attachmentId: "attachment-1"
+      })
+    });
+
+    expect(proxyBinaryToBackendMock).toHaveBeenCalledWith({
+      session: { accessToken: "internal-token" },
+      path: "/api/v1/students/student-1/legal-acceptances/acceptance-1/attachments/attachment-1/download",
+      errorMessage: "Nao foi possivel baixar a evidencia do termo."
     });
   });
 });

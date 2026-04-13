@@ -35,6 +35,8 @@ export function formatLegalTermType(value: string) {
       return "Comunicacao por WhatsApp";
     case "CLINICAL_RECORD_SHARING":
       return "Compartilhamento clinico";
+    case "EVOLUTION_IMAGE_CAPTURE":
+      return "Captura de imagem para evolucao";
     default:
       return value;
   }

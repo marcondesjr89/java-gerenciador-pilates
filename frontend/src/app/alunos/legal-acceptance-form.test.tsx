@@ -54,4 +54,22 @@ describe("LegalAcceptanceForm", () => {
     expect(screen.getByText("Termo assinado em papel")).toBeInTheDocument();
     expect(screen.getByText("Envie PDF ou imagem do termo fisico assinado.")).toBeInTheDocument();
   });
+
+  it("carrega o modelo especifico para imagem de evolucao", () => {
+    render(<LegalAcceptanceForm studentId="student-1" studentName="Aluno Teste" />);
+
+    fireEvent.change(screen.getByLabelText("Tipo do termo"), {
+      target: { value: "EVOLUTION_IMAGE_CAPTURE" }
+    });
+
+    expect(screen.getByLabelText("Titulo do documento")).toHaveValue(
+      "Termo de consentimento para captura de imagem de evolucao"
+    );
+    expect(screen.getByLabelText("Base legal ou observacao juridica")).toHaveValue(
+      "Consentimento especifico para registro de imagens e videos estritamente destinados ao acompanhamento clinico e funcional da evolucao do aluno."
+    );
+    expect(screen.getByLabelText("Texto exibido ao aluno")).toHaveValue(
+      "Autorizo o Studio Gerenciador Pilates a capturar e armazenar imagens e videos exclusivamente para acompanhamento da minha evolucao fisica, comparacao tecnica entre sessoes, registro assistencial e alinhamento do cuidado pela equipe responsavel, sem uso para divulgacao publica ou marketing."
+    );
+  });
 });

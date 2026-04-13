@@ -4,7 +4,7 @@ import { fetchApiJson } from "@/lib/http";
 export type StudentLegalAcceptance = {
   id: string;
   studentId: string;
-  termType: "LGPD_DATA_PROCESSING" | "WHATSAPP_COMMUNICATION" | "CLINICAL_RECORD_SHARING";
+  termType: "LGPD_DATA_PROCESSING" | "WHATSAPP_COMMUNICATION" | "CLINICAL_RECORD_SHARING" | "EVOLUTION_IMAGE_CAPTURE";
   title: string;
   termsVersion: string;
   legalBasis: string | null;
