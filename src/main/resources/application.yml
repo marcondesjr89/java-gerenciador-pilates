@@ -77,6 +77,9 @@ app:
     dmed:
       provider-name: ${DMED_PROVIDER_NAME:Studio Pilates Exemplo Ltda}
       provider-cnpj: ${DMED_PROVIDER_CNPJ:12345678000199}
+  students:
+    legal-acceptances:
+      verification-base-url: ${LEGAL_ACCEPTANCE_VERIFICATION_BASE_URL:http://localhost:${server.port}}
 
 ---
 spring:

@@ -5,6 +5,7 @@ import { POST as createProgressEntry } from "@/app/api/students/[studentId]/prog
 import { POST as createLegalAcceptance } from "@/app/api/students/[studentId]/legal-acceptances/route";
 import { POST as uploadClinicalAttachment } from "@/app/api/students/[studentId]/progress-entries/[progressEntryId]/attachments/route";
 import { GET as downloadLegalAttachment } from "@/app/api/students/[studentId]/legal-acceptances/[acceptanceId]/attachments/[attachmentId]/download/route";
+import { GET as downloadLegalAcceptanceDocument } from "@/app/api/students/[studentId]/legal-acceptances/[acceptanceId]/document/download/route";
 
 const requireInternalApiSessionMock = vi.fn();
 const proxyJsonToBackendMock = vi.fn();
@@ -387,6 +388,39 @@ describe("student api routes", () => {
       session: { accessToken: "internal-token" },
       path: "/api/v1/students/student-1/legal-acceptances/acceptance-1/attachments/attachment-1/download",
       errorMessage: "Nao foi possivel baixar a evidencia do termo."
+    });
+  });
+
+  it("retorna 400 quando falta o aceite legal no download do PDF consolidado", async () => {
+    requireInternalApiSessionMock.mockResolvedValue({ accessToken: "internal-token" });
+
+    const response = await downloadLegalAcceptanceDocument(
+      new Request("http://localhost/api/students/student-1/legal-acceptances//document/download"),
+      {
+        params: Promise.resolve({ studentId: "student-1", acceptanceId: " " })
+      }
+    );
+
+    expect(response.status).toBe(400);
+    await expect(response.json()).resolves.toEqual({ message: "Informe o aceite legal do PDF." });
+    expect(proxyBinaryToBackendMock).not.toHaveBeenCalled();
+  });
+
+  it("encaminha o download do PDF consolidado com parametros validados", async () => {
+    requireInternalApiSessionMock.mockResolvedValue({ accessToken: "internal-token" });
+    proxyBinaryToBackendMock.mockResolvedValue(new Response("pdf", { status: 200 }));
+
+    await downloadLegalAcceptanceDocument(
+      new Request("http://localhost/api/students/student-1/legal-acceptances/acceptance-1/document/download"),
+      {
+        params: Promise.resolve({ studentId: "student-1", acceptanceId: "acceptance-1" })
+      }
+    );
+
+    expect(proxyBinaryToBackendMock).toHaveBeenCalledWith({
+      session: { accessToken: "internal-token" },
+      path: "/api/v1/students/student-1/legal-acceptances/acceptance-1/document",
+      errorMessage: "Nao foi possivel baixar o PDF consolidado do termo."
     });
   });
 });

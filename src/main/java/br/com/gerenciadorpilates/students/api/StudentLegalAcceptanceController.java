@@ -3,6 +3,7 @@ package br.com.gerenciadorpilates.students.api;
 import br.com.gerenciadorpilates.platform.security.SecurityActorUtils;
 import br.com.gerenciadorpilates.students.application.StudentLegalAcceptanceAttachmentService;
 import br.com.gerenciadorpilates.students.application.StudentLegalAcceptanceAuditMetadata;
+import br.com.gerenciadorpilates.students.application.StudentLegalAcceptanceDocumentService;
 import br.com.gerenciadorpilates.students.application.StudentLegalAcceptanceService;
 import jakarta.validation.Valid;
 import jakarta.servlet.http.HttpServletRequest;
@@ -35,13 +36,16 @@ public class StudentLegalAcceptanceController {
 
     private final StudentLegalAcceptanceService studentLegalAcceptanceService;
     private final StudentLegalAcceptanceAttachmentService attachmentService;
+    private final StudentLegalAcceptanceDocumentService documentService;
 
     public StudentLegalAcceptanceController(
             StudentLegalAcceptanceService studentLegalAcceptanceService,
-            StudentLegalAcceptanceAttachmentService attachmentService
+            StudentLegalAcceptanceAttachmentService attachmentService,
+            StudentLegalAcceptanceDocumentService documentService
     ) {
         this.studentLegalAcceptanceService = studentLegalAcceptanceService;
         this.attachmentService = attachmentService;
+        this.documentService = documentService;
     }
 
     @GetMapping
@@ -127,6 +131,23 @@ public class StudentLegalAcceptanceController {
                         .build()
                         .toString())
                 .body(result.file().resource());
+    }
+
+    @GetMapping("/{acceptanceId}/document")
+    public ResponseEntity<Resource> downloadDocument(
+            @PathVariable UUID studentId,
+            @PathVariable UUID acceptanceId
+    ) {
+        var document = documentService.generatePdf(studentId, acceptanceId);
+        Resource resource = new org.springframework.core.io.ByteArrayResource(document.content());
+        return ResponseEntity.ok()
+                .contentType(MediaType.APPLICATION_PDF)
+                .contentLength(document.content().length)
+                .header(HttpHeaders.CONTENT_DISPOSITION, ContentDisposition.attachment()
+                        .filename(document.fileName())
+                        .build()
+                        .toString())
+                .body(resource);
     }
 
     private StudentLegalAcceptanceAuditMetadata buildAuditMetadata(HttpServletRequest request) {

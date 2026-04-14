@@ -22,11 +22,20 @@ import br.com.gerenciadorpilates.scheduling.infrastructure.ScheduleSlotRepositor
 import br.com.gerenciadorpilates.students.api.ConfigureStudentPortalAccountRequest;
 import br.com.gerenciadorpilates.students.application.StudentPortalAccountService;
 import br.com.gerenciadorpilates.students.domain.Student;
+import br.com.gerenciadorpilates.students.domain.StudentLegalAcceptance;
+import br.com.gerenciadorpilates.students.domain.StudentLegalAcceptanceStatus;
+import br.com.gerenciadorpilates.students.domain.StudentLegalCollectionMethod;
+import br.com.gerenciadorpilates.students.domain.StudentLegalTermType;
 import br.com.gerenciadorpilates.students.domain.StudentStatus;
+import br.com.gerenciadorpilates.students.infrastructure.StudentLegalAcceptanceRepository;
 import br.com.gerenciadorpilates.students.infrastructure.StudentRepository;
 import br.com.gerenciadorpilates.platform.api.SystemInfoController.SystemInfoResponse;
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
 import java.time.LocalDate;
 import java.time.OffsetDateTime;
+import java.util.HexFormat;
 import java.util.Map;
 import java.util.UUID;
 import org.springframework.mock.web.MockMultipartFile;
@@ -58,6 +67,9 @@ class GerenciadorPilatesApplicationTests {
 
     @Autowired
     private StudentRepository studentRepository;
+
+    @Autowired
+    private StudentLegalAcceptanceRepository studentLegalAcceptanceRepository;
 
     @Autowired
     private StudentProgressEntryRepository progressEntryRepository;
@@ -181,6 +193,67 @@ class GerenciadorPilatesApplicationTests {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.student.fullName").value("Ana Costa"))
                 .andExpect(jsonPath("$.progressEntries[0].attachments[0].originalFileName").value("evolucao.png"));
+    }
+
+    @Test
+    void legalAcceptanceDocumentCanBeDownloadedAndVerifiedPublicly() throws Exception {
+        Student student = studentRepository.save(new Student(
+                UUID.randomUUID(),
+                "Laura Documento",
+                "12312312399",
+                "laura.documento@teste.local",
+                "85995554433",
+                LocalDate.of(1994, 3, 21),
+                StudentStatus.ACTIVE,
+                true
+        ));
+
+        StudentLegalAcceptance acceptance = studentLegalAcceptanceRepository.save(new StudentLegalAcceptance(
+                UUID.randomUUID(),
+                student.getId(),
+                StudentLegalTermType.LGPD_DATA_PROCESSING,
+                "Termo de tratamento de dados",
+                "v2026.04",
+                "Consentimento",
+                sha256("Texto oficial do termo LGPD"),
+                "Texto oficial do termo LGPD",
+                StudentLegalAcceptanceStatus.ACCEPTED,
+                StudentLegalCollectionMethod.INTERNAL_RECORD,
+                OffsetDateTime.now().minusMinutes(10),
+                "Aceite consolidado no atendimento interno.",
+                UUID.randomUUID(),
+                "Administrador Teste",
+                "127.0.0.1",
+                "JUnit",
+                "sessao-teste-aceite",
+                "internal-web-desktop"
+        ));
+
+        String token = loginAndGetToken("admin@test.local", "Admin@12345");
+        String verificationCode = sha256("%s|%s|%s|%s".formatted(
+                acceptance.getId(),
+                acceptance.getTermsVersion(),
+                acceptance.getDocumentHash(),
+                acceptance.getAcceptedAt().toInstant()
+        )).substring(0, 16).toUpperCase();
+
+        byte[] pdfBytes = mockMvc.perform(get("/api/v1/students/{studentId}/legal-acceptances/{acceptanceId}/document",
+                                student.getId(), acceptance.getId())
+                        .header("Authorization", "Bearer " + token))
+                .andExpect(status().isOk())
+                .andReturn()
+                .getResponse()
+                .getContentAsByteArray();
+
+        assertThat(new String(pdfBytes, 0, 4, StandardCharsets.US_ASCII)).isEqualTo("%PDF");
+
+        mockMvc.perform(get("/api/v1/public/legal-acceptances/{acceptanceId}/verification", acceptance.getId())
+                        .param("code", verificationCode))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.verified").value(true))
+                .andExpect(jsonPath("$.studentName").value("Laura Documento"))
+                .andExpect(jsonPath("$.termsVersion").value("v2026.04"))
+                .andExpect(jsonPath("$.documentHash").value(acceptance.getDocumentHash()));
     }
 
     @Test
@@ -1131,5 +1204,14 @@ class GerenciadorPilatesApplicationTests {
         return java.math.BigDecimal.valueOf(value)
                 .setScale(2, java.math.RoundingMode.HALF_UP)
                 .doubleValue();
+    }
+
+    private String sha256(String value) {
+        try {
+            MessageDigest digest = MessageDigest.getInstance("SHA-256");
+            return HexFormat.of().formatHex(digest.digest(value.getBytes(StandardCharsets.UTF_8)));
+        } catch (NoSuchAlgorithmException exception) {
+            throw new IllegalStateException("SHA-256 indisponivel no ambiente atual.", exception);
+        }
     }
 }

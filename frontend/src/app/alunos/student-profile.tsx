@@ -1,4 +1,4 @@
-import { AlertTriangle, FileHeart } from "lucide-react";
+import { AlertTriangle, FileDown, FileHeart } from "lucide-react";
 import {
   formatAttachmentType,
   formatCollectionMethod,
@@ -216,6 +216,18 @@ export function StudentProfile({
                 </div>
 
                 <div className="mt-4 space-y-2">
+                  <div className="flex flex-wrap gap-2">
+                    <a
+                      href={`/api/students/${student.id}/legal-acceptances/${acceptance.id}/document/download`}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="inline-flex items-center gap-2 rounded-full bg-brand-secondary px-3 py-2 text-xs font-semibold text-white transition hover:bg-brand-primary"
+                    >
+                      <FileDown className="h-3.5 w-3.5" />
+                      Baixar PDF consolidado
+                    </a>
+                  </div>
+
                   <p className="text-xs uppercase tracking-[0.18em] text-brand-subtext">Arquivos de evidencia</p>
                   {acceptance.attachments.length > 0 ? (
                     <div className="flex flex-wrap gap-2">
