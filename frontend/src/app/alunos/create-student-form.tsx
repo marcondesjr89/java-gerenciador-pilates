@@ -3,6 +3,7 @@
 import { useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { LoaderCircle, UserPlus } from "lucide-react";
+import { readActionErrorMessage } from "@/lib/action-responses";
 
 export function CreateStudentForm() {
   const router = useRouter();
@@ -37,8 +38,7 @@ export function CreateStudentForm() {
           });
 
           if (!response.ok) {
-            const payload = (await response.json().catch(() => ({ message: "" }))) as { message?: string };
-            setErrorMessage(payload.message || "Nao foi possivel cadastrar o aluno.");
+            setErrorMessage(await readActionErrorMessage(response, "Nao foi possivel cadastrar o aluno."));
             return;
           }
 

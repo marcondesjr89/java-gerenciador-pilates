@@ -3,7 +3,8 @@
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { CalendarSync, LoaderCircle } from "lucide-react";
-import type { StudentPortalRescheduleOption } from "@/lib/student-portal-bookings";
+import { readStudentPortalActionErrorMessage } from "@/lib/student-portal-actions";
+import type { StudentPortalRescheduleOption, StudentPortalRescheduleRequest } from "@/lib/student-portal-bookings";
 
 type RescheduleBookingPanelProps = {
   bookingId: string;
@@ -31,9 +32,8 @@ export function RescheduleBookingPanel({ bookingId, initialDate }: RescheduleBoo
       );
 
       if (!response.ok) {
-        const payload = (await response.json().catch(() => ({ message: "" }))) as { message?: string };
         setOptions([]);
-        setErrorMessage(payload.message || "Nao foi possivel carregar opcoes de remarcacao.");
+        setErrorMessage(await readStudentPortalActionErrorMessage(response, "Nao foi possivel carregar opcoes de remarcacao."));
         return;
       }
 
@@ -101,12 +101,11 @@ export function RescheduleBookingPanel({ bookingId, initialDate }: RescheduleBoo
                   },
                   body: JSON.stringify({
                     targetSlotId: selectedSlotId
-                  })
+                  } satisfies StudentPortalRescheduleRequest)
                 });
 
                 if (!response.ok) {
-                  const payload = (await response.json().catch(() => ({ message: "" }))) as { message?: string };
-                  setErrorMessage(payload.message || "Nao foi possivel remarcar a reserva.");
+                  setErrorMessage(await readStudentPortalActionErrorMessage(response, "Nao foi possivel remarcar a reserva."));
                   return;
                 }
 

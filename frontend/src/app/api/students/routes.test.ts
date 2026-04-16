@@ -6,6 +6,7 @@ import { POST as createLegalAcceptance } from "@/app/api/students/[studentId]/le
 import { POST as uploadClinicalAttachment } from "@/app/api/students/[studentId]/progress-entries/[progressEntryId]/attachments/route";
 import { GET as downloadLegalAttachment } from "@/app/api/students/[studentId]/legal-acceptances/[acceptanceId]/attachments/[attachmentId]/download/route";
 import { GET as downloadLegalAcceptanceDocument } from "@/app/api/students/[studentId]/legal-acceptances/[acceptanceId]/document/download/route";
+import type { CreateStudentProgressEntryPayload } from "@/lib/clinical";
 
 const requireInternalApiSessionMock = vi.fn();
 const proxyJsonToBackendMock = vi.fn();
@@ -20,6 +21,14 @@ vi.mock("@/app/api/_lib/proxy", () => ({
 }));
 
 describe("student api routes", () => {
+  const validProgressEntryPayload: CreateStudentProgressEntryPayload = {
+    recordedAt: "2026-04-10T12:00:00.000Z",
+    instructorNotes: "Evolucao ok",
+    flexibilityScore: 70,
+    strengthScore: 80,
+    painLevel: 3
+  };
+
   beforeEach(() => {
     requireInternalApiSessionMock.mockReset();
     proxyJsonToBackendMock.mockReset();
@@ -161,10 +170,7 @@ describe("student api routes", () => {
           "Content-Type": "application/json"
         },
         body: JSON.stringify({
-          recordedAt: "2026-04-10T12:00:00.000Z",
-          instructorNotes: "Evolucao ok",
-          flexibilityScore: 70,
-          strengthScore: 80,
+          ...validProgressEntryPayload,
           painLevel: 11
         })
       }),
@@ -189,11 +195,8 @@ describe("student api routes", () => {
           "Content-Type": "application/json"
         },
         body: JSON.stringify({
-          recordedAt: "2026-04-10T12:00:00.000Z",
-          instructorNotes: "  Evolucao ok  ",
-          flexibilityScore: 70,
-          strengthScore: 80,
-          painLevel: 3
+          ...validProgressEntryPayload,
+          instructorNotes: "  Evolucao ok  "
         })
       }),
       {
@@ -205,13 +208,7 @@ describe("student api routes", () => {
       session: { accessToken: "internal-token" },
       path: "/api/v1/students/student-1/progress-entries",
       method: "POST",
-      body: {
-        recordedAt: "2026-04-10T12:00:00.000Z",
-        instructorNotes: "Evolucao ok",
-        flexibilityScore: 70,
-        strengthScore: 80,
-        painLevel: 3
-      },
+      body: validProgressEntryPayload,
       errorMessage: "Nao foi possivel registrar a evolucao."
     });
   });

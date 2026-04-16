@@ -9,6 +9,10 @@ export type StudentPortalRescheduleOption = ScheduleSlotWindow &
   slotId: string;
 };
 
+export type StudentPortalRescheduleRequest = {
+  targetSlotId: string;
+};
+
 export async function fetchStudentPortalBookings(session: StudentPortalSessionUser) {
   return fetchApiJson<StudentPortalBooking[]>(session, "/api/v1/student-portal/me/bookings", {
     errorMessage: "Nao foi possivel carregar as reservas do portal."

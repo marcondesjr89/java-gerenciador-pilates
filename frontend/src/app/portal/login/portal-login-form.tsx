@@ -3,6 +3,7 @@
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { ArrowRight, LoaderCircle } from "lucide-react";
+import { readActionErrorMessage } from "@/lib/action-responses";
 
 type PortalLoginFormProps = {
   initialError?: string;
@@ -27,8 +28,7 @@ export function PortalLoginForm({ initialError }: PortalLoginFormProps) {
     });
 
     if (!response.ok) {
-      const payload = (await response.json().catch(() => ({ message: "" }))) as { message?: string };
-      setErrorMessage(payload.message || "Nao foi possivel entrar no portal.");
+      setErrorMessage(await readActionErrorMessage(response, "Nao foi possivel entrar no portal."));
       return;
     }
 

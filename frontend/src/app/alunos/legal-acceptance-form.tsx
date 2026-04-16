@@ -4,6 +4,7 @@ import { useEffect, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { FileSignature, LoaderCircle } from "lucide-react";
 import { SignaturePad } from "@/app/alunos/signature-pad";
+import { readActionErrorMessage } from "@/lib/action-responses";
 
 type LegalAcceptanceFormProps = {
   studentId: string;
@@ -123,8 +124,7 @@ export function LegalAcceptanceForm({ studentId, studentName }: LegalAcceptanceF
           });
 
           if (!response.ok) {
-            const payload = (await response.json().catch(() => ({ message: "" }))) as { message?: string };
-            setErrorMessage(payload.message || "Nao foi possivel registrar o termo.");
+            setErrorMessage(await readActionErrorMessage(response, "Nao foi possivel registrar o termo."));
             return;
           }
 

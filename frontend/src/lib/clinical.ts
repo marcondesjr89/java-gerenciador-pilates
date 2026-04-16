@@ -1,5 +1,6 @@
 import type { SessionUser } from "@/lib/auth";
 import { fetchApiJson } from "@/lib/http";
+import type { Student } from "@/lib/students";
 
 export type ClinicalAttachment = {
   id: string;
@@ -45,16 +46,65 @@ export type StudentProgressEntry = {
   attachments: ClinicalAttachment[];
 };
 
+export type CreateStudentProgressEntryPayload = Pick<
+  StudentProgressEntry,
+  "recordedAt" | "instructorNotes" | "flexibilityScore" | "strengthScore" | "painLevel"
+>;
+
 export type ClinicalRecord = {
-  student: {
-    id: string;
-  };
+  student: Student;
   anamnesis: StudentAnamnesis | null;
   progressEntries: StudentProgressEntry[];
 };
+
+export type ClinicalAlertSummary = {
+  alerts: string[];
+  generalObservations: string;
+  hasActiveAlerts: boolean;
+};
+
+export type ClinicalLatestEntrySummary = {
+  recordedAtLabel: string;
+  scoreSummary: string;
+  instructorNotes: string;
+} | null;
 
 export async function fetchClinicalRecord(session: SessionUser, studentId: string) {
   return fetchApiJson<ClinicalRecord>(session, `/api/v1/students/${studentId}/clinical-record`, {
     errorMessage: "Nao foi possivel carregar o prontuario clinico."
   });
+}
+
+export function getClinicalAlertSummary(record: ClinicalRecord | null): ClinicalAlertSummary {
+  const alerts = record?.anamnesis?.alerts ?? [];
+
+  return {
+    alerts,
+    generalObservations: record?.anamnesis?.generalObservations || "Sem observacoes gerais registradas.",
+    hasActiveAlerts: alerts.length > 0
+  };
+}
+
+export function getLatestClinicalEntry(record: ClinicalRecord | null) {
+  return record?.progressEntries[0] ?? null;
+}
+
+export function getLatestClinicalEntrySummary(
+  record: ClinicalRecord | null,
+  formatDateTime: (value: string, options?: Intl.DateTimeFormatOptions) => string
+): ClinicalLatestEntrySummary {
+  const latestEntry = getLatestClinicalEntry(record);
+
+  if (!latestEntry) {
+    return null;
+  }
+
+  return {
+    recordedAtLabel: formatDateTime(latestEntry.recordedAt, {
+      dateStyle: "short",
+      timeStyle: "short"
+    }),
+    scoreSummary: `Flexibilidade: ${latestEntry.flexibilityScore ?? "-"} | Forca: ${latestEntry.strengthScore ?? "-"} | Dor: ${latestEntry.painLevel ?? "-"}`,
+    instructorNotes: latestEntry.instructorNotes
+  };
 }

@@ -1,7 +1,7 @@
 import { CalendarDays, ChevronRight, ClipboardPen, TimerReset, UserRound } from "lucide-react";
 import { requireInstructorSession } from "@/lib/auth";
 import { fetchScheduleSlots, fetchSlotBookings } from "@/lib/schedule";
-import { fetchClinicalRecord } from "@/lib/clinical";
+import { fetchClinicalRecord, getClinicalAlertSummary, getLatestClinicalEntrySummary } from "@/lib/clinical";
 import { formatDateTime, formatSpecialty, formatUtcHour, getTodayIsoDate } from "@/lib/formatters";
 import { ProgressEntryForm } from "@/app/instrutor/progress-entry-form";
 
@@ -50,7 +50,8 @@ export default async function InstructorPage({ searchParams }: InstructorPagePro
   const selectedClinicalRecord = selectedBooking
     ? clinicalRecordByStudentId.get(selectedBooking.studentId) ?? null
     : null;
-  const latestEntry = selectedClinicalRecord?.progressEntries[0] ?? null;
+  const alertSummary = getClinicalAlertSummary(selectedClinicalRecord);
+  const latestEntrySummary = getLatestClinicalEntrySummary(selectedClinicalRecord, formatDateTime);
   const nextSlot = instructorSlots[0] ?? null;
 
   return (
@@ -281,8 +282,8 @@ export default async function InstructorPage({ searchParams }: InstructorPagePro
                           <div className="rounded-[20px] border border-brand-line bg-brand-panel px-4 py-4">
                             <p className="text-xs uppercase tracking-[0.18em] text-brand-subtext">Alertas clinicos</p>
                             <div className="mt-3 flex flex-wrap gap-2">
-                              {selectedClinicalRecord?.anamnesis?.alerts.length ? (
-                                selectedClinicalRecord.anamnesis.alerts.map((alert) => (
+                              {alertSummary.hasActiveAlerts ? (
+                                alertSummary.alerts.map((alert) => (
                                   <span
                                     key={alert}
                                     className="rounded-full bg-[rgba(220,53,69,0.08)] px-3 py-1 text-xs font-semibold text-brand-danger"
@@ -297,24 +298,21 @@ export default async function InstructorPage({ searchParams }: InstructorPagePro
                               )}
                             </div>
                             <p className="mt-3 text-sm leading-6 text-brand-subtext">
-                              {selectedClinicalRecord?.anamnesis?.generalObservations || "Sem observacoes gerais registradas."}
+                              {alertSummary.generalObservations}
                             </p>
                           </div>
 
                           <div className="rounded-[20px] border border-brand-line bg-brand-panel px-4 py-4">
                             <p className="text-xs uppercase tracking-[0.18em] text-brand-subtext">Ultima evolucao</p>
-                            {latestEntry ? (
+                            {latestEntrySummary ? (
                               <div className="mt-3 space-y-2">
                                 <p className="text-sm text-brand-subtext">
-                                  {formatDateTime(latestEntry.recordedAt, {
-                                    dateStyle: "short",
-                                    timeStyle: "short"
-                                  })}
+                                  {latestEntrySummary.recordedAtLabel}
                                 </p>
                                 <p className="text-sm text-brand-subtext">
-                                  Flexibilidade: {latestEntry.flexibilityScore ?? "-"} | Forca: {latestEntry.strengthScore ?? "-"} | Dor: {latestEntry.painLevel ?? "-"}
+                                  {latestEntrySummary.scoreSummary}
                                 </p>
-                                <p className="text-sm leading-6 text-brand-subtext">{latestEntry.instructorNotes}</p>
+                                <p className="text-sm leading-6 text-brand-subtext">{latestEntrySummary.instructorNotes}</p>
                               </div>
                             ) : (
                               <p className="mt-3 text-sm text-brand-subtext">Nenhuma evolucao registrada ate agora.</p>

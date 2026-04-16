@@ -3,6 +3,7 @@
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { KeyRound, LoaderCircle } from "lucide-react";
+import { readActionErrorMessage } from "@/lib/action-responses";
 import type { StudentPortalAccount } from "@/lib/student-portal";
 
 type PortalAccountFormProps = {
@@ -37,8 +38,7 @@ export function PortalAccountForm({ studentId, defaultEmail, currentAccount }: P
           });
 
           if (!response.ok) {
-            const payload = (await response.json().catch(() => ({ message: "" }))) as { message?: string };
-            setErrorMessage(payload.message || "Nao foi possivel configurar a conta do portal.");
+            setErrorMessage(await readActionErrorMessage(response, "Nao foi possivel configurar a conta do portal."));
             return;
           }
 

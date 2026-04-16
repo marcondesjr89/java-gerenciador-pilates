@@ -3,6 +3,7 @@
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { Hourglass, LoaderCircle } from "lucide-react";
+import { readStudentPortalActionErrorMessage } from "@/lib/student-portal-actions";
 
 type JoinWaitlistButtonProps = {
   slotId: string;
@@ -27,8 +28,7 @@ export function JoinWaitlistButton({ slotId }: JoinWaitlistButtonProps) {
             });
 
             if (!response.ok) {
-              const payload = (await response.json().catch(() => ({ message: "" }))) as { message?: string };
-              setErrorMessage(payload.message || "Nao foi possivel entrar na lista de espera.");
+              setErrorMessage(await readStudentPortalActionErrorMessage(response, "Nao foi possivel entrar na lista de espera."));
               return;
             }
 

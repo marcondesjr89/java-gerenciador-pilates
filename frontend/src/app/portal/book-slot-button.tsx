@@ -3,6 +3,7 @@
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { CheckCircle2, LoaderCircle } from "lucide-react";
+import { readStudentPortalActionErrorMessage } from "@/lib/student-portal-actions";
 
 type BookSlotButtonProps = {
   slotId: string;
@@ -27,8 +28,7 @@ export function BookSlotButton({ slotId }: BookSlotButtonProps) {
             });
 
             if (!response.ok) {
-              const payload = (await response.json().catch(() => ({ message: "" }))) as { message?: string };
-              setErrorMessage(payload.message || "Nao foi possivel reservar o horario.");
+              setErrorMessage(await readStudentPortalActionErrorMessage(response, "Nao foi possivel reservar o horario."));
               return;
             }
 

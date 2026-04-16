@@ -3,6 +3,7 @@
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { LoaderCircle, XCircle } from "lucide-react";
+import { readStudentPortalActionErrorMessage } from "@/lib/student-portal-actions";
 
 type CancelBookingButtonProps = {
   bookingId: string;
@@ -27,8 +28,7 @@ export function CancelBookingButton({ bookingId }: CancelBookingButtonProps) {
             });
 
             if (!response.ok) {
-              const payload = (await response.json().catch(() => ({ message: "" }))) as { message?: string };
-              setErrorMessage(payload.message || "Nao foi possivel cancelar a reserva.");
+              setErrorMessage(await readStudentPortalActionErrorMessage(response, "Nao foi possivel cancelar a reserva."));
               return;
             }
 

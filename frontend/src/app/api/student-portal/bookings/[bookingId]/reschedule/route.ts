@@ -1,5 +1,6 @@
 import { proxyJsonToBackend, requireStudentPortalApiSession } from "@/app/api/_lib/proxy";
-import { badRequest, readJsonBody, readTrimmedString } from "@/app/api/_lib/validation";
+import { badRequest, readJsonBody, readTrimmedString, requireRouteParam } from "@/app/api/_lib/validation";
+import type { StudentPortalRescheduleRequest } from "@/lib/student-portal-bookings";
 
 export async function POST(request: Request, context: { params: Promise<{ bookingId: string }> }) {
   const session = await requireStudentPortalApiSession("Sessao invalida para remarcacao.");
@@ -10,8 +11,9 @@ export async function POST(request: Request, context: { params: Promise<{ bookin
 
   const { bookingId } = await context.params;
 
-  if (!bookingId.trim()) {
-    return badRequest("Informe a reserva para remarcacao.");
+  const bookingIdError = requireRouteParam(bookingId, "Informe a reserva para remarcacao.");
+  if (bookingIdError) {
+    return bookingIdError;
   }
 
   const bodyResult = await readJsonBody(request);
@@ -20,7 +22,7 @@ export async function POST(request: Request, context: { params: Promise<{ bookin
     return bodyResult.response;
   }
 
-  const body = bodyResult.data as { targetSlotId?: unknown };
+  const body = bodyResult.data as Partial<Record<keyof StudentPortalRescheduleRequest, unknown>>;
   const targetSlotId = readTrimmedString(body.targetSlotId);
 
   if (!targetSlotId) {

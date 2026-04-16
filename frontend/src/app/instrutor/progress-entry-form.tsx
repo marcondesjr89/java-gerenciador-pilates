@@ -3,6 +3,8 @@
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { ClipboardPen, LoaderCircle } from "lucide-react";
+import { readActionErrorMessage, type ResourceIdResponse } from "@/lib/action-responses";
+import type { CreateStudentProgressEntryPayload } from "@/lib/clinical";
 
 type ProgressEntryFormProps = {
   studentId: string;
@@ -29,27 +31,27 @@ export function ProgressEntryForm({ studentId }: ProgressEntryFormProps) {
           setSuccessMessage("");
 
           const recordedAtValue = String(formData.get("recordedAt") ?? "");
+          const payload: CreateStudentProgressEntryPayload = {
+            recordedAt: new Date(recordedAtValue).toISOString(),
+            instructorNotes: String(formData.get("instructorNotes") ?? "").trim(),
+            flexibilityScore: Number(formData.get("flexibilityScore") ?? 0),
+            strengthScore: Number(formData.get("strengthScore") ?? 0),
+            painLevel: Number(formData.get("painLevel") ?? 0)
+          };
           const response = await fetch(`/api/students/${studentId}/progress-entries`, {
             method: "POST",
             headers: {
               "Content-Type": "application/json"
             },
-            body: JSON.stringify({
-              recordedAt: new Date(recordedAtValue).toISOString(),
-              instructorNotes: String(formData.get("instructorNotes") ?? "").trim(),
-              flexibilityScore: Number(formData.get("flexibilityScore") ?? 0),
-              strengthScore: Number(formData.get("strengthScore") ?? 0),
-              painLevel: Number(formData.get("painLevel") ?? 0)
-            })
+            body: JSON.stringify(payload)
           });
 
           if (!response.ok) {
-            const payload = (await response.json().catch(() => ({ message: "" }))) as { message?: string };
-            setErrorMessage(payload.message || "Nao foi possivel registrar a evolucao.");
+            setErrorMessage(await readActionErrorMessage(response, "Nao foi possivel registrar a evolucao."));
             return;
           }
 
-          const progressEntry = (await response.json()) as { id: string };
+          const progressEntry = (await response.json()) as ResourceIdResponse;
           const attachment = formData.get("attachment");
 
           if (attachment instanceof File && attachment.size > 0) {
@@ -65,10 +67,10 @@ export function ProgressEntryForm({ studentId }: ProgressEntryFormProps) {
             );
 
             if (!attachmentResponse.ok) {
-              const payload = (await attachmentResponse.json().catch(() => ({ message: "" }))) as { message?: string };
-              setErrorMessage(
-                payload.message || "Evolucao registrada, mas nao foi possivel anexar o arquivo clinico."
-              );
+              setErrorMessage(await readActionErrorMessage(
+                attachmentResponse,
+                "Evolucao registrada, mas nao foi possivel anexar o arquivo clinico."
+              ));
               router.refresh();
               return;
             }

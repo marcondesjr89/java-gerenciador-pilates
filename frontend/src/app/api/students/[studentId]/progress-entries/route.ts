@@ -1,4 +1,5 @@
 import { proxyJsonToBackend, requireInternalApiSession } from "@/app/api/_lib/proxy";
+import type { CreateStudentProgressEntryPayload } from "@/lib/clinical";
 import {
   badRequest,
   isIntegerInRange,
@@ -26,13 +27,7 @@ export async function POST(request: Request, context: { params: Promise<{ studen
     return bodyResult.response;
   }
 
-  const body = bodyResult.data as {
-    recordedAt?: unknown;
-    instructorNotes?: unknown;
-    flexibilityScore?: unknown;
-    strengthScore?: unknown;
-    painLevel?: unknown;
-  };
+  const body = bodyResult.data as Partial<Record<keyof CreateStudentProgressEntryPayload, unknown>>;
   const recordedAt = readTrimmedString(body.recordedAt);
   const instructorNotes = readTrimmedString(body.instructorNotes);
   const flexibilityScore = body.flexibilityScore;
