@@ -1,25 +1,12 @@
 import type { StudentPortalSessionUser } from "@/lib/student-portal-auth";
+import type { ScheduleBooking, ScheduleSlotAvailability, ScheduleSlotWindow } from "@/lib/schedule-types";
 import { fetchApiJson } from "@/lib/http";
 
-export type StudentPortalBooking = {
-  id: string;
-  slotId: string;
-  studentId: string;
-  studentName: string;
-  status: "BOOKED" | "CANCELED";
-  instructorName: string;
-  requiredSpecialty: string;
-  startTime: string;
-  endTime: string;
-};
+export type StudentPortalBooking = ScheduleBooking & ScheduleSlotWindow;
 
-export type StudentPortalRescheduleOption = {
+export type StudentPortalRescheduleOption = ScheduleSlotWindow &
+  ScheduleSlotAvailability & {
   slotId: string;
-  instructorName: string;
-  requiredSpecialty: string;
-  startTime: string;
-  endTime: string;
-  availableSpots: number;
 };
 
 export async function fetchStudentPortalBookings(session: StudentPortalSessionUser) {

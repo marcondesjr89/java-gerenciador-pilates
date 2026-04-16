@@ -12,6 +12,8 @@ public record StudentLegalAcceptanceVerificationResponse(
         UUID studentId,
         String studentName,
         String studentCpfMasked,
+        String issuerName,
+        String issuerDocument,
         StudentLegalTermType termType,
         String title,
         String termsVersion,
@@ -23,6 +25,8 @@ public record StudentLegalAcceptanceVerificationResponse(
         OffsetDateTime createdAt,
         String capturedByUserName,
         String verificationCode,
+        String documentReference,
+        String verificationStatement,
         boolean verified
 ) {
 
@@ -30,7 +34,11 @@ public record StudentLegalAcceptanceVerificationResponse(
             StudentLegalAcceptance acceptance,
             String studentName,
             String studentCpfMasked,
+            String issuerName,
+            String issuerDocument,
             String verificationCode,
+            String documentReference,
+            String verificationStatement,
             boolean verified
     ) {
         return new StudentLegalAcceptanceVerificationResponse(
@@ -38,6 +46,8 @@ public record StudentLegalAcceptanceVerificationResponse(
                 acceptance.getStudentId(),
                 studentName,
                 studentCpfMasked,
+                issuerName,
+                issuerDocument,
                 acceptance.getTermType(),
                 acceptance.getTitle(),
                 acceptance.getTermsVersion(),
@@ -49,6 +59,8 @@ public record StudentLegalAcceptanceVerificationResponse(
                 acceptance.getCreatedAt(),
                 acceptance.getCapturedByUserName(),
                 verificationCode,
+                documentReference,
+                verificationStatement,
                 verified
         );
     }

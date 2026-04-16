@@ -9,17 +9,21 @@ import br.com.gerenciadorpilates.students.api.StudentLegalAcceptanceAttachmentRe
 import br.com.gerenciadorpilates.students.domain.StudentLegalAcceptance;
 import br.com.gerenciadorpilates.students.domain.StudentLegalAcceptanceAttachment;
 import br.com.gerenciadorpilates.students.domain.StudentLegalAcceptanceAttachmentType;
+import java.awt.image.BufferedImage;
 import br.com.gerenciadorpilates.students.infrastructure.StudentLegalAcceptanceAttachmentRepository;
 import br.com.gerenciadorpilates.students.infrastructure.StudentLegalAcceptanceRepository;
 import br.com.gerenciadorpilates.students.infrastructure.StudentRepository;
+import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.util.Collection;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Optional;
 import java.util.UUID;
 import java.util.stream.Collectors;
+import javax.imageio.ImageIO;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
@@ -128,6 +132,17 @@ public class StudentLegalAcceptanceAttachmentService {
         } catch (IOException exception) {
             throw new UncheckedIOException("Falha ao carregar o anexo do aceite legal.", exception);
         }
+    }
+
+    @Transactional(readOnly = true)
+    public Optional<AttachmentPreview> loadTabletSignaturePreview(UUID studentId, UUID legalAcceptanceId) {
+        ensureAcceptanceBelongsToStudent(studentId, legalAcceptanceId);
+        return attachmentRepository.findAllByLegalAcceptanceIdOrderByCreatedAtAsc(legalAcceptanceId)
+                .stream()
+                .filter(attachment -> attachment.getAttachmentType() == StudentLegalAcceptanceAttachmentType.TABLET_SIGNATURE)
+                .filter(this::isPreviewableImage)
+                .findFirst()
+                .map(this::loadAttachmentPreview);
     }
 
     private StudentLegalAcceptanceAttachment createAttachmentIfPresent(
@@ -244,6 +259,41 @@ public class StudentLegalAcceptanceAttachmentService {
         };
     }
 
+    private boolean isPreviewableImage(StudentLegalAcceptanceAttachment attachment) {
+        return attachment.getContentType().startsWith("image/");
+    }
+
+    private AttachmentPreview loadAttachmentPreview(StudentLegalAcceptanceAttachment attachment) {
+        try {
+            StoredFile storedFile = storage.load(
+                    attachment.getStorageKey(),
+                    attachment.getContentType(),
+                    attachment.getFileSize()
+            );
+            byte[] content = storedFile.resource().getInputStream().readAllBytes();
+            BufferedImage image = ImageIO.read(new ByteArrayInputStream(content));
+            if (image == null) {
+                throw new IllegalArgumentException("Nao foi possivel interpretar a assinatura em imagem.");
+            }
+            return new AttachmentPreview(
+                    attachment.getOriginalFileName(),
+                    attachment.getContentType(),
+                    attachment.getCreatedAt(),
+                    image
+            );
+        } catch (IOException exception) {
+            throw new UncheckedIOException("Falha ao carregar a previa da assinatura do aceite legal.", exception);
+        }
+    }
+
     public record DownloadAttachmentResult(String fileName, StoredFile file) {
+    }
+
+    public record AttachmentPreview(
+            String originalFileName,
+            String contentType,
+            java.time.OffsetDateTime createdAt,
+            BufferedImage image
+    ) {
     }
 }

@@ -19,6 +19,7 @@ export function SignaturePad({ name, resetKey = 0 }: SignaturePadProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const lastPointRef = useRef<Point | null>(null);
   const drawingRef = useRef(false);
+  const dataUrlRef = useRef("");
   const [dataUrl, setDataUrl] = useState("");
   const [hasSignature, setHasSignature] = useState(false);
 
@@ -72,10 +73,14 @@ export function SignaturePad({ name, resetKey = 0 }: SignaturePadProps) {
   }
 
   useEffect(() => {
+    dataUrlRef.current = dataUrl;
+  }, [dataUrl]);
+
+  useEffect(() => {
     configureContext();
 
     const handleResize = () => {
-      const previousDataUrl = dataUrl;
+      const previousDataUrl = dataUrlRef.current;
       const context = configureContext();
       const canvas = canvasRef.current;
       if (!context || !canvas || !previousDataUrl) {
@@ -92,7 +97,7 @@ export function SignaturePad({ name, resetKey = 0 }: SignaturePadProps) {
 
     window.addEventListener("resize", handleResize);
     return () => window.removeEventListener("resize", handleResize);
-  }, [dataUrl]);
+  }, []);
 
   useEffect(() => {
     clearSignature();

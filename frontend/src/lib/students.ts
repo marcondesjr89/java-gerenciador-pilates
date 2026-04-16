@@ -1,6 +1,8 @@
 import type { SessionUser } from "@/lib/auth";
 import { fetchApiJson } from "@/lib/http";
 
+export type StudentStatus = "ACTIVE" | "INACTIVE";
+
 export type Student = {
   id: string;
   fullName: string;
@@ -8,10 +10,12 @@ export type Student = {
   email: string;
   phoneNumber: string;
   birthDate: string;
-  status: "ACTIVE" | "INACTIVE";
+  status: StudentStatus;
   lgpdConsent: boolean;
   createdAt: string;
 };
+
+export type StudentSummary = Pick<Student, "id" | "fullName" | "status">;
 
 export async function fetchStudents(session: SessionUser) {
   const students = await fetchApiJson<Student[]>(session, "/api/v1/students", {

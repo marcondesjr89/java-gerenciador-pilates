@@ -1,5 +1,6 @@
 import type { SessionUser } from "@/lib/auth";
 import { fetchApiJson } from "@/lib/http";
+import type { StudentSummary } from "@/lib/students";
 
 export type InstructorUser = {
   id: string;
@@ -7,11 +8,7 @@ export type InstructorUser = {
   specialties: string[];
 };
 
-export type StudentUser = {
-  id: string;
-  fullName: string;
-  status: string;
-};
+export type StudentUser = StudentSummary;
 
 export async function fetchInstructors(session: SessionUser) {
   return fetchApiJson<InstructorUser[]>(session, "/api/v1/users/instructors", {
@@ -20,7 +17,7 @@ export async function fetchInstructors(session: SessionUser) {
 }
 
 export async function fetchActiveStudents(session: SessionUser) {
-  const students = await fetchApiJson<StudentUser[]>(session, "/api/v1/students", {
+  const students = await fetchApiJson<StudentSummary[]>(session, "/api/v1/students", {
     errorMessage: "Nao foi possivel carregar os alunos."
   });
 

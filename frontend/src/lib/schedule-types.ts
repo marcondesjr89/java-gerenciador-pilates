@@ -10,6 +10,10 @@ export type ScheduleSlot = {
   availableSpots: number;
 };
 
+export type ScheduleSlotWindow = Pick<ScheduleSlot, "instructorName" | "requiredSpecialty" | "startTime" | "endTime">;
+export type ScheduleSlotAvailability = Pick<ScheduleSlot, "availableSpots">;
+export type ScheduleBookingStatus = "BOOKED" | "CANCELED";
+
 export type ScheduleBlock = {
   id: string;
   instructorUserId: string;
@@ -24,7 +28,7 @@ export type ScheduleBooking = {
   slotId: string;
   studentId: string;
   studentName: string;
-  status: string;
+  status: ScheduleBookingStatus;
 };
 
 export type ScheduleWaitlistEntry = {

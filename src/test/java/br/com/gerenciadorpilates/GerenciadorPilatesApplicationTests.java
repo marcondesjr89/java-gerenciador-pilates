@@ -40,6 +40,9 @@ import java.util.Map;
 import java.util.UUID;
 import org.springframework.mock.web.MockMultipartFile;
 import org.junit.jupiter.api.Test;
+import org.apache.pdfbox.Loader;
+import org.apache.pdfbox.pdmodel.PDDocument;
+import org.apache.pdfbox.text.PDFTextStripper;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -236,6 +239,21 @@ class GerenciadorPilatesApplicationTests {
                 acceptance.getDocumentHash(),
                 acceptance.getAcceptedAt().toInstant()
         )).substring(0, 16).toUpperCase();
+        MockMultipartFile tabletSignature = new MockMultipartFile(
+                "tabletSignatureFile",
+                "assinatura.png",
+                "image/png",
+                """
+                \u0089PNG\r\n\u001a\n\u0000\u0000\u0000\rIHDR\u0000\u0000\u0000\u0001\u0000\u0000\u0000\u0001\b\u0002\u0000\u0000\u0000\u0090wS\u00de\u0000\u0000\u0000\u000cIDATx\u009cc```\u0000\u0000\u0000\u0004\u0000\u0001\u000b\u00e7\u0002\u009d\u0000\u0000\u0000\u0000IEND\u00aeB`\u0082
+                """.getBytes(StandardCharsets.ISO_8859_1)
+        );
+
+        mockMvc.perform(multipart("/api/v1/students/{studentId}/legal-acceptances/{acceptanceId}/attachments",
+                                student.getId(), acceptance.getId())
+                        .file(tabletSignature)
+                        .header("Authorization", "Bearer " + token))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$[0].attachmentType").value("TABLET_SIGNATURE"));
 
         byte[] pdfBytes = mockMvc.perform(get("/api/v1/students/{studentId}/legal-acceptances/{acceptanceId}/document",
                                 student.getId(), acceptance.getId())
@@ -246,6 +264,11 @@ class GerenciadorPilatesApplicationTests {
                 .getContentAsByteArray();
 
         assertThat(new String(pdfBytes, 0, 4, StandardCharsets.US_ASCII)).isEqualTo("%PDF");
+        String pdfText = extractTextFromPdf(pdfBytes);
+        assertThat(pdfText).contains("Emitente institucional");
+        assertThat(pdfText).contains("Referencia formal do documento");
+        assertThat(pdfText).contains("Previa da assinatura coletada");
+        assertThat(pdfText).contains("Laura Documento");
 
         mockMvc.perform(get("/api/v1/public/legal-acceptances/{acceptanceId}/verification", acceptance.getId())
                         .param("code", verificationCode))
@@ -253,7 +276,11 @@ class GerenciadorPilatesApplicationTests {
                 .andExpect(jsonPath("$.verified").value(true))
                 .andExpect(jsonPath("$.studentName").value("Laura Documento"))
                 .andExpect(jsonPath("$.termsVersion").value("v2026.04"))
-                .andExpect(jsonPath("$.documentHash").value(acceptance.getDocumentHash()));
+                .andExpect(jsonPath("$.documentHash").value(acceptance.getDocumentHash()))
+                .andExpect(jsonPath("$.issuerName").value("Studio Pilates Exemplo Ltda"))
+                .andExpect(jsonPath("$.issuerDocument").value("12.345.678/0001-99"))
+                .andExpect(jsonPath("$.documentReference").value("ACEITE-V202604-" + acceptance.getId().toString().substring(0, 8).toUpperCase()))
+                .andExpect(jsonPath("$.verificationStatement").value("O documento consultado corresponde a um aceite formalizado e vinculado ao hash versionado armazenado no sistema."));
     }
 
     @Test
@@ -1212,6 +1239,14 @@ class GerenciadorPilatesApplicationTests {
             return HexFormat.of().formatHex(digest.digest(value.getBytes(StandardCharsets.UTF_8)));
         } catch (NoSuchAlgorithmException exception) {
             throw new IllegalStateException("SHA-256 indisponivel no ambiente atual.", exception);
+        }
+    }
+
+    private String extractTextFromPdf(byte[] content) {
+        try (PDDocument document = Loader.loadPDF(content)) {
+            return new PDFTextStripper().getText(document);
+        } catch (Exception exception) {
+            throw new IllegalStateException("Falha ao ler o PDF gerado no teste.", exception);
         }
     }
 }

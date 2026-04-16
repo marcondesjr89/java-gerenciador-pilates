@@ -2,6 +2,7 @@ package br.com.gerenciadorpilates.students.application;
 
 import br.com.gerenciadorpilates.platform.config.ApplicationProperties;
 import br.com.gerenciadorpilates.platform.domain.ResourceNotFoundException;
+import br.com.gerenciadorpilates.reporting.application.DmedProperties;
 import br.com.gerenciadorpilates.students.api.StudentLegalAcceptanceAttachmentResponse;
 import br.com.gerenciadorpilates.students.api.StudentLegalAcceptanceVerificationResponse;
 import br.com.gerenciadorpilates.students.domain.Student;
@@ -55,6 +56,7 @@ public class StudentLegalAcceptanceDocumentService {
     private final StudentLegalAcceptanceAttachmentService attachmentService;
     private final StudentLegalAcceptancePdfGenerator pdfGenerator;
     private final ApplicationProperties applicationProperties;
+    private final DmedProperties dmedProperties;
     private final StudentLegalAcceptanceDocumentProperties documentProperties;
 
     public StudentLegalAcceptanceDocumentService(
@@ -63,6 +65,7 @@ public class StudentLegalAcceptanceDocumentService {
             StudentLegalAcceptanceAttachmentService attachmentService,
             StudentLegalAcceptancePdfGenerator pdfGenerator,
             ApplicationProperties applicationProperties,
+            DmedProperties dmedProperties,
             StudentLegalAcceptanceDocumentProperties documentProperties
     ) {
         this.studentRepository = studentRepository;
@@ -70,6 +73,7 @@ public class StudentLegalAcceptanceDocumentService {
         this.attachmentService = attachmentService;
         this.pdfGenerator = pdfGenerator;
         this.applicationProperties = applicationProperties;
+        this.dmedProperties = dmedProperties;
         this.documentProperties = documentProperties;
     }
 
@@ -79,11 +83,14 @@ public class StudentLegalAcceptanceDocumentService {
                 .orElseThrow(() -> new ResourceNotFoundException("Aluno nao encontrado."));
         StudentLegalAcceptance acceptance = findAcceptance(studentId, acceptanceId);
         List<StudentLegalAcceptanceAttachmentResponse> attachments = attachmentService.listByAcceptance(studentId, acceptanceId);
+        var tabletSignaturePreview = attachmentService.loadTabletSignaturePreview(studentId, acceptanceId).orElse(null);
         String verificationCode = buildVerificationCode(acceptance);
         String verificationUrl = buildVerificationUrl(acceptanceId, verificationCode);
 
         byte[] pdfBytes = pdfGenerator.generate(new StudentLegalAcceptancePdfGenerator.DocumentData(
                 applicationProperties.name(),
+                defaultValue(dmedProperties.providerName(), applicationProperties.name()),
+                formatCnpj(dmedProperties.providerCnpj()),
                 student.getFullName(),
                 maskCpf(student.getCpf()),
                 acceptance.getTitle(),
@@ -105,7 +112,15 @@ public class StudentLegalAcceptanceDocumentService {
                         .map(this::describeAttachment)
                         .toList(),
                 acceptance.getTermBody(),
+                buildEvidenceStatement(acceptance, attachments),
+                tabletSignaturePreview == null ? null : tabletSignaturePreview.image(),
+                tabletSignaturePreview == null ? null : "Assinatura em tablet: %s (%s)".formatted(
+                        tabletSignaturePreview.originalFileName(),
+                        formatDateTime(tabletSignaturePreview.createdAt(), "data indisponivel")
+                ),
                 generateQrCodeImage(verificationUrl),
+                buildDocumentReference(acceptance),
+                buildVerificationStatement(acceptance),
                 buildFooterText(acceptance, student)
         ));
 
@@ -129,7 +144,11 @@ public class StudentLegalAcceptanceDocumentService {
                 acceptance,
                 student.getFullName(),
                 maskCpf(student.getCpf()),
+                defaultValue(dmedProperties.providerName(), applicationProperties.name()),
+                formatCnpj(dmedProperties.providerCnpj()),
                 expectedCode,
+                buildDocumentReference(acceptance),
+                buildVerificationStatement(acceptance),
                 expectedCode.equals(code)
         );
     }
@@ -145,7 +164,7 @@ public class StudentLegalAcceptanceDocumentService {
 
     private String buildVerificationUrl(UUID acceptanceId, String verificationCode) {
         return UriComponentsBuilder.fromUriString(documentProperties.verificationBaseUrl())
-                .pathSegment("api", "v1", "public", "legal-acceptances", acceptanceId.toString(), "verification")
+                .pathSegment("verificacao", "aceite", acceptanceId.toString())
                 .queryParam("code", verificationCode)
                 .build()
                 .toUriString();
@@ -191,6 +210,49 @@ public class StudentLegalAcceptanceDocumentService {
         );
     }
 
+    private String buildDocumentReference(StudentLegalAcceptance acceptance) {
+        return "ACEITE-%s-%s".formatted(
+                acceptance.getTermsVersion().toUpperCase(Locale.ROOT).replaceAll("[^A-Z0-9]", ""),
+                acceptance.getId().toString().substring(0, 8).toUpperCase(Locale.ROOT)
+        );
+    }
+
+    private String buildVerificationStatement(StudentLegalAcceptance acceptance) {
+        return acceptance.getStatus() == StudentLegalAcceptanceStatus.ACCEPTED
+                ? "O documento consultado corresponde a um aceite formalizado e vinculado ao hash versionado armazenado no sistema."
+                : "O documento consultado corresponde a um registro juridico existente, porem ainda pendente de formalizacao de assinatura."
+                ;
+    }
+
+    private String buildEvidenceStatement(
+            StudentLegalAcceptance acceptance,
+            List<StudentLegalAcceptanceAttachmentResponse> attachments
+    ) {
+        boolean hasTabletSignature = attachments.stream().anyMatch(item -> item.attachmentType().name().equals("TABLET_SIGNATURE"));
+        boolean hasPrintedTerm = attachments.stream().anyMatch(item -> item.attachmentType().name().equals("PRINTED_SIGNED_TERM"));
+
+        if (attachments.isEmpty()) {
+            return acceptance.getStatus() == StudentLegalAcceptanceStatus.ACCEPTED
+                    ? "O aceite foi marcado como formalizado sem anexo complementar vinculado a este registro."
+                    : "Ainda nao ha evidencia de assinatura anexada a este registro pendente."
+                    ;
+        }
+
+        if (hasTabletSignature && hasPrintedTerm) {
+            return "O registro possui evidencia digital de assinatura em tablet e tambem termo assinado em papel vinculado para suporte operacional.";
+        }
+
+        if (hasTabletSignature) {
+            return "O registro possui evidencia digital de assinatura em tablet vinculada ao aceite versionado.";
+        }
+
+        if (hasPrintedTerm) {
+            return "O registro possui termo assinado em papel anexado como evidencia complementar.";
+        }
+
+        return "O registro possui evidencias complementares vinculadas ao aceite.";
+    }
+
     private String describeCollectionMethod(StudentLegalAcceptance acceptance) {
         if (acceptance.getCollectionMethod() == null) {
             return acceptance.getStatus() == StudentLegalAcceptanceStatus.ACCEPTED
@@ -212,6 +274,23 @@ public class StudentLegalAcceptanceDocumentService {
             return "***";
         }
         return "***.%s.%s-**".formatted(cpf.substring(3, 6), cpf.substring(6, 9));
+    }
+
+    private String formatCnpj(String cnpj) {
+        if (cnpj == null) {
+            return "Nao informado";
+        }
+        String digits = cnpj.replaceAll("\\D", "");
+        if (digits.length() != 14) {
+            return cnpj;
+        }
+        return "%s.%s.%s/%s-%s".formatted(
+                digits.substring(0, 2),
+                digits.substring(2, 5),
+                digits.substring(5, 8),
+                digits.substring(8, 12),
+                digits.substring(12, 14)
+        );
     }
 
     private String defaultValue(String value, String fallback) {

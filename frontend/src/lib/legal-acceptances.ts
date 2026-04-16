@@ -1,3 +1,4 @@
+import { API_BASE_URL } from "@/lib/api";
 import type { SessionUser } from "@/lib/auth";
 import { fetchApiJson } from "@/lib/http";
 
@@ -38,8 +39,47 @@ export type StudentLegalAcceptanceAttachment = {
   createdAt: string;
 };
 
+export type StudentLegalAcceptanceVerification = {
+  acceptanceId: string;
+  studentId: string;
+  studentName: string;
+  studentCpfMasked: string;
+  issuerName: string;
+  issuerDocument: string;
+  termType: StudentLegalAcceptance["termType"];
+  title: string;
+  termsVersion: string;
+  legalBasis: string | null;
+  documentHash: string;
+  status: StudentLegalAcceptance["status"];
+  collectionMethod: StudentLegalAcceptance["collectionMethod"];
+  acceptedAt: string | null;
+  createdAt: string;
+  capturedByUserName: string | null;
+  verificationCode: string;
+  documentReference: string;
+  verificationStatement: string;
+  verified: boolean;
+};
+
 export async function fetchStudentLegalAcceptances(session: SessionUser, studentId: string) {
   return fetchApiJson<StudentLegalAcceptance[]>(session, `/api/v1/students/${studentId}/legal-acceptances`, {
     errorMessage: "Nao foi possivel carregar os termos legais do aluno."
   });
+}
+
+export async function fetchStudentLegalAcceptanceVerification(acceptanceId: string, code: string) {
+  const searchParams = new URLSearchParams({ code });
+  const response = await fetch(
+    `${API_BASE_URL}/api/v1/public/legal-acceptances/${acceptanceId}/verification?${searchParams.toString()}`,
+    {
+      cache: "no-store"
+    }
+  );
+
+  if (!response.ok) {
+    throw new Error("Nao foi possivel validar o QR Code do aceite legal.");
+  }
+
+  return response.json() as Promise<StudentLegalAcceptanceVerification>;
 }
