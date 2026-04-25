@@ -1,0 +1,111 @@
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { beforeEach, describe, expect, it, vi } from "vitest";
+import { BookSlotButton } from "@/app/portal/book-slot-button";
+import { CancelBookingButton } from "@/app/portal/cancel-booking-button";
+import { JoinWaitlistButton } from "@/app/portal/join-waitlist-button";
+import { RescheduleBookingPanel } from "@/app/portal/reschedule-booking-panel";
+
+const refreshMock = vi.fn();
+
+vi.mock("next/navigation", () => ({
+  useRouter: () => ({
+    refresh: refreshMock
+  })
+}));
+
+describe("portal actions", () => {
+  beforeEach(() => {
+    refreshMock.mockReset();
+    global.fetch = vi.fn();
+  });
+
+  it("mostra erro ao falhar a reserva de horario", async () => {
+    vi.mocked(global.fetch).mockResolvedValue(
+      new Response(JSON.stringify({ message: "Horario indisponivel." }), {
+        status: 409,
+        headers: { "Content-Type": "application/json" }
+      })
+    );
+
+    render(<BookSlotButton slotId="slot-1" />);
+    fireEvent.click(screen.getByRole("button", { name: "Reservar horario" }));
+
+    expect(await screen.findByText("Horario indisponivel.")).toBeInTheDocument();
+    expect(refreshMock).not.toHaveBeenCalled();
+  });
+
+  it("atualiza a tela ao cancelar reserva com sucesso", async () => {
+    vi.mocked(global.fetch).mockResolvedValue(new Response(null, { status: 200 }));
+
+    render(<CancelBookingButton bookingId="booking-1" />);
+    fireEvent.click(screen.getByRole("button", { name: "Cancelar reserva" }));
+
+    await waitFor(() => {
+      expect(global.fetch).toHaveBeenCalledWith("/api/student-portal/bookings/booking-1/cancel", {
+        method: "POST"
+      });
+      expect(refreshMock).toHaveBeenCalled();
+    });
+  });
+
+  it("atualiza a tela ao entrar na lista de espera", async () => {
+    vi.mocked(global.fetch).mockResolvedValue(new Response(null, { status: 200 }));
+
+    render(<JoinWaitlistButton slotId="slot-9" />);
+    fireEvent.click(screen.getByRole("button", { name: "Entrar na espera" }));
+
+    await waitFor(() => {
+      expect(global.fetch).toHaveBeenCalledWith("/api/student-portal/schedule-slots/slot-9/waitlist", {
+        method: "POST"
+      });
+      expect(refreshMock).toHaveBeenCalled();
+    });
+  });
+
+  it("carrega opcoes e envia remarcacao do portal", async () => {
+    vi.mocked(global.fetch)
+      .mockResolvedValueOnce(
+        new Response(
+          JSON.stringify([
+            {
+              slotId: "slot-2",
+              instructorName: "Instrutor Teste",
+              requiredSpecialty: "PILATES_SOLO",
+              startTime: "2026-04-20T10:00:00Z",
+              endTime: "2026-04-20T11:00:00Z",
+              availableSpots: 1
+            }
+          ]),
+          {
+            status: 200,
+            headers: { "Content-Type": "application/json" }
+          }
+        )
+      )
+      .mockResolvedValueOnce(new Response(null, { status: 200 }));
+
+    render(<RescheduleBookingPanel bookingId="booking-1" initialDate="2026-04-20" />);
+
+    fireEvent.click(screen.getByRole("button", { name: "Buscar horarios" }));
+    expect(await screen.findByText("Horario de destino")).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "Confirmar remarcacao" }));
+
+    await waitFor(() => {
+      expect(global.fetch).toHaveBeenNthCalledWith(
+        2,
+        "/api/student-portal/bookings/booking-1/reschedule",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify({ targetSlotId: "slot-2" })
+        }
+      );
+    });
+
+    expect(await screen.findByText("Reserva remarcada com sucesso.")).toBeInTheDocument();
+    expect(refreshMock).toHaveBeenCalled();
+  });
+});

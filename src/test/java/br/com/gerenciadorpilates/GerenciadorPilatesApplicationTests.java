@@ -1,6 +1,7 @@
 package br.com.gerenciadorpilates;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.hamcrest.Matchers.containsString;
 import static org.springframework.http.MediaType.APPLICATION_JSON;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.multipart;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -259,6 +260,12 @@ class GerenciadorPilatesApplicationTests {
                                 student.getId(), acceptance.getId())
                         .header("Authorization", "Bearer " + token))
                 .andExpect(status().isOk())
+                .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.header()
+                        .string("Content-Type", "application/pdf"))
+                .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.header()
+                        .string("Content-Disposition", containsString("attachment;")))
+                .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.header()
+                        .string("Content-Disposition", containsString("aceite-legal-v2026.04-" + acceptance.getId() + ".pdf")))
                 .andReturn()
                 .getResponse()
                 .getContentAsByteArray();
@@ -281,6 +288,13 @@ class GerenciadorPilatesApplicationTests {
                 .andExpect(jsonPath("$.issuerDocument").value("12.345.678/0001-99"))
                 .andExpect(jsonPath("$.documentReference").value("ACEITE-V202604-" + acceptance.getId().toString().substring(0, 8).toUpperCase()))
                 .andExpect(jsonPath("$.verificationStatement").value("O documento consultado corresponde a um aceite formalizado e vinculado ao hash versionado armazenado no sistema."));
+
+        mockMvc.perform(get("/api/v1/public/legal-acceptances/{acceptanceId}/verification", acceptance.getId())
+                        .param("code", "CODIGOINVALIDO123"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.verified").value(false))
+                .andExpect(jsonPath("$.verificationCode").value(verificationCode))
+                .andExpect(jsonPath("$.documentReference").value("ACEITE-V202604-" + acceptance.getId().toString().substring(0, 8).toUpperCase()));
     }
 
     @Test

@@ -4,6 +4,10 @@ import { useEffect, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { FileSignature, LoaderCircle } from "lucide-react";
 import { SignaturePad } from "@/app/alunos/signature-pad";
+import {
+  buildLegalAcceptanceRequestPayload,
+  resolveLegalAcceptanceAttachments
+} from "@/app/alunos/legal-acceptance-form-logic";
 import { readActionErrorMessage } from "@/lib/action-responses";
 
 type LegalAcceptanceFormProps = {
@@ -82,40 +86,22 @@ export function LegalAcceptanceForm({ studentId, studentName }: LegalAcceptanceF
           setErrorMessage("");
           setSuccessMessage("");
 
-          const status = String(formData.get("status") ?? "PENDING_SIGNATURE");
-          const collectionMethodValue = String(formData.get("collectionMethod") ?? "").trim();
-          const requestPayload = {
-            termType: String(formData.get("termType") ?? "LGPD_DATA_PROCESSING"),
-            title: String(formData.get("title") ?? "").trim(),
-            termsVersion: String(formData.get("termsVersion") ?? "").trim(),
-            legalBasis: String(formData.get("legalBasis") ?? "").trim(),
-            termBody: String(formData.get("termBody") ?? "").trim(),
-            status,
-            collectionMethod: status === "ACCEPTED" ? collectionMethodValue || null : null,
-            evidenceNote: String(formData.get("evidenceNote") ?? "").trim()
-          };
+          const requestPayload = buildLegalAcceptanceRequestPayload(formData);
+          const attachments = resolveLegalAcceptanceAttachments(formData);
+          if (attachments.errorMessage) {
+            setErrorMessage(attachments.errorMessage);
+            return;
+          }
 
           const body = new FormData();
           body.set("request", new Blob([JSON.stringify(requestPayload)], { type: "application/json" }));
 
-          if (status === "ACCEPTED" && collectionMethodValue === "TABLET_SIGNATURE") {
-            const signatureDataUrl = String(formData.get("tabletSignatureDataUrl") ?? "").trim();
-            if (!signatureDataUrl) {
-              setErrorMessage("Colete a assinatura no tablet antes de concluir o aceite.");
-              return;
-            }
-
-            body.set("tabletSignatureFile", await dataUrlToFile(signatureDataUrl, "assinatura-tablet.png"));
+          if (attachments.tabletSignatureDataUrl) {
+            body.set("tabletSignatureFile", await dataUrlToFile(attachments.tabletSignatureDataUrl, "assinatura-tablet.png"));
           }
 
-          if (status === "ACCEPTED" && collectionMethodValue === "PRINTED_SIGNATURE") {
-            const printedTermFile = formData.get("printedTermFile");
-            if (!(printedTermFile instanceof File) || printedTermFile.size === 0) {
-              setErrorMessage("Anexe o termo assinado em papel para concluir o aceite.");
-              return;
-            }
-
-            body.set("printedTermFile", printedTermFile);
+          if (attachments.printedTermFile) {
+            body.set("printedTermFile", attachments.printedTermFile);
           }
 
           const response = await fetch(`/api/students/${studentId}/legal-acceptances`, {

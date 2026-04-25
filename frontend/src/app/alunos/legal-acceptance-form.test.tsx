@@ -11,7 +11,9 @@ vi.mock("next/navigation", () => ({
 }));
 
 vi.mock("@/app/alunos/signature-pad", () => ({
-  SignaturePad: ({ name }: { name: string }) => <input type="hidden" name={name} value="" readOnly />
+  SignaturePad: ({ name }: { name: string }) => (
+    <input type="hidden" name={name} value="data:image/png;base64,signature" readOnly />
+  )
 }));
 
 describe("LegalAcceptanceForm", () => {

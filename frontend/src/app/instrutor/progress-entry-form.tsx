@@ -4,7 +4,7 @@ import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { ClipboardPen, LoaderCircle } from "lucide-react";
 import { readActionErrorMessage, type ResourceIdResponse } from "@/lib/action-responses";
-import type { CreateStudentProgressEntryPayload } from "@/lib/clinical";
+import { buildProgressEntryPayload, getOptionalProgressEntryAttachment } from "@/app/instrutor/progress-entry-form-logic";
 
 type ProgressEntryFormProps = {
   studentId: string;
@@ -30,14 +30,7 @@ export function ProgressEntryForm({ studentId }: ProgressEntryFormProps) {
           setErrorMessage("");
           setSuccessMessage("");
 
-          const recordedAtValue = String(formData.get("recordedAt") ?? "");
-          const payload: CreateStudentProgressEntryPayload = {
-            recordedAt: new Date(recordedAtValue).toISOString(),
-            instructorNotes: String(formData.get("instructorNotes") ?? "").trim(),
-            flexibilityScore: Number(formData.get("flexibilityScore") ?? 0),
-            strengthScore: Number(formData.get("strengthScore") ?? 0),
-            painLevel: Number(formData.get("painLevel") ?? 0)
-          };
+          const payload = buildProgressEntryPayload(formData);
           const response = await fetch(`/api/students/${studentId}/progress-entries`, {
             method: "POST",
             headers: {
@@ -52,9 +45,9 @@ export function ProgressEntryForm({ studentId }: ProgressEntryFormProps) {
           }
 
           const progressEntry = (await response.json()) as ResourceIdResponse;
-          const attachment = formData.get("attachment");
+          const attachment = getOptionalProgressEntryAttachment(formData);
 
-          if (attachment instanceof File && attachment.size > 0) {
+          if (attachment) {
             const attachmentFormData = new FormData();
             attachmentFormData.set("file", attachment);
 
