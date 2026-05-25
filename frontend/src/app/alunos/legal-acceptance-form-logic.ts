@@ -50,6 +50,21 @@ export function isLegalTermType(value: string): value is LegalTermType {
   return LEGAL_TERM_TYPES.includes(value as LegalTermType);
 }
 
+export function getLegalTermTypeLabel(termType: LegalTermType) {
+  switch (termType) {
+    case "LGPD_DATA_PROCESSING":
+      return "tratamento de dados pessoais e sensiveis";
+    case "WHATSAPP_COMMUNICATION":
+      return "comunicacao operacional por WhatsApp";
+    case "CLINICAL_RECORD_SHARING":
+      return "compartilhamento clinico controlado";
+    case "EVOLUTION_IMAGE_CAPTURE":
+      return "captura de imagem para evolucao clinica";
+    default:
+      return termType;
+  }
+}
+
 export function normalizeCoveredTermTypes(values: string[]) {
   const uniqueValues = Array.from(new Set(values.map((value) => value.trim()).filter(isLegalTermType)));
   return uniqueValues.length > 0 ? uniqueValues : [DEFAULT_TERM_TYPE];
@@ -80,10 +95,14 @@ export function buildLegalAcceptanceDraft(coveredTermTypes: LegalTermType[]) {
     coveredTermTypes: normalizedTypes,
     title: "Termo consolidado de consentimentos e autorizacoes do aluno",
     termsVersion: maxVersion,
-    legalBasis: selectedTemplates.map((template) => template.legalBasis).join(" | "),
+    legalBasis: `Aceite consolidado para ${normalizedTypes.map((termType) => getLegalTermTypeLabel(termType)).join(", ")}.`,
     termBody: [
-      "Autorizo o Studio Gerenciador Pilates a registrar, em uma unica coleta de aceite, os consentimentos e autorizacoes abaixo:",
-      ...selectedTemplates.map((template, index) => `${index + 1}. ${template.termBody}`)
+      "Declaro que li, compreendi e concordo, em uma unica coleta de aceite, com os consentimentos e autorizacoes abaixo relacionados para meu atendimento no Studio Gerenciador Pilates.",
+      "Os itens selecionados neste registro passam a compor um unico documento versionado, vinculado ao meu cadastro e sujeito a validacao posterior pelo hash e pelo QR Code do comprovante consolidado.",
+      ...selectedTemplates.map(
+        (template, index) =>
+          `${index + 1}. ${template.title}: ${template.termBody}`
+      )
     ].join("\n\n")
   };
 }

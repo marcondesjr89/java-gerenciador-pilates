@@ -46,8 +46,10 @@ describe("legal acceptance form logic", () => {
     expect(draft.primaryTermType).toBe("LGPD_DATA_PROCESSING");
     expect(draft.coveredTermTypes).toEqual(["LGPD_DATA_PROCESSING", "WHATSAPP_COMMUNICATION"]);
     expect(draft.title).toBe("Termo consolidado de consentimentos e autorizacoes do aluno");
-    expect(draft.termBody).toContain("1. Autorizo o Studio Gerenciador Pilates a coletar");
-    expect(draft.termBody).toContain("2. Autorizo o Studio Gerenciador Pilates a utilizar meu numero");
+    expect(draft.legalBasis).toContain("Aceite consolidado");
+    expect(draft.termBody).toContain("Declaro que li, compreendi e concordo");
+    expect(draft.termBody).toContain("1. Termo de consentimento para tratamento de dados pessoais:");
+    expect(draft.termBody).toContain("2. Termo de consentimento para comunicacao por WhatsApp:");
   });
 
   it("exige assinatura em tablet quando o aceite for concluido por tablet", () => {

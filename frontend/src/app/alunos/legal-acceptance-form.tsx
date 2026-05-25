@@ -7,6 +7,7 @@ import { SignaturePad } from "@/app/alunos/signature-pad";
 import {
   buildLegalAcceptanceDraft,
   buildLegalAcceptanceRequestPayload,
+  getLegalTermTypeLabel,
   type LegalTermType,
   resolveLegalAcceptanceAttachments
 } from "@/app/alunos/legal-acceptance-form-logic";
@@ -176,6 +177,20 @@ export function LegalAcceptanceForm({ studentId, studentName }: LegalAcceptanceF
           <p className="text-xs text-brand-subtext">
             Ao selecionar mais de um item, o sistema monta automaticamente um texto consolidado para uma unica assinatura.
           </p>
+          <div className="rounded-2xl border border-brand-line bg-brand-panel px-4 py-3">
+            <p className="text-xs uppercase tracking-[0.18em] text-brand-subtext">Resumo da coleta</p>
+            <p className="mt-2 text-sm font-semibold text-brand-secondary">
+              {coveredTermTypes.length === 1
+                ? "Coleta individual"
+                : `Coleta consolidada com ${coveredTermTypes.length} termos`}
+            </p>
+            <p className="mt-2 text-sm leading-6 text-brand-subtext">
+              {coveredTermTypes
+                .map((termType) => getLegalTermTypeLabel(termType))
+                .join(", ")}
+              .
+            </p>
+          </div>
         </fieldset>
 
         <input type="hidden" name="termType" value={coveredTermTypes[0]} readOnly />

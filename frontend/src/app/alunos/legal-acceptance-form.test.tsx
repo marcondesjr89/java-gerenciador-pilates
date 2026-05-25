@@ -50,9 +50,11 @@ describe("LegalAcceptanceForm", () => {
     expect(screen.getByLabelText("Titulo do documento")).toHaveValue(
       "Termo consolidado de consentimentos e autorizacoes do aluno"
     );
+    expect(screen.getByText("Coleta consolidada com 2 termos")).toBeInTheDocument();
     const termBody = (screen.getByLabelText("Texto exibido ao aluno") as HTMLTextAreaElement).value;
-    expect(termBody).toContain("1. Autorizo o Studio Gerenciador Pilates a coletar");
-    expect(termBody).toContain("2. Autorizo o Studio Gerenciador Pilates a utilizar meu numero");
+    expect(termBody).toContain("Declaro que li, compreendi e concordo");
+    expect(termBody).toContain("1. Termo de consentimento para tratamento de dados pessoais:");
+    expect(termBody).toContain("2. Termo de consentimento para comunicacao por WhatsApp:");
   });
 
   it("exibe upload do termo em papel quando o metodo de coleta muda", () => {
