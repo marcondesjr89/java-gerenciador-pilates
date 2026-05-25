@@ -48,29 +48,29 @@ export function PortalLoginForm({ initialError }: PortalLoginFormProps) {
       }}
     >
       <label className="block">
-        <span className="mb-2 block text-sm text-white/74">E-mail</span>
+        <span className="mb-2 block text-sm text-brand-subtext">E-mail</span>
         <input
           name="email"
           type="email"
           placeholder="aluno@exemplo.com"
-          className="w-full rounded-2xl border border-white/15 bg-white/8 px-4 py-3 text-white outline-none transition focus:border-white/50 focus:bg-white/12"
+          className="w-full rounded-2xl border border-brand-line bg-brand-panel px-4 py-3 text-brand-ink outline-none transition placeholder:text-brand-subtext/70 focus:border-brand-primary focus:bg-brand-surface"
           required
         />
       </label>
 
       <label className="block">
-        <span className="mb-2 block text-sm text-white/74">Senha</span>
+        <span className="mb-2 block text-sm text-brand-subtext">Senha</span>
         <input
           name="password"
           type="password"
           placeholder="********"
-          className="w-full rounded-2xl border border-white/15 bg-white/8 px-4 py-3 text-white outline-none transition focus:border-white/50 focus:bg-white/12"
+          className="w-full rounded-2xl border border-brand-line bg-brand-panel px-4 py-3 text-brand-ink outline-none transition placeholder:text-brand-subtext/70 focus:border-brand-primary focus:bg-brand-surface"
           required
         />
       </label>
 
       {errorMessage ? (
-        <div className="rounded-2xl border border-white/18 bg-white/10 px-4 py-3 text-sm text-white/88">
+        <div className="rounded-2xl border border-brand-line bg-brand-soft px-4 py-3 text-sm text-brand-secondary">
           {errorMessage}
         </div>
       ) : null}

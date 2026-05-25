@@ -221,7 +221,7 @@ export function StudentProfile({
                       href={`/api/students/${student.id}/legal-acceptances/${acceptance.id}/document/download`}
                       target="_blank"
                       rel="noreferrer"
-                      className="inline-flex items-center gap-2 rounded-full bg-brand-secondary px-3 py-2 text-xs font-semibold text-white transition hover:bg-brand-primary"
+                      className="inline-flex items-center gap-2 rounded-full border border-brand-line bg-brand-soft px-3 py-2 text-xs font-semibold text-brand-secondary transition hover:border-brand-primary hover:bg-brand-primary hover:text-white"
                     >
                       <FileDown className="h-3.5 w-3.5" />
                       Baixar PDF consolidado
