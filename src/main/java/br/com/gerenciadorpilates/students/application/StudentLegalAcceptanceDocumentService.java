@@ -94,6 +94,7 @@ public class StudentLegalAcceptanceDocumentService {
                 student.getFullName(),
                 maskCpf(student.getCpf()),
                 acceptance.getTitle(),
+                describeCoverageMode(acceptance),
                 describeCoveredTermTypes(acceptance),
                 acceptance.getTermsVersion(),
                 acceptance.getStatus(),
@@ -218,10 +219,14 @@ public class StudentLegalAcceptanceDocumentService {
     }
 
     private String buildVerificationStatement(StudentLegalAcceptance acceptance) {
+        boolean consolidatedAcceptance = acceptance.getCoveredTermTypes().size() > 1;
         return acceptance.getStatus() == StudentLegalAcceptanceStatus.ACCEPTED
-                ? "O documento consultado corresponde a um aceite formalizado e vinculado ao hash versionado armazenado no sistema."
-                : "O documento consultado corresponde a um registro juridico existente, porem ainda pendente de formalizacao de assinatura."
-                ;
+                ? consolidatedAcceptance
+                        ? "O documento consultado corresponde a um aceite consolidado, formalizado em coleta unica e vinculado ao hash versionado armazenado no sistema."
+                        : "O documento consultado corresponde a um aceite formalizado e vinculado ao hash versionado armazenado no sistema."
+                : consolidatedAcceptance
+                        ? "O documento consultado corresponde a um registro juridico consolidado existente, porem ainda pendente de formalizacao de assinatura."
+                        : "O documento consultado corresponde a um registro juridico existente, porem ainda pendente de formalizacao de assinatura.";
     }
 
     private String buildEvidenceStatement(
@@ -267,6 +272,12 @@ public class StudentLegalAcceptanceDocumentService {
                 .map(termType -> TERM_TYPE_LABELS.getOrDefault(termType, termType.name()))
                 .reduce((left, right) -> left + ", " + right)
                 .orElse(TERM_TYPE_LABELS.getOrDefault(acceptance.getTermType(), acceptance.getTermType().name()));
+    }
+
+    private String describeCoverageMode(StudentLegalAcceptance acceptance) {
+        return acceptance.getCoveredTermTypes().size() > 1
+                ? "Aceite consolidado em coleta unica"
+                : "Aceite individual";
     }
 
     private String formatDateTime(OffsetDateTime value, String defaultValue) {

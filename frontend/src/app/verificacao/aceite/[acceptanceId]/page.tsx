@@ -81,6 +81,12 @@ export default async function LegalAcceptanceVerificationPage({
                 rows={[
                   ["Titulo", verification.title],
                   [
+                    "Abrangencia",
+                    verification.coveredTermTypes.length > 1
+                      ? "Aceite consolidado em coleta unica"
+                      : "Aceite individual"
+                  ],
+                  [
                     verification.coveredTermTypes.length > 1 ? "Tipos cobertos" : "Tipo",
                     verification.coveredTermTypes.length > 1
                       ? formatLegalTermTypes(verification.coveredTermTypes)
@@ -137,6 +143,12 @@ export default async function LegalAcceptanceVerificationPage({
                         ? verification.verificationStatement
                         : "O registro existe, mas o codigo informado nao coincide com o identificador esperado para esta versao do termo. O documento apresentado deve ser tratado como divergente ate revisao operacional."}
                     </p>
+                    {verification.coveredTermTypes.length > 1 ? (
+                      <p className="mt-3 text-sm leading-6 text-brand-subtext">
+                        Esta validacao cobre, em um unico documento, os seguintes consentimentos:{" "}
+                        {formatLegalTermTypes(verification.coveredTermTypes)}.
+                      </p>
+                    ) : null}
                   </div>
                 </div>
               </div>

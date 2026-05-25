@@ -61,7 +61,9 @@ describe("LegalAcceptanceVerificationPage", () => {
     expect(screen.getByText("Registro verificado")).toBeInTheDocument();
     expect(screen.getByText("Studio Pilates Exemplo Ltda")).toBeInTheDocument();
     expect(screen.getByText("12.345.678/0001-99")).toBeInTheDocument();
+    expect(screen.getByText("Aceite consolidado em coleta unica")).toBeInTheDocument();
     expect(screen.getByText("Tratamento de dados LGPD, Comunicacao por WhatsApp")).toBeInTheDocument();
+    expect(screen.getByText(/Esta validacao cobre, em um unico documento/)).toBeInTheDocument();
     expect(screen.getAllByText("ACEITE-V202604-ABC12345")).toHaveLength(2);
     expect(screen.getAllByText("Documento consistente com o registro juridico.")).toHaveLength(2);
   });

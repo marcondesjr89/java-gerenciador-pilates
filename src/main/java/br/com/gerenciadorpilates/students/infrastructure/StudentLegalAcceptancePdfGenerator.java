@@ -58,6 +58,7 @@ public class StudentLegalAcceptancePdfGenerator {
             canvas.writePair("Aluno", data.studentName());
             canvas.writePair("CPF", data.studentCpfMasked());
             canvas.writePair("Termo", data.title());
+            canvas.writePair("Abrangencia", data.coverageModeLabel());
             canvas.writePair("Tipo", data.termTypeLabel());
             canvas.writePair("Versao", data.termsVersion());
             canvas.writePair("Status", data.status() == StudentLegalAcceptanceStatus.ACCEPTED ? "Aceito" : "Pendente de assinatura");
@@ -101,6 +102,7 @@ public class StudentLegalAcceptancePdfGenerator {
             String studentName,
             String studentCpfMasked,
             String title,
+            String coverageModeLabel,
             String termTypeLabel,
             String termsVersion,
             StudentLegalAcceptanceStatus status,

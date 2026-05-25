@@ -279,6 +279,7 @@ class GerenciadorPilatesApplicationTests {
         assertThat(pdfText).contains("Emitente institucional");
         assertThat(pdfText).contains("Referencia formal do documento");
         assertThat(pdfText).contains("Previa da assinatura coletada");
+        assertThat(pdfText).contains("Abrangencia: Aceite consolidado em coleta unica");
         assertThat(pdfText).contains("Laura Documento");
 
         mockMvc.perform(get("/api/v1/public/legal-acceptances/{acceptanceId}/verification", acceptance.getId())
@@ -293,7 +294,7 @@ class GerenciadorPilatesApplicationTests {
                 .andExpect(jsonPath("$.issuerName").value("Studio Pilates Exemplo Ltda"))
                 .andExpect(jsonPath("$.issuerDocument").value("12.345.678/0001-99"))
                 .andExpect(jsonPath("$.documentReference").value("ACEITE-V202604-" + acceptance.getId().toString().substring(0, 8).toUpperCase()))
-                .andExpect(jsonPath("$.verificationStatement").value("O documento consultado corresponde a um aceite formalizado e vinculado ao hash versionado armazenado no sistema."));
+                .andExpect(jsonPath("$.verificationStatement").value("O documento consultado corresponde a um aceite consolidado, formalizado em coleta unica e vinculado ao hash versionado armazenado no sistema."));
 
         mockMvc.perform(get("/api/v1/public/legal-acceptances/{acceptanceId}/verification", acceptance.getId())
                         .param("code", "CODIGOINVALIDO123"))
