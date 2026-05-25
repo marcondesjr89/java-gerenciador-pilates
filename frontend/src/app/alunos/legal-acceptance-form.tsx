@@ -26,6 +26,24 @@ const TERM_OPTIONS: Array<{ value: LegalTermType; label: string }> = [
   { value: "EVOLUTION_IMAGE_CAPTURE", label: "Imagem para evolucao clinica" }
 ];
 
+const TERM_PRESETS: Array<{ label: string; helper: string; values: LegalTermType[] }> = [
+  {
+    label: "Cadastro basico",
+    helper: "LGPD para abertura da ficha do aluno.",
+    values: ["LGPD_DATA_PROCESSING"]
+  },
+  {
+    label: "Cadastro com WhatsApp",
+    helper: "LGPD com comunicacao operacional do dia a dia.",
+    values: ["LGPD_DATA_PROCESSING", "WHATSAPP_COMMUNICATION"]
+  },
+  {
+    label: "Pacote clinico completo",
+    helper: "LGPD, compartilhamento clinico e imagem de evolucao.",
+    values: ["LGPD_DATA_PROCESSING", "CLINICAL_RECORD_SHARING", "EVOLUTION_IMAGE_CAPTURE"]
+  }
+];
+
 export function LegalAcceptanceForm({ studentId, studentName }: LegalAcceptanceFormProps) {
   const router = useRouter();
   const formRef = useRef<HTMLFormElement>(null);
@@ -129,6 +147,23 @@ export function LegalAcceptanceForm({ studentId, studentName }: LegalAcceptanceF
 
       <div className="grid gap-4">
         <fieldset className="space-y-3">
+          <div className="space-y-2">
+            <p className="text-xs uppercase tracking-[0.18em] text-brand-subtext">Presets operacionais</p>
+            <div className="grid gap-2 md:grid-cols-3">
+              {TERM_PRESETS.map((preset) => (
+                <button
+                  key={preset.label}
+                  type="button"
+                  onClick={() => applyCoveredTermTypes(preset.values)}
+                  className="rounded-2xl border border-brand-line bg-brand-panel px-4 py-3 text-left transition hover:border-brand-primary hover:bg-brand-soft"
+                >
+                  <span className="block text-sm font-semibold text-brand-secondary">{preset.label}</span>
+                  <span className="mt-1 block text-xs leading-5 text-brand-subtext">{preset.helper}</span>
+                </button>
+              ))}
+            </div>
+          </div>
+
           <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
             <legend className="text-sm font-semibold text-brand-secondary">Tipos do termo</legend>
             <div className="flex flex-wrap gap-2">

@@ -60,6 +60,18 @@ describe("LegalAcceptanceForm", () => {
     expect(termBody).toContain("2. Termo de consentimento para comunicacao por WhatsApp");
   });
 
+  it("aplica o preset clinico completo com menos cliques", () => {
+    render(<LegalAcceptanceForm studentId="student-1" studentName="Aluno Teste" />);
+
+    fireEvent.click(screen.getByText("Pacote clinico completo"));
+
+    expect(screen.getByText("Coleta consolidada com 3 termos")).toBeInTheDocument();
+    const termBody = (screen.getByLabelText("Texto exibido ao aluno") as HTMLTextAreaElement).value;
+    expect(termBody).toContain("Termo de consentimento para tratamento de dados pessoais");
+    expect(termBody).toContain("Termo de consentimento para compartilhamento clinico");
+    expect(termBody).toContain("Termo de consentimento para captura de imagem de evolucao");
+  });
+
   it("exibe upload do termo em papel quando o metodo de coleta muda", () => {
     render(<LegalAcceptanceForm studentId="student-1" studentName="Aluno Teste" />);
 
