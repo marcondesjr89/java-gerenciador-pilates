@@ -48,8 +48,11 @@ describe("legal acceptance form logic", () => {
     expect(draft.title).toBe("Termo consolidado de consentimentos e autorizacoes do aluno");
     expect(draft.legalBasis).toContain("Aceite consolidado");
     expect(draft.termBody).toContain("Declaro que li, compreendi e concordo");
-    expect(draft.termBody).toContain("1. Termo de consentimento para tratamento de dados pessoais:");
-    expect(draft.termBody).toContain("2. Termo de consentimento para comunicacao por WhatsApp:");
+    expect(draft.termBody).toContain("O metodo de coleta registrado neste fluxo funciona como evidencia operacional");
+    expect(draft.termBody).toContain("1. Termo de consentimento para tratamento de dados pessoais");
+    expect(draft.termBody).toContain("Natureza juridica: Consentimento para tratamento de dados pessoais e sensiveis.");
+    expect(draft.termBody).toContain("2. Termo de consentimento para comunicacao por WhatsApp");
+    expect(draft.termBody).toContain("Natureza juridica: Consentimento para comunicacao operacional.");
   });
 
   it("exige assinatura em tablet quando o aceite for concluido por tablet", () => {

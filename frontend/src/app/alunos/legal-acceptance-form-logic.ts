@@ -1,6 +1,7 @@
 export const TERM_TEMPLATES = {
   LGPD_DATA_PROCESSING: {
     title: "Termo de consentimento para tratamento de dados pessoais",
+    legalNature: "Consentimento para tratamento de dados pessoais e sensiveis",
     termsVersion: "v1.0-abr-2026",
     legalBasis: "Consentimento do titular para tratamento de dados pessoais e sensiveis no contexto assistencial.",
     termBody:
@@ -8,6 +9,7 @@ export const TERM_TEMPLATES = {
   },
   WHATSAPP_COMMUNICATION: {
     title: "Termo de consentimento para comunicacao por WhatsApp",
+    legalNature: "Consentimento para comunicacao operacional",
     termsVersion: "v1.0-abr-2026",
     legalBasis: "Consentimento do titular para envio de comunicacoes operacionais e lembretes por WhatsApp.",
     termBody:
@@ -15,6 +17,7 @@ export const TERM_TEMPLATES = {
   },
   CLINICAL_RECORD_SHARING: {
     title: "Termo de consentimento para compartilhamento clinico",
+    legalNature: "Autorizacao especifica para compartilhamento clinico controlado",
     termsVersion: "v1.0-abr-2026",
     legalBasis: "Consentimento especifico para compartilhamento controlado de informacoes clinicas quando necessario ao cuidado.",
     termBody:
@@ -22,6 +25,7 @@ export const TERM_TEMPLATES = {
   },
   EVOLUTION_IMAGE_CAPTURE: {
     title: "Termo de consentimento para captura de imagem de evolucao",
+    legalNature: "Autorizacao especifica para captura de imagem clinica",
     termsVersion: "v1.0-abr-2026",
     legalBasis: "Consentimento especifico para registro de imagens e videos estritamente destinados ao acompanhamento clinico e funcional da evolucao do aluno.",
     termBody:
@@ -65,6 +69,10 @@ export function getLegalTermTypeLabel(termType: LegalTermType) {
   }
 }
 
+export function getLegalTermNatureLabel(termType: LegalTermType) {
+  return TERM_TEMPLATES[termType].legalNature;
+}
+
 export function normalizeCoveredTermTypes(values: string[]) {
   const uniqueValues = Array.from(new Set(values.map((value) => value.trim()).filter(isLegalTermType)));
   return uniqueValues.length > 0 ? uniqueValues : [DEFAULT_TERM_TYPE];
@@ -99,9 +107,10 @@ export function buildLegalAcceptanceDraft(coveredTermTypes: LegalTermType[]) {
     termBody: [
       "Declaro que li, compreendi e concordo, em uma unica coleta de aceite, com os consentimentos e autorizacoes abaixo relacionados para meu atendimento no Studio Gerenciador Pilates.",
       "Os itens selecionados neste registro passam a compor um unico documento versionado, vinculado ao meu cadastro e sujeito a validacao posterior pelo hash e pelo QR Code do comprovante consolidado.",
+      "O metodo de coleta registrado neste fluxo funciona como evidencia operacional da formalizacao e nao altera o conteudo juridico dos consentimentos e autorizacoes listados abaixo.",
       ...selectedTemplates.map(
         (template, index) =>
-          `${index + 1}. ${template.title}: ${template.termBody}`
+          `${index + 1}. ${template.title}\nNatureza juridica: ${template.legalNature}.\nConteudo autorizado: ${template.termBody}`
       )
     ].join("\n\n")
   };

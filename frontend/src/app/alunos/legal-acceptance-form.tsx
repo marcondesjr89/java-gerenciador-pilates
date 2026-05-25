@@ -7,6 +7,7 @@ import { SignaturePad } from "@/app/alunos/signature-pad";
 import {
   buildLegalAcceptanceDraft,
   buildLegalAcceptanceRequestPayload,
+  getLegalTermNatureLabel,
   getLegalTermTypeLabel,
   type LegalTermType,
   resolveLegalAcceptanceAttachments
@@ -189,6 +190,9 @@ export function LegalAcceptanceForm({ studentId, studentName }: LegalAcceptanceF
                 .map((termType) => getLegalTermTypeLabel(termType))
                 .join(", ")}
               .
+            </p>
+            <p className="mt-2 text-xs leading-5 text-brand-subtext">
+              Natureza juridica: {coveredTermTypes.map((termType) => getLegalTermNatureLabel(termType)).join("; ")}.
             </p>
           </div>
         </fieldset>

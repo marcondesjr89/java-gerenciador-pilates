@@ -51,10 +51,13 @@ describe("LegalAcceptanceForm", () => {
       "Termo consolidado de consentimentos e autorizacoes do aluno"
     );
     expect(screen.getByText("Coleta consolidada com 2 termos")).toBeInTheDocument();
+    expect(screen.getAllByText(/Natureza juridica:/)).toHaveLength(2);
     const termBody = (screen.getByLabelText("Texto exibido ao aluno") as HTMLTextAreaElement).value;
     expect(termBody).toContain("Declaro que li, compreendi e concordo");
-    expect(termBody).toContain("1. Termo de consentimento para tratamento de dados pessoais:");
-    expect(termBody).toContain("2. Termo de consentimento para comunicacao por WhatsApp:");
+    expect(termBody).toContain("O metodo de coleta registrado neste fluxo funciona como evidencia operacional");
+    expect(termBody).toContain("1. Termo de consentimento para tratamento de dados pessoais");
+    expect(termBody).toContain("Natureza juridica: Consentimento para tratamento de dados pessoais e sensiveis.");
+    expect(termBody).toContain("2. Termo de consentimento para comunicacao por WhatsApp");
   });
 
   it("exibe upload do termo em papel quando o metodo de coleta muda", () => {
