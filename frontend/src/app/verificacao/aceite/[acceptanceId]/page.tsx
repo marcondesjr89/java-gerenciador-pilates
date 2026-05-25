@@ -3,7 +3,8 @@ import {
   formatCollectionMethod,
   formatDateTimeWithTimezone,
   formatLegalStatus,
-  formatLegalTermType
+  formatLegalTermType,
+  formatLegalTermTypes
 } from "@/app/alunos/helpers";
 import { fetchStudentLegalAcceptanceVerification } from "@/lib/legal-acceptances";
 
@@ -79,7 +80,12 @@ export default async function LegalAcceptanceVerificationPage({
                 title="Identificacao juridica"
                 rows={[
                   ["Titulo", verification.title],
-                  ["Tipo", formatLegalTermType(verification.termType)],
+                  [
+                    verification.coveredTermTypes.length > 1 ? "Tipos cobertos" : "Tipo",
+                    verification.coveredTermTypes.length > 1
+                      ? formatLegalTermTypes(verification.coveredTermTypes)
+                      : formatLegalTermType(verification.termType)
+                  ],
                   ["Versao", verification.termsVersion],
                   ["Base legal", verification.legalBasis || "Nao informada neste registro."]
                 ]}

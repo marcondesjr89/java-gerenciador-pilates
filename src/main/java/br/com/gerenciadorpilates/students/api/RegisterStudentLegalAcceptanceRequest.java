@@ -6,9 +6,11 @@ import br.com.gerenciadorpilates.students.domain.StudentLegalTermType;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
+import java.util.List;
 
 public record RegisterStudentLegalAcceptanceRequest(
         @NotNull StudentLegalTermType termType,
+        List<StudentLegalTermType> coveredTermTypes,
         @NotBlank @Size(max = 255) String title,
         @NotBlank @Size(max = 60) String termsVersion,
         @Size(max = 255) String legalBasis,

@@ -6,6 +6,9 @@ export type StudentLegalAcceptance = {
   id: string;
   studentId: string;
   termType: "LGPD_DATA_PROCESSING" | "WHATSAPP_COMMUNICATION" | "CLINICAL_RECORD_SHARING" | "EVOLUTION_IMAGE_CAPTURE";
+  coveredTermTypes: Array<
+    "LGPD_DATA_PROCESSING" | "WHATSAPP_COMMUNICATION" | "CLINICAL_RECORD_SHARING" | "EVOLUTION_IMAGE_CAPTURE"
+  >;
   title: string;
   termsVersion: string;
   legalBasis: string | null;
@@ -47,6 +50,7 @@ export type StudentLegalAcceptanceVerification = {
   issuerName: string;
   issuerDocument: string;
   termType: StudentLegalAcceptance["termType"];
+  coveredTermTypes: StudentLegalAcceptance["coveredTermTypes"];
   title: string;
   termsVersion: string;
   legalBasis: string | null;

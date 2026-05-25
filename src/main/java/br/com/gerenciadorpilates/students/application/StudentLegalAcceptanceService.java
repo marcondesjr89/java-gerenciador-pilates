@@ -124,6 +124,7 @@ public class StudentLegalAcceptanceService {
                 UUID.randomUUID(),
                 student.getId(),
                 request.termType(),
+                normalizeCoveredTermTypes(request),
                 request.title().trim(),
                 request.termsVersion().trim(),
                 trimToNull(request.legalBasis()),
@@ -141,7 +142,7 @@ public class StudentLegalAcceptanceService {
                 trimToNull(auditMetadata.collectionOrigin())
         );
 
-        if (request.termType() == StudentLegalTermType.LGPD_DATA_PROCESSING
+        if (normalizeCoveredTermTypes(request).contains(StudentLegalTermType.LGPD_DATA_PROCESSING)
                 && status == StudentLegalAcceptanceStatus.ACCEPTED) {
             student.updateLgpdConsent(true);
         }
@@ -185,5 +186,30 @@ public class StudentLegalAcceptanceService {
         } catch (NoSuchAlgorithmException exception) {
             throw new IllegalStateException("SHA-256 indisponivel no ambiente atual.", exception);
         }
+    }
+
+    private static List<StudentLegalTermType> normalizeCoveredTermTypes(RegisterStudentLegalAcceptanceRequest request) {
+        List<StudentLegalTermType> coveredTermTypes = request.coveredTermTypes();
+        if (coveredTermTypes == null || coveredTermTypes.isEmpty()) {
+            return List.of(request.termType());
+        }
+
+        List<StudentLegalTermType> normalizedValues = coveredTermTypes.stream()
+                .filter(item -> item != null)
+                .distinct()
+                .toList();
+
+        if (normalizedValues.isEmpty()) {
+            return List.of(request.termType());
+        }
+
+        if (normalizedValues.contains(request.termType())) {
+            return normalizedValues;
+        }
+
+        java.util.ArrayList<StudentLegalTermType> values = new java.util.ArrayList<>();
+        values.add(request.termType());
+        values.addAll(normalizedValues);
+        return List.copyOf(values);
     }
 }

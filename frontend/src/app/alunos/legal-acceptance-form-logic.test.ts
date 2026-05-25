@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
 import {
+  buildLegalAcceptanceDraft,
   buildLegalAcceptanceRequestPayload,
+  normalizeCoveredTermTypes,
   resolveLegalAcceptanceAttachments
 } from "@/app/alunos/legal-acceptance-form-logic";
 
@@ -8,6 +10,8 @@ describe("legal acceptance form logic", () => {
   it("normaliza o payload principal do aceite", () => {
     const formData = new FormData();
     formData.set("termType", "LGPD_DATA_PROCESSING");
+    formData.append("coveredTermTypes", "LGPD_DATA_PROCESSING");
+    formData.append("coveredTermTypes", "WHATSAPP_COMMUNICATION");
     formData.set("title", "  Termo LGPD  ");
     formData.set("termsVersion", " v1 ");
     formData.set("legalBasis", " ");
@@ -18,6 +22,7 @@ describe("legal acceptance form logic", () => {
 
     expect(buildLegalAcceptanceRequestPayload(formData)).toEqual({
       termType: "LGPD_DATA_PROCESSING",
+      coveredTermTypes: ["LGPD_DATA_PROCESSING", "WHATSAPP_COMMUNICATION"],
       title: "Termo LGPD",
       termsVersion: "v1",
       legalBasis: null,
@@ -26,6 +31,23 @@ describe("legal acceptance form logic", () => {
       collectionMethod: null,
       evidenceNote: "Observacao."
     });
+  });
+
+  it("normaliza os tipos cobertos com fallback padrao", () => {
+    expect(normalizeCoveredTermTypes(["WHATSAPP_COMMUNICATION", " ", "WHATSAPP_COMMUNICATION"])).toEqual([
+      "WHATSAPP_COMMUNICATION"
+    ]);
+    expect(normalizeCoveredTermTypes(["desconhecido"])).toEqual(["LGPD_DATA_PROCESSING"]);
+  });
+
+  it("gera um rascunho consolidado para multiplos termos", () => {
+    const draft = buildLegalAcceptanceDraft(["LGPD_DATA_PROCESSING", "WHATSAPP_COMMUNICATION"]);
+
+    expect(draft.primaryTermType).toBe("LGPD_DATA_PROCESSING");
+    expect(draft.coveredTermTypes).toEqual(["LGPD_DATA_PROCESSING", "WHATSAPP_COMMUNICATION"]);
+    expect(draft.title).toBe("Termo consolidado de consentimentos e autorizacoes do aluno");
+    expect(draft.termBody).toContain("1. Autorizo o Studio Gerenciador Pilates a coletar");
+    expect(draft.termBody).toContain("2. Autorizo o Studio Gerenciador Pilates a utilizar meu numero");
   });
 
   it("exige assinatura em tablet quando o aceite for concluido por tablet", () => {

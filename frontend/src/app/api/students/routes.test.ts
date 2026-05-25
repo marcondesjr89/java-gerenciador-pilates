@@ -246,11 +246,12 @@ describe("student api routes", () => {
     formData.set(
       "request",
       new Blob(
-        [
-          JSON.stringify({
-            termType: "LGPD_DATA_PROCESSING",
-            title: "  Termo LGPD  ",
-            termsVersion: "  v1.0-abr-2026 ",
+          [
+            JSON.stringify({
+              termType: "LGPD_DATA_PROCESSING",
+              coveredTermTypes: ["LGPD_DATA_PROCESSING", "WHATSAPP_COMMUNICATION"],
+              title: "  Termo LGPD  ",
+              termsVersion: "  v1.0-abr-2026 ",
             legalBasis: "  Consentimento  ",
             termBody: "  Texto do termo  ",
             status: "ACCEPTED",
@@ -300,6 +301,7 @@ describe("student api routes", () => {
     await expect((requestPart as Blob).text()).resolves.toBe(
       JSON.stringify({
         termType: "LGPD_DATA_PROCESSING",
+        coveredTermTypes: ["LGPD_DATA_PROCESSING", "WHATSAPP_COMMUNICATION"],
         title: "Termo LGPD",
         termsVersion: "v1.0-abr-2026",
         legalBasis: "Consentimento",

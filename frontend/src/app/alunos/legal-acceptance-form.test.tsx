@@ -26,9 +26,8 @@ describe("LegalAcceptanceForm", () => {
   it("atualiza o modelo juridico ao trocar o tipo do termo", () => {
     render(<LegalAcceptanceForm studentId="student-1" studentName="Aluno Teste" />);
 
-    fireEvent.change(screen.getByLabelText("Tipo do termo"), {
-      target: { value: "WHATSAPP_COMMUNICATION" }
-    });
+    fireEvent.click(screen.getByText("Comunicacao por WhatsApp"));
+    fireEvent.click(screen.getByText("Tratamento de dados LGPD"));
 
     expect(screen.getByLabelText("Titulo do documento")).toHaveValue(
       "Termo de consentimento para comunicacao por WhatsApp"
@@ -41,6 +40,19 @@ describe("LegalAcceptanceForm", () => {
     expect(screen.getByLabelText("Texto exibido ao aluno")).toHaveValue(
       "Autorizo o Studio Gerenciador Pilates a utilizar meu numero de telefone para envio de avisos de agenda, confirmacoes, remarcacoes, pendencias financeiras e comunicacoes operacionais por WhatsApp."
     );
+  });
+
+  it("consolida o texto exibido ao aluno ao marcar mais de um termo", () => {
+    render(<LegalAcceptanceForm studentId="student-1" studentName="Aluno Teste" />);
+
+    fireEvent.click(screen.getByText("Comunicacao por WhatsApp"));
+
+    expect(screen.getByLabelText("Titulo do documento")).toHaveValue(
+      "Termo consolidado de consentimentos e autorizacoes do aluno"
+    );
+    const termBody = (screen.getByLabelText("Texto exibido ao aluno") as HTMLTextAreaElement).value;
+    expect(termBody).toContain("1. Autorizo o Studio Gerenciador Pilates a coletar");
+    expect(termBody).toContain("2. Autorizo o Studio Gerenciador Pilates a utilizar meu numero");
   });
 
   it("exibe upload do termo em papel quando o metodo de coleta muda", () => {
@@ -60,9 +72,8 @@ describe("LegalAcceptanceForm", () => {
   it("carrega o modelo especifico para imagem de evolucao", () => {
     render(<LegalAcceptanceForm studentId="student-1" studentName="Aluno Teste" />);
 
-    fireEvent.change(screen.getByLabelText("Tipo do termo"), {
-      target: { value: "EVOLUTION_IMAGE_CAPTURE" }
-    });
+    fireEvent.click(screen.getByText("Imagem para evolucao clinica"));
+    fireEvent.click(screen.getByText("Tratamento de dados LGPD"));
 
     expect(screen.getByLabelText("Titulo do documento")).toHaveValue(
       "Termo de consentimento para captura de imagem de evolucao"

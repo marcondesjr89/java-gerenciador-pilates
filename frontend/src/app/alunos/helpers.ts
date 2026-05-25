@@ -42,6 +42,14 @@ export function formatLegalTermType(value: string) {
   }
 }
 
+export function formatLegalTermTypes(values: string[]) {
+  if (values.length === 0) {
+    return "Nao informado";
+  }
+
+  return values.map((value) => formatLegalTermType(value)).join(", ");
+}
+
 export function formatLegalStatus(value: string) {
   switch (value) {
     case "ACCEPTED":

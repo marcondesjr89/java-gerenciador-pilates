@@ -5,6 +5,7 @@ import br.com.gerenciadorpilates.students.domain.StudentLegalAcceptanceStatus;
 import br.com.gerenciadorpilates.students.domain.StudentLegalCollectionMethod;
 import br.com.gerenciadorpilates.students.domain.StudentLegalTermType;
 import java.time.OffsetDateTime;
+import java.util.List;
 import java.util.UUID;
 
 public record StudentLegalAcceptanceVerificationResponse(
@@ -15,6 +16,7 @@ public record StudentLegalAcceptanceVerificationResponse(
         String issuerName,
         String issuerDocument,
         StudentLegalTermType termType,
+        List<StudentLegalTermType> coveredTermTypes,
         String title,
         String termsVersion,
         String legalBasis,
@@ -49,6 +51,7 @@ public record StudentLegalAcceptanceVerificationResponse(
                 issuerName,
                 issuerDocument,
                 acceptance.getTermType(),
+                acceptance.getCoveredTermTypes(),
                 acceptance.getTitle(),
                 acceptance.getTermsVersion(),
                 acceptance.getLegalBasis(),

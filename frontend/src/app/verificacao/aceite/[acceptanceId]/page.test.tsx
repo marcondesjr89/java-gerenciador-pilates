@@ -34,6 +34,7 @@ describe("LegalAcceptanceVerificationPage", () => {
       issuerName: "Studio Pilates Exemplo Ltda",
       issuerDocument: "12.345.678/0001-99",
       termType: "LGPD_DATA_PROCESSING",
+      coveredTermTypes: ["LGPD_DATA_PROCESSING", "WHATSAPP_COMMUNICATION"],
       title: "Termo de tratamento de dados",
       termsVersion: "v2026.04",
       legalBasis: "Consentimento",
@@ -60,6 +61,7 @@ describe("LegalAcceptanceVerificationPage", () => {
     expect(screen.getByText("Registro verificado")).toBeInTheDocument();
     expect(screen.getByText("Studio Pilates Exemplo Ltda")).toBeInTheDocument();
     expect(screen.getByText("12.345.678/0001-99")).toBeInTheDocument();
+    expect(screen.getByText("Tratamento de dados LGPD, Comunicacao por WhatsApp")).toBeInTheDocument();
     expect(screen.getAllByText("ACEITE-V202604-ABC12345")).toHaveLength(2);
     expect(screen.getAllByText("Documento consistente com o registro juridico.")).toHaveLength(2);
   });

@@ -94,7 +94,7 @@ public class StudentLegalAcceptanceDocumentService {
                 student.getFullName(),
                 maskCpf(student.getCpf()),
                 acceptance.getTitle(),
-                TERM_TYPE_LABELS.getOrDefault(acceptance.getTermType(), acceptance.getTermType().name()),
+                describeCoveredTermTypes(acceptance),
                 acceptance.getTermsVersion(),
                 acceptance.getStatus(),
                 describeCollectionMethod(acceptance),
@@ -260,6 +260,13 @@ public class StudentLegalAcceptanceDocumentService {
                     : "Aguardando definicao";
         }
         return COLLECTION_METHOD_LABELS.getOrDefault(acceptance.getCollectionMethod(), acceptance.getCollectionMethod().name());
+    }
+
+    private String describeCoveredTermTypes(StudentLegalAcceptance acceptance) {
+        return acceptance.getCoveredTermTypes().stream()
+                .map(termType -> TERM_TYPE_LABELS.getOrDefault(termType, termType.name()))
+                .reduce((left, right) -> left + ", " + right)
+                .orElse(TERM_TYPE_LABELS.getOrDefault(acceptance.getTermType(), acceptance.getTermType().name()));
     }
 
     private String formatDateTime(OffsetDateTime value, String defaultValue) {

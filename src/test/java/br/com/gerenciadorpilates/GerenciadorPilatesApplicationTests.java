@@ -216,6 +216,10 @@ class GerenciadorPilatesApplicationTests {
                 UUID.randomUUID(),
                 student.getId(),
                 StudentLegalTermType.LGPD_DATA_PROCESSING,
+                java.util.List.of(
+                        StudentLegalTermType.LGPD_DATA_PROCESSING,
+                        StudentLegalTermType.WHATSAPP_COMMUNICATION
+                ),
                 "Termo de tratamento de dados",
                 "v2026.04",
                 "Consentimento",
@@ -284,6 +288,8 @@ class GerenciadorPilatesApplicationTests {
                 .andExpect(jsonPath("$.studentName").value("Laura Documento"))
                 .andExpect(jsonPath("$.termsVersion").value("v2026.04"))
                 .andExpect(jsonPath("$.documentHash").value(acceptance.getDocumentHash()))
+                .andExpect(jsonPath("$.coveredTermTypes[0]").value("LGPD_DATA_PROCESSING"))
+                .andExpect(jsonPath("$.coveredTermTypes[1]").value("WHATSAPP_COMMUNICATION"))
                 .andExpect(jsonPath("$.issuerName").value("Studio Pilates Exemplo Ltda"))
                 .andExpect(jsonPath("$.issuerDocument").value("12.345.678/0001-99"))
                 .andExpect(jsonPath("$.documentReference").value("ACEITE-V202604-" + acceptance.getId().toString().substring(0, 8).toUpperCase()))

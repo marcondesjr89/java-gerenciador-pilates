@@ -9,7 +9,10 @@ import jakarta.persistence.PrePersist;
 import jakarta.persistence.PreUpdate;
 import jakarta.persistence.Table;
 import java.time.OffsetDateTime;
+import java.util.Arrays;
+import java.util.List;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 @Entity
 @Table(name = "student_legal_acceptance")
@@ -24,6 +27,9 @@ public class StudentLegalAcceptance {
     @Enumerated(EnumType.STRING)
     @Column(name = "term_type", nullable = false)
     private StudentLegalTermType termType;
+
+    @Column(name = "covered_term_types", nullable = false, columnDefinition = "text")
+    private String coveredTermTypes;
 
     @Column(nullable = false)
     private String title;
@@ -85,6 +91,7 @@ public class StudentLegalAcceptance {
             UUID id,
             UUID studentId,
             StudentLegalTermType termType,
+            List<StudentLegalTermType> coveredTermTypes,
             String title,
             String termsVersion,
             String legalBasis,
@@ -104,6 +111,7 @@ public class StudentLegalAcceptance {
         this.id = id;
         this.studentId = studentId;
         this.termType = termType;
+        this.coveredTermTypes = serializeCoveredTermTypes(coveredTermTypes, termType);
         this.title = title;
         this.termsVersion = termsVersion;
         this.legalBasis = legalBasis;
@@ -143,6 +151,10 @@ public class StudentLegalAcceptance {
 
     public StudentLegalTermType getTermType() {
         return termType;
+    }
+
+    public List<StudentLegalTermType> getCoveredTermTypes() {
+        return deserializeCoveredTermTypes(coveredTermTypes, termType);
     }
 
     public String getTitle() {
@@ -211,5 +223,53 @@ public class StudentLegalAcceptance {
 
     public OffsetDateTime getUpdatedAt() {
         return updatedAt;
+    }
+
+    private static String serializeCoveredTermTypes(List<StudentLegalTermType> coveredTermTypes, StudentLegalTermType primaryTermType) {
+        return normalizeCoveredTermTypes(coveredTermTypes, primaryTermType).stream()
+                .map(StudentLegalTermType::name)
+                .collect(Collectors.joining(","));
+    }
+
+    private static List<StudentLegalTermType> deserializeCoveredTermTypes(String value, StudentLegalTermType primaryTermType) {
+        if (value == null || value.isBlank()) {
+            return List.of(primaryTermType);
+        }
+
+        List<StudentLegalTermType> parsedValues = Arrays.stream(value.split(","))
+                .map(String::trim)
+                .filter(item -> !item.isBlank())
+                .map(StudentLegalTermType::valueOf)
+                .distinct()
+                .toList();
+
+        return parsedValues.isEmpty() ? List.of(primaryTermType) : parsedValues;
+    }
+
+    private static List<StudentLegalTermType> normalizeCoveredTermTypes(
+            List<StudentLegalTermType> coveredTermTypes,
+            StudentLegalTermType primaryTermType
+    ) {
+        if (coveredTermTypes == null || coveredTermTypes.isEmpty()) {
+            return List.of(primaryTermType);
+        }
+
+        List<StudentLegalTermType> normalizedValues = coveredTermTypes.stream()
+                .filter(item -> item != null)
+                .distinct()
+                .toList();
+
+        if (normalizedValues.isEmpty()) {
+            return List.of(primaryTermType);
+        }
+
+        if (normalizedValues.contains(primaryTermType)) {
+            return normalizedValues;
+        }
+
+        java.util.ArrayList<StudentLegalTermType> values = new java.util.ArrayList<>();
+        values.add(primaryTermType);
+        values.addAll(normalizedValues);
+        return List.copyOf(values);
     }
 }

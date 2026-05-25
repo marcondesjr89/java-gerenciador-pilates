@@ -23,6 +23,7 @@ const DOCUMENT_CONTENT_TYPES = ["application/pdf", ...IMAGE_CONTENT_TYPES] as co
 
 type LegalAcceptancePayload = {
   termType?: unknown;
+  coveredTermTypes?: unknown;
   title?: unknown;
   termsVersion?: unknown;
   legalBasis?: unknown;
@@ -53,6 +54,9 @@ function buildLegalAcceptanceAuditHeaders(request: Request) {
 
 function validateLegalAcceptancePayload(body: LegalAcceptancePayload) {
   const termType = readTrimmedString(body.termType);
+  const coveredTermTypes = Array.isArray(body.coveredTermTypes)
+    ? body.coveredTermTypes.map((value) => readTrimmedString(value)).filter((value) => value.length > 0)
+    : [];
   const title = readTrimmedString(body.title);
   const termsVersion = readTrimmedString(body.termsVersion);
   const legalBasis = readTrimmedString(body.legalBasis);
@@ -63,6 +67,10 @@ function validateLegalAcceptancePayload(body: LegalAcceptancePayload) {
 
   if (!isOneOf(termType, LEGAL_TERM_TYPES)) {
     return { response: badRequest("Informe um tipo de termo valido.") };
+  }
+
+  if (coveredTermTypes.some((value) => !isOneOf(value, LEGAL_TERM_TYPES))) {
+    return { response: badRequest("Informe apenas tipos validos na consolidacao do termo.") };
   }
 
   if (!title || title.length > 255) {
@@ -100,6 +108,7 @@ function validateLegalAcceptancePayload(body: LegalAcceptancePayload) {
   return {
     data: {
       termType,
+      coveredTermTypes: coveredTermTypes.length > 0 ? Array.from(new Set(coveredTermTypes)) : [termType],
       title,
       termsVersion,
       legalBasis: legalBasis || null,

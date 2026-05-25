@@ -8,6 +8,7 @@ import {
   formatDateTimeWithTimezone,
   formatLegalStatus,
   formatLegalTermType,
+  formatLegalTermTypes,
   formatPhone,
   getAge
 } from "@/app/alunos/helpers";
@@ -155,7 +156,9 @@ export function StudentProfile({
                   <div>
                     <p className="font-semibold text-brand-ink">{acceptance.title}</p>
                     <p className="mt-1 text-sm text-brand-subtext">
-                      {formatLegalTermType(acceptance.termType)} - versao {acceptance.termsVersion}
+                      {acceptance.coveredTermTypes.length > 1
+                        ? `${formatLegalTermTypes(acceptance.coveredTermTypes)} - versao ${acceptance.termsVersion}`
+                        : `${formatLegalTermType(acceptance.termType)} - versao ${acceptance.termsVersion}`}
                     </p>
                   </div>
 
