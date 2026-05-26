@@ -1,50 +1,27 @@
 import { CalendarDays, ChevronRight, ClipboardPen, TimerReset, UserRound } from "lucide-react";
-import { requireInstructorSession } from "@/lib/auth";
-import { fetchInstructorDaySchedule } from "@/lib/schedule";
-import { formatDateTime, formatSpecialty, formatUtcHour, getTodayIsoDate } from "@/lib/formatters";
 import { ProgressEntryForm } from "@/app/instrutor/progress-entry-form";
+import { loadInstructorPage, type InstructorSearchParams } from "@/app/instrutor/load-instructor-page";
+import { requireInstructorSession } from "@/lib/auth";
+import { formatSpecialty, formatUtcHour } from "@/lib/formatters";
 
 type InstructorPageProps = {
-  searchParams?: Promise<{
-    date?: string;
-    slotId?: string;
-    studentId?: string;
-  }>;
+  searchParams?: Promise<InstructorSearchParams>;
 };
 
 export default async function InstructorPage({ searchParams }: InstructorPageProps) {
   const session = await requireInstructorSession();
   const params = await searchParams;
-  const selectedDate = params?.date ?? getTodayIsoDate();
-  const instructorDaySchedule = await fetchInstructorDaySchedule(session, selectedDate);
-  const instructorSlots = instructorDaySchedule.slots;
-  const totalStudents = instructorDaySchedule.totalBookings;
-  const selectedSlot =
-    instructorSlots.find((slot) => slot.id === params?.slotId) ??
-    instructorSlots[0] ??
-    null;
-  const selectedSlotBookings = selectedSlot?.bookings ?? [];
-  const selectedBooking =
-    selectedSlotBookings.find((booking) => booking.studentId === params?.studentId) ??
-    selectedSlotBookings[0] ??
-    null;
-  const selectedClinicalSummary = selectedBooking?.clinicalSummary ?? null;
-  const alertSummary = {
-    alerts: selectedClinicalSummary?.alerts ?? [],
-    generalObservations: selectedClinicalSummary?.generalObservations || "Sem observacoes gerais registradas.",
-    hasActiveAlerts: (selectedClinicalSummary?.alerts.length ?? 0) > 0
-  };
-  const latestEntrySummary = selectedClinicalSummary?.latestProgressEntry
-    ? {
-        recordedAtLabel: formatDateTime(selectedClinicalSummary.latestProgressEntry.recordedAt, {
-          dateStyle: "short",
-          timeStyle: "short"
-        }),
-        scoreSummary: `Flexibilidade: ${selectedClinicalSummary.latestProgressEntry.flexibilityScore ?? "-"} | Forca: ${selectedClinicalSummary.latestProgressEntry.strengthScore ?? "-"} | Dor: ${selectedClinicalSummary.latestProgressEntry.painLevel ?? "-"}`,
-        instructorNotes: selectedClinicalSummary.latestProgressEntry.instructorNotes
-      }
-    : null;
-  const nextSlot = instructorSlots[0] ?? null;
+  const {
+    selectedDate,
+    instructorSlots,
+    totalStudents,
+    selectedSlot,
+    selectedSlotBookings,
+    selectedBooking,
+    alertSummary,
+    latestEntrySummary,
+    nextSlot
+  } = await loadInstructorPage(session, params);
 
   return (
     <main className="min-h-screen bg-[var(--page-background)] px-3 py-4 md:px-4">
@@ -134,8 +111,11 @@ export default async function InstructorPage({ searchParams }: InstructorPagePro
         </section>
 
         {instructorSlots.length === 0 ? (
-          <div className="rounded-[24px] border border-dashed border-brand-line bg-brand-surface px-5 py-10 text-center text-sm text-brand-subtext">
-            Nenhum horario encontrado para este instrutor na data selecionada.
+          <div className="rounded-[24px] border border-dashed border-brand-line bg-brand-surface px-5 py-10 text-center">
+            <p className="font-display text-2xl text-brand-secondary">Agenda livre neste dia</p>
+            <p className="mt-2 text-sm text-brand-subtext">
+              Nenhum horario encontrado para este instrutor na data selecionada.
+            </p>
           </div>
         ) : (
           <section className="grid gap-5 xl:grid-cols-[320px_minmax(0,1fr)]">
@@ -219,9 +199,9 @@ export default async function InstructorPage({ searchParams }: InstructorPagePro
                       <p className="text-sm text-brand-subtext">{selectedSlotBookings.length} confirmado(s)</p>
                     </div>
 
-                    {selectedSlotBookings.length === 0 ? (
+                            {selectedSlotBookings.length === 0 ? (
                       <div className="mt-5 rounded-[20px] border border-dashed border-brand-line bg-brand-panel px-4 py-8 text-center text-sm text-brand-subtext">
-                        Nenhum aluno confirmado neste horario.
+                        Este horario ainda nao possui alunos confirmados. Use a agenda interna para acompanhar novas reservas.
                       </div>
                     ) : (
                       <div className="mt-5 grid gap-3 lg:grid-cols-2">
