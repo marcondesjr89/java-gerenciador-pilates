@@ -39,3 +39,35 @@ export type ScheduleWaitlistEntry = {
   status: string;
   promotedAt: string | null;
 };
+
+export type InstructorDayLatestProgressEntry = {
+  id: string;
+  recordedAt: string;
+  instructorNotes: string;
+  flexibilityScore: number | null;
+  strengthScore: number | null;
+  painLevel: number | null;
+};
+
+export type InstructorDayClinicalSummary = {
+  studentId: string;
+  alerts: string[];
+  generalObservations: string | null;
+  latestProgressEntry: InstructorDayLatestProgressEntry | null;
+};
+
+export type InstructorDayBooking = ScheduleBooking & {
+  clinicalSummary: InstructorDayClinicalSummary;
+};
+
+export type InstructorDaySlot = ScheduleSlot & {
+  bookings: InstructorDayBooking[];
+};
+
+export type InstructorDaySchedule = {
+  instructorUserId: string;
+  date: string;
+  totalSlots: number;
+  totalBookings: number;
+  slots: InstructorDaySlot[];
+};

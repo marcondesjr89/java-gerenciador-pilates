@@ -12,6 +12,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import br.com.gerenciadorpilates.clinical.domain.StudentProgressEntry;
+import br.com.gerenciadorpilates.clinical.domain.StudentAnamnesis;
+import br.com.gerenciadorpilates.clinical.infrastructure.StudentAnamnesisRepository;
 import br.com.gerenciadorpilates.clinical.infrastructure.StudentProgressEntryRepository;
 import br.com.gerenciadorpilates.billing.infrastructure.BillingInvoiceRepository;
 import br.com.gerenciadorpilates.identityaccess.domain.AppUser;
@@ -19,6 +21,9 @@ import br.com.gerenciadorpilates.identityaccess.domain.InstructorSpecialty;
 import br.com.gerenciadorpilates.identityaccess.domain.UserRole;
 import br.com.gerenciadorpilates.identityaccess.infrastructure.AppUserRepository;
 import br.com.gerenciadorpilates.notifications.infrastructure.NotificationOutboxRepository;
+import br.com.gerenciadorpilates.scheduling.domain.ScheduleBooking;
+import br.com.gerenciadorpilates.scheduling.domain.ScheduleSlot;
+import br.com.gerenciadorpilates.scheduling.infrastructure.ScheduleBookingRepository;
 import br.com.gerenciadorpilates.scheduling.infrastructure.ScheduleSlotRepository;
 import br.com.gerenciadorpilates.students.api.ConfigureStudentPortalAccountRequest;
 import br.com.gerenciadorpilates.students.application.StudentPortalAccountService;
@@ -79,6 +84,9 @@ class GerenciadorPilatesApplicationTests {
     private StudentProgressEntryRepository progressEntryRepository;
 
     @Autowired
+    private StudentAnamnesisRepository anamnesisRepository;
+
+    @Autowired
     private AppUserRepository appUserRepository;
 
     @Autowired
@@ -92,6 +100,9 @@ class GerenciadorPilatesApplicationTests {
 
     @Autowired
     private ScheduleSlotRepository scheduleSlotRepository;
+
+    @Autowired
+    private ScheduleBookingRepository scheduleBookingRepository;
 
     @Autowired
     private PasswordEncoder passwordEncoder;
@@ -435,6 +446,109 @@ class GerenciadorPilatesApplicationTests {
                 .andExpect(jsonPath("$[?(@.fullName=='Instrutor da Lista')]").exists())
                 .andExpect(jsonPath("$[0].specialties[0]").value("PILATES_REABILITACAO"))
                 .andExpect(jsonPath("$[?(@.fullName=='Instrutor Inativo')]").isEmpty());
+    }
+
+    @Test
+    void instructorDayScheduleReturnsAggregatedSlotsBookingsAndClinicalSummary() throws Exception {
+        AppUser instructor = appUserRepository.save(new AppUser(
+                UUID.randomUUID(),
+                "instrutor.agregado@teste.local",
+                "Instrutor Agregado",
+                passwordEncoder.encode("Admin@12345"),
+                UserRole.INSTRUCTOR,
+                true,
+                java.util.Set.of(InstructorSpecialty.PILATES_SOLO)
+        ));
+        AppUser otherInstructor = appUserRepository.save(new AppUser(
+                UUID.randomUUID(),
+                "instrutor.outro@teste.local",
+                "Outro Instrutor",
+                passwordEncoder.encode("Admin@12345"),
+                UserRole.INSTRUCTOR,
+                true,
+                java.util.Set.of(InstructorSpecialty.PILATES_SOLO)
+        ));
+        Student student = studentRepository.save(new Student(
+                UUID.randomUUID(),
+                "Aluno Agregado",
+                "32165498700",
+                "agregado@teste.local",
+                "85994445555",
+                LocalDate.of(1990, 7, 10),
+                StudentStatus.ACTIVE,
+                true
+        ));
+        OffsetDateTime start = OffsetDateTime.parse("2026-05-20T10:00:00Z");
+        ScheduleSlot slot = new ScheduleSlot(
+                UUID.randomUUID(),
+                instructor.getId(),
+                instructor.getFullName(),
+                InstructorSpecialty.PILATES_SOLO,
+                start,
+                start.plusHours(1),
+                3
+        );
+        slot.incrementBookedCount();
+        scheduleSlotRepository.save(slot);
+        ScheduleSlot otherSlot = new ScheduleSlot(
+                UUID.randomUUID(),
+                otherInstructor.getId(),
+                otherInstructor.getFullName(),
+                InstructorSpecialty.PILATES_SOLO,
+                start,
+                start.plusHours(1),
+                3
+        );
+        scheduleSlotRepository.save(otherSlot);
+        scheduleBookingRepository.save(new ScheduleBooking(
+                UUID.randomUUID(),
+                slot.getId(),
+                student.getId(),
+                student.getFullName()
+        ));
+        anamnesisRepository.save(new StudentAnamnesis(
+                UUID.randomUUID(),
+                student.getId(),
+                false,
+                null,
+                false,
+                null,
+                true,
+                "Dor lombar leve.",
+                false,
+                false,
+                false,
+                true,
+                "Evitar carga axial intensa."
+        ));
+        progressEntryRepository.save(new StudentProgressEntry(
+                UUID.randomUUID(),
+                student.getId(),
+                instructor.getId(),
+                instructor.getFullName(),
+                start.minusDays(1),
+                "Boa resposta ao controle de tronco.",
+                70,
+                75,
+                2
+        ));
+
+        String instructorToken = loginAndGetToken("instrutor.agregado@teste.local", "Admin@12345");
+
+        mockMvc.perform(get("/api/v1/schedule-slots/instructor-day")
+                        .header("Authorization", "Bearer " + instructorToken)
+                        .param("date", "2026-05-20"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.instructorUserId").value(instructor.getId().toString()))
+                .andExpect(jsonPath("$.totalSlots").value(1))
+                .andExpect(jsonPath("$.totalBookings").value(1))
+                .andExpect(jsonPath("$.slots[0].id").value(slot.getId().toString()))
+                .andExpect(jsonPath("$.slots[0].bookings[0].studentName").value("Aluno Agregado"))
+                .andExpect(jsonPath("$.slots[0].bookings[0].clinicalSummary.alerts[0]").value("Dor em acompanhamento"))
+                .andExpect(jsonPath("$.slots[0].bookings[0].clinicalSummary.alerts[1]").value("Exige liberacao medica"))
+                .andExpect(jsonPath("$.slots[0].bookings[0].clinicalSummary.generalObservations").value("Evitar carga axial intensa."))
+                .andExpect(jsonPath("$.slots[0].bookings[0].clinicalSummary.latestProgressEntry.instructorNotes")
+                        .value("Boa resposta ao controle de tronco."));
     }
 
     @Test

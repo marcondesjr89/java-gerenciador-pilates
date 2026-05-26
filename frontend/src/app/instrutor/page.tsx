@@ -1,7 +1,6 @@
 import { CalendarDays, ChevronRight, ClipboardPen, TimerReset, UserRound } from "lucide-react";
 import { requireInstructorSession } from "@/lib/auth";
-import { fetchScheduleSlots, fetchSlotBookings } from "@/lib/schedule";
-import { fetchClinicalRecord, getClinicalAlertSummary, getLatestClinicalEntrySummary } from "@/lib/clinical";
+import { fetchInstructorDaySchedule } from "@/lib/schedule";
 import { formatDateTime, formatSpecialty, formatUtcHour, getTodayIsoDate } from "@/lib/formatters";
 import { ProgressEntryForm } from "@/app/instrutor/progress-entry-form";
 
@@ -17,41 +16,34 @@ export default async function InstructorPage({ searchParams }: InstructorPagePro
   const session = await requireInstructorSession();
   const params = await searchParams;
   const selectedDate = params?.date ?? getTodayIsoDate();
-  const allSlots = await fetchScheduleSlots(session, selectedDate);
-  const instructorSlots = allSlots.filter((slot) => slot.instructorUserId === session.userId);
-  const bookingsBySlot = await Promise.all(
-    instructorSlots.map(async (slot) => ({
-      slotId: slot.id,
-      bookings: await fetchSlotBookings(session, slot.id)
-    }))
-  );
-  const uniqueStudentIds = Array.from(
-    new Set(bookingsBySlot.flatMap((entry) => entry.bookings.map((booking) => booking.studentId)))
-  );
-  const clinicalRecords = await Promise.all(
-    uniqueStudentIds.map(async (studentId) => ({
-      studentId,
-      record: await fetchClinicalRecord(session, studentId)
-    }))
-  );
-  const clinicalRecordByStudentId = new Map(clinicalRecords.map((entry) => [entry.studentId, entry.record]));
-  const totalStudents = bookingsBySlot.reduce((sum, entry) => sum + entry.bookings.length, 0);
+  const instructorDaySchedule = await fetchInstructorDaySchedule(session, selectedDate);
+  const instructorSlots = instructorDaySchedule.slots;
+  const totalStudents = instructorDaySchedule.totalBookings;
   const selectedSlot =
     instructorSlots.find((slot) => slot.id === params?.slotId) ??
     instructorSlots[0] ??
     null;
-  const selectedSlotBookings = selectedSlot
-    ? bookingsBySlot.find((entry) => entry.slotId === selectedSlot.id)?.bookings ?? []
-    : [];
+  const selectedSlotBookings = selectedSlot?.bookings ?? [];
   const selectedBooking =
     selectedSlotBookings.find((booking) => booking.studentId === params?.studentId) ??
     selectedSlotBookings[0] ??
     null;
-  const selectedClinicalRecord = selectedBooking
-    ? clinicalRecordByStudentId.get(selectedBooking.studentId) ?? null
+  const selectedClinicalSummary = selectedBooking?.clinicalSummary ?? null;
+  const alertSummary = {
+    alerts: selectedClinicalSummary?.alerts ?? [],
+    generalObservations: selectedClinicalSummary?.generalObservations || "Sem observacoes gerais registradas.",
+    hasActiveAlerts: (selectedClinicalSummary?.alerts.length ?? 0) > 0
+  };
+  const latestEntrySummary = selectedClinicalSummary?.latestProgressEntry
+    ? {
+        recordedAtLabel: formatDateTime(selectedClinicalSummary.latestProgressEntry.recordedAt, {
+          dateStyle: "short",
+          timeStyle: "short"
+        }),
+        scoreSummary: `Flexibilidade: ${selectedClinicalSummary.latestProgressEntry.flexibilityScore ?? "-"} | Forca: ${selectedClinicalSummary.latestProgressEntry.strengthScore ?? "-"} | Dor: ${selectedClinicalSummary.latestProgressEntry.painLevel ?? "-"}`,
+        instructorNotes: selectedClinicalSummary.latestProgressEntry.instructorNotes
+      }
     : null;
-  const alertSummary = getClinicalAlertSummary(selectedClinicalRecord);
-  const latestEntrySummary = getLatestClinicalEntrySummary(selectedClinicalRecord, formatDateTime);
   const nextSlot = instructorSlots[0] ?? null;
 
   return (
