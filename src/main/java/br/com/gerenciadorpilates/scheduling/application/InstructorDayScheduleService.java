@@ -106,7 +106,7 @@ public class InstructorDayScheduleService {
             return Map.of();
         }
 
-        return progressEntryRepository.findAllByStudentIdInOrderByStudentIdAscRecordedAtDesc(studentIds)
+        return progressEntryRepository.findLatestByStudentIds(studentIds)
                 .stream()
                 .collect(Collectors.toMap(
                         StudentProgressEntry::getStudentId,

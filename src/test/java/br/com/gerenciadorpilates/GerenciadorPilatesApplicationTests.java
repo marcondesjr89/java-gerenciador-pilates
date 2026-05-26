@@ -532,6 +532,17 @@ class GerenciadorPilatesApplicationTests {
                 75,
                 2
         ));
+        progressEntryRepository.save(new StudentProgressEntry(
+                UUID.randomUUID(),
+                student.getId(),
+                instructor.getId(),
+                instructor.getFullName(),
+                start.minusHours(2),
+                "Evolucao mais recente usada no resumo.",
+                80,
+                85,
+                1
+        ));
 
         String instructorToken = loginAndGetToken("instrutor.agregado@teste.local", "Admin@12345");
 
@@ -548,7 +559,9 @@ class GerenciadorPilatesApplicationTests {
                 .andExpect(jsonPath("$.slots[0].bookings[0].clinicalSummary.alerts[1]").value("Exige liberacao medica"))
                 .andExpect(jsonPath("$.slots[0].bookings[0].clinicalSummary.generalObservations").value("Evitar carga axial intensa."))
                 .andExpect(jsonPath("$.slots[0].bookings[0].clinicalSummary.latestProgressEntry.instructorNotes")
-                        .value("Boa resposta ao controle de tronco."));
+                        .value("Evolucao mais recente usada no resumo."))
+                .andExpect(jsonPath("$.slots[0].bookings[0].clinicalSummary.latestProgressEntry.flexibilityScore").value(80))
+                .andExpect(jsonPath("$.slots[0].bookings[0].clinicalSummary.latestProgressEntry.painLevel").value(1));
     }
 
     @Test
