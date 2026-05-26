@@ -16,13 +16,13 @@ export default async function StudentsPage({ searchParams }: StudentsPageProps) 
   const session = await requireInternalSession();
   const params = await searchParams;
   const {
-    students,
     filteredStudents,
     selectedStudent,
     portalAccount,
     clinicalRecord,
     legalAcceptances,
     canViewClinicalRecord,
+    pagination,
     metrics
   } = await loadStudentsPage(session, params);
 
@@ -63,7 +63,7 @@ export default async function StudentsPage({ searchParams }: StudentsPageProps) 
         </section>
 
         <StudentMetrics
-          studentsCount={students.length}
+          studentsCount={metrics.totalCount}
           activeCount={metrics.activeCount}
           inactiveCount={metrics.inactiveCount}
           lgpdCount={metrics.lgpdCount}
@@ -95,7 +95,13 @@ export default async function StudentsPage({ searchParams }: StudentsPageProps) 
           title="Base de alunos"
           description="Lista operacional para recepcao localizar rapidamente alunos ativos e inativos."
         >
-          <StudentsList students={filteredStudents} selectedStudentId={selectedStudent?.id ?? null} searchTerm={params?.q} />
+          <StudentsList
+            students={filteredStudents}
+            selectedStudentId={selectedStudent?.id ?? null}
+            searchTerm={params?.q}
+            currentPage={pagination.page}
+            totalPages={pagination.totalPages}
+          />
         </SectionCard>
       </div>
     </AppShell>

@@ -150,6 +150,59 @@ class GerenciadorPilatesApplicationTests {
     }
 
     @Test
+    void studentSearchSupportsQueryAndPagination() throws Exception {
+        studentRepository.save(new Student(
+                UUID.randomUUID(),
+                "Ana Busca",
+                "12345678901",
+                "ana.busca@teste.local",
+                "85991111111",
+                LocalDate.of(1991, 4, 10),
+                StudentStatus.ACTIVE,
+                true
+        ));
+        studentRepository.save(new Student(
+                UUID.randomUUID(),
+                "Bruno Busca",
+                "12345678902",
+                "bruno.busca@teste.local",
+                "85992222222",
+                LocalDate.of(1992, 5, 11),
+                StudentStatus.INACTIVE,
+                false
+        ));
+        studentRepository.save(new Student(
+                UUID.randomUUID(),
+                "Carla Outro",
+                "12345678903",
+                "carla@teste.local",
+                "85993333333",
+                LocalDate.of(1993, 6, 12),
+                StudentStatus.ACTIVE,
+                true
+        ));
+
+        String token = loginAndGetToken("admin@test.local", "Admin@12345");
+
+        mockMvc.perform(get("/api/v1/students/search")
+                        .header("Authorization", "Bearer " + token)
+                        .param("q", "busca")
+                        .param("page", "0")
+                        .param("size", "1"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.items.length()").value(1))
+                .andExpect(jsonPath("$.items[0].fullName").value("Ana Busca"))
+                .andExpect(jsonPath("$.totalElements").value(2))
+                .andExpect(jsonPath("$.totalPages").value(2))
+                .andExpect(jsonPath("$.page").value(0))
+                .andExpect(jsonPath("$.size").value(1))
+                .andExpect(jsonPath("$.summary.totalStudents").value(3))
+                .andExpect(jsonPath("$.summary.activeStudents").value(2))
+                .andExpect(jsonPath("$.summary.inactiveStudents").value(1))
+                .andExpect(jsonPath("$.summary.lgpdStudents").value(2));
+    }
+
+    @Test
     void authenticatedInstructorFlowCanUploadAndReadClinicalRecord() throws Exception {
         Student student = studentRepository.save(new Student(
                 UUID.randomUUID(),
