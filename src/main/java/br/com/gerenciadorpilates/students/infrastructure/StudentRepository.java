@@ -8,6 +8,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 
 public interface StudentRepository extends JpaRepository<Student, UUID> {
 
@@ -20,11 +21,17 @@ public interface StudentRepository extends JpaRepository<Student, UUID> {
     @Query("""
             select student
             from Student student
-            where (:query is null or :query = '' or lower(student.fullName) like lower(concat('%', :query, '%'))
-                or lower(student.email) like lower(concat('%', :query, '%'))
-                or student.cpf like concat('%', :query, '%')
-                or student.phoneNumber like concat('%', :query, '%'))
+            where (:textQuery is null or :textQuery = ''
+                or lower(student.fullName) like concat('%', :textQuery, '%')
+                or lower(student.email) like concat('%', :textQuery, '%'))
+                or (:digitsQuery is not null and :digitsQuery <> ''
+                    and (student.cpf like concat('%', :digitsQuery, '%')
+                        or student.phoneNumber like concat('%', :digitsQuery, '%')))
             order by student.fullName asc
             """)
-    Page<Student> search(String query, Pageable pageable);
+    Page<Student> search(
+            @Param("textQuery") String textQuery,
+            @Param("digitsQuery") String digitsQuery,
+            Pageable pageable
+    );
 }

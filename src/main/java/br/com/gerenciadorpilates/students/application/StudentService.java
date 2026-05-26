@@ -60,7 +60,12 @@ public class StudentService {
         int normalizedPage = Math.max(page, 0);
         int normalizedSize = Math.min(Math.max(size, 1), 50);
         String normalizedQuery = query == null ? null : query.trim().toLowerCase();
-        var resultPage = studentRepository.search(normalizedQuery, PageRequest.of(normalizedPage, normalizedSize));
+        String digitsQuery = normalizedQuery == null ? null : normalizedQuery.replaceAll("\\D", "");
+        var resultPage = studentRepository.search(
+                normalizedQuery,
+                digitsQuery,
+                PageRequest.of(normalizedPage, normalizedSize)
+        );
 
         return new StudentSearchResponse(
                 resultPage.getContent().stream().map(StudentResponse::from).toList(),

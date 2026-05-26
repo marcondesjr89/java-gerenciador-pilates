@@ -203,6 +203,46 @@ class GerenciadorPilatesApplicationTests {
     }
 
     @Test
+    void studentSearchSupportsMaskedCpfAndPhone() throws Exception {
+        studentRepository.save(new Student(
+                UUID.randomUUID(),
+                "Aluno Documento",
+                "12345678901",
+                "documento@teste.local",
+                "85991112222",
+                LocalDate.of(1991, 4, 10),
+                StudentStatus.ACTIVE,
+                true
+        ));
+        studentRepository.save(new Student(
+                UUID.randomUUID(),
+                "Aluno Telefone",
+                "98765432100",
+                "telefone@teste.local",
+                "85993334444",
+                LocalDate.of(1992, 5, 11),
+                StudentStatus.ACTIVE,
+                true
+        ));
+
+        String token = loginAndGetToken("admin@test.local", "Admin@12345");
+
+        mockMvc.perform(get("/api/v1/students/search")
+                        .header("Authorization", "Bearer " + token)
+                        .param("q", "123.456.789-01"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.items.length()").value(1))
+                .andExpect(jsonPath("$.items[0].fullName").value("Aluno Documento"));
+
+        mockMvc.perform(get("/api/v1/students/search")
+                        .header("Authorization", "Bearer " + token)
+                        .param("q", "(85) 99333-4444"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.items.length()").value(1))
+                .andExpect(jsonPath("$.items[0].fullName").value("Aluno Telefone"));
+    }
+
+    @Test
     void authenticatedInstructorFlowCanUploadAndReadClinicalRecord() throws Exception {
         Student student = studentRepository.save(new Student(
                 UUID.randomUUID(),

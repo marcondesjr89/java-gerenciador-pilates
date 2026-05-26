@@ -10,14 +10,28 @@ export type StudentsSearchParams = {
   page?: string;
 };
 
+function parsePageParam(page?: string) {
+  const parsedPage = Number(page);
+  return Number.isFinite(parsedPage) ? Math.max(Math.trunc(parsedPage), 0) : 0;
+}
+
 export async function loadStudentsPage(session: SessionUser, params?: StudentsSearchParams) {
   const searchTerm = params?.q?.trim() ?? "";
-  const currentPage = Number.isFinite(Number(params?.page)) ? Math.max(Number(params?.page), 0) : 0;
-  const searchResult = await searchStudents(session, {
+  const requestedPage = parsePageParam(params?.page);
+  let searchResult = await searchStudents(session, {
     q: searchTerm,
-    page: currentPage,
+    page: requestedPage,
     size: 20
   });
+
+  if (searchResult.totalPages > 0 && requestedPage >= searchResult.totalPages) {
+    searchResult = await searchStudents(session, {
+      q: searchTerm,
+      page: searchResult.totalPages - 1,
+      size: 20
+    });
+  }
+
   const filteredStudents = searchResult.items;
   const selectedStudentFromPage =
     filteredStudents.find((student) => student.id === params?.studentId) ?? filteredStudents[0] ?? null;

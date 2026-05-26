@@ -6,10 +6,18 @@ type StudentsListProps = {
   selectedStudentId: string | null;
   searchTerm?: string;
   currentPage: number;
+  totalElements: number;
   totalPages: number;
 };
 
-export function StudentsList({ students, selectedStudentId, searchTerm, currentPage, totalPages }: StudentsListProps) {
+export function StudentsList({
+  students,
+  selectedStudentId,
+  searchTerm,
+  currentPage,
+  totalElements,
+  totalPages
+}: StudentsListProps) {
   if (students.length === 0) {
     return (
       <div className="rounded-[20px] border border-dashed border-brand-line bg-brand-surface px-5 py-10 text-center text-sm text-brand-subtext">
@@ -23,6 +31,11 @@ export function StudentsList({ students, selectedStudentId, searchTerm, currentP
 
   return (
     <div className="space-y-3">
+      <div className="rounded-[20px] border border-brand-line bg-brand-panel px-4 py-3 text-sm text-brand-subtext">
+        Exibindo {students.length} de {totalElements} aluno{totalElements === 1 ? "" : "s"} encontrado
+        {totalElements === 1 ? "" : "s"}.
+      </div>
+
       {students.map((student) => {
         const isSelected = selectedStudentId === student.id;
 

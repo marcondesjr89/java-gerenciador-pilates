@@ -100,6 +100,7 @@ export default async function StudentsPage({ searchParams }: StudentsPageProps) 
             selectedStudentId={selectedStudent?.id ?? null}
             searchTerm={params?.q}
             currentPage={pagination.page}
+            totalElements={pagination.totalElements}
             totalPages={pagination.totalPages}
           />
         </SectionCard>
