@@ -1,7 +1,7 @@
 import type { SessionUser } from "@/lib/auth";
 import { formatDateTime, getTodayIsoDate } from "@/lib/formatters";
 import { fetchInstructorDaySchedule } from "@/lib/schedule";
-import type { InstructorDayBooking, InstructorDayClinicalSummary } from "@/lib/schedule-types";
+import type { InstructorDayBooking, InstructorDayClinicalSummary, InstructorDaySlot } from "@/lib/schedule-types";
 
 export type InstructorSearchParams = {
   date?: string;
@@ -40,6 +40,37 @@ function findSelectedBooking(bookings: InstructorDayBooking[], studentId?: strin
   return bookings.find((booking) => booking.studentId === studentId) ?? bookings[0] ?? null;
 }
 
+function buildCareQueue(slots: InstructorDaySlot[]) {
+  return slots.flatMap((slot) =>
+    slot.bookings.map((booking) => ({
+      bookingId: booking.id,
+      slotId: slot.id,
+      studentId: booking.studentId,
+      studentName: booking.studentName,
+      startTime: slot.startTime,
+      endTime: slot.endTime,
+      requiredSpecialty: slot.requiredSpecialty,
+      hasActiveAlerts: booking.clinicalSummary.alerts.length > 0,
+      hasLatestEntry: booking.clinicalSummary.latestProgressEntry !== null
+    }))
+  );
+}
+
+function buildSelectedBookingNavigation(
+  queue: ReturnType<typeof buildCareQueue>,
+  selectedBooking: InstructorDayBooking | null
+) {
+  const selectedIndex = selectedBooking
+    ? queue.findIndex((item) => item.studentId === selectedBooking.studentId)
+    : -1;
+
+  return {
+    selectedIndex,
+    previous: selectedIndex > 0 ? queue[selectedIndex - 1] : null,
+    next: selectedIndex >= 0 && selectedIndex < queue.length - 1 ? queue[selectedIndex + 1] : null
+  };
+}
+
 export async function loadInstructorPage(session: SessionUser, params?: InstructorSearchParams) {
   const selectedDate = params?.date ?? getTodayIsoDate();
   const instructorDaySchedule = await fetchInstructorDaySchedule(session, selectedDate);
@@ -48,6 +79,8 @@ export async function loadInstructorPage(session: SessionUser, params?: Instruct
   const selectedSlotBookings = selectedSlot?.bookings ?? [];
   const selectedBooking = findSelectedBooking(selectedSlotBookings, params?.studentId);
   const selectedClinicalSummary = selectedBooking?.clinicalSummary ?? null;
+  const careQueue = buildCareQueue(instructorSlots);
+  const selectedBookingNavigation = buildSelectedBookingNavigation(careQueue, selectedBooking);
 
   return {
     selectedDate,
@@ -56,6 +89,8 @@ export async function loadInstructorPage(session: SessionUser, params?: Instruct
     selectedSlot,
     selectedSlotBookings,
     selectedBooking,
+    careQueue,
+    selectedBookingNavigation,
     alertSummary: buildAlertSummary(selectedClinicalSummary),
     latestEntrySummary: buildLatestEntrySummary(selectedClinicalSummary),
     nextSlot: instructorSlots[0] ?? null

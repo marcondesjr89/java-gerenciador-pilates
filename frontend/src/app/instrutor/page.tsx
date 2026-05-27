@@ -1,4 +1,4 @@
-import { CalendarDays, ChevronRight, ClipboardPen, TimerReset, UserRound } from "lucide-react";
+import { AlertTriangle, CalendarDays, CheckCircle2, ChevronRight, ClipboardPen, TimerReset, UserRound } from "lucide-react";
 import { ProgressEntryForm } from "@/app/instrutor/progress-entry-form";
 import { loadInstructorPage, type InstructorSearchParams } from "@/app/instrutor/load-instructor-page";
 import { requireInstructorSession } from "@/lib/auth";
@@ -18,6 +18,8 @@ export default async function InstructorPage({ searchParams }: InstructorPagePro
     selectedSlot,
     selectedSlotBookings,
     selectedBooking,
+    careQueue,
+    selectedBookingNavigation,
     alertSummary,
     latestEntrySummary,
     nextSlot
@@ -109,6 +111,67 @@ export default async function InstructorPage({ searchParams }: InstructorPagePro
             </div>
           </article>
         </section>
+
+        {careQueue.length > 0 ? (
+          <section className="rounded-[28px] border border-brand-line bg-brand-surface p-5 shadow-panel md:p-6">
+            <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+              <div>
+                <p className="text-sm uppercase tracking-[0.18em] text-brand-primary">Fila de atendimento</p>
+                <h2 className="mt-2 font-display text-2xl text-brand-secondary">Alunos do dia</h2>
+              </div>
+              {selectedBookingNavigation.selectedIndex >= 0 ? (
+                <span className="rounded-full bg-brand-soft px-3 py-1 text-xs font-semibold text-brand-secondary">
+                  {selectedBookingNavigation.selectedIndex + 1} de {careQueue.length}
+                </span>
+              ) : null}
+            </div>
+
+            <div className="mt-5 grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+              {careQueue.map((item, index) => {
+                const isSelected = selectedBooking?.studentId === item.studentId;
+
+                return (
+                  <a
+                    key={item.bookingId}
+                    href={`/instrutor?date=${selectedDate}&slotId=${item.slotId}&studentId=${item.studentId}`}
+                    className={
+                      isSelected
+                        ? "block rounded-[20px] border border-brand-primary/30 bg-brand-soft px-4 py-4"
+                        : "block rounded-[20px] border border-brand-line bg-brand-panel px-4 py-4 transition hover:border-brand-primary/30"
+                    }
+                  >
+                    <div className="flex items-start justify-between gap-3">
+                      <div>
+                        <p className="text-xs font-semibold uppercase tracking-[0.18em] text-brand-subtext">
+                          #{index + 1} - {formatUtcHour(item.startTime)}
+                        </p>
+                        <p className="mt-2 font-semibold text-brand-ink">{item.studentName}</p>
+                        <p className="mt-1 text-sm text-brand-subtext">{formatSpecialty(item.requiredSpecialty)}</p>
+                      </div>
+                      <ChevronRight className={isSelected ? "h-5 w-5 text-brand-primary" : "h-5 w-5 text-brand-subtext"} />
+                    </div>
+
+                    <div className="mt-3 flex flex-wrap gap-2">
+                      <span
+                        className={
+                          item.hasActiveAlerts
+                            ? "inline-flex items-center gap-1 rounded-full bg-[rgba(220,53,69,0.08)] px-3 py-1 text-xs font-semibold text-brand-danger"
+                            : "inline-flex items-center gap-1 rounded-full bg-[rgba(25,135,84,0.12)] px-3 py-1 text-xs font-semibold text-brand-success"
+                        }
+                      >
+                        {item.hasActiveAlerts ? <AlertTriangle className="h-3.5 w-3.5" /> : <CheckCircle2 className="h-3.5 w-3.5" />}
+                        {item.hasActiveAlerts ? "Alerta" : "Sem alerta"}
+                      </span>
+                      <span className="rounded-full bg-brand-surface px-3 py-1 text-xs font-semibold text-brand-secondary">
+                        {item.hasLatestEntry ? "Com evolucao" : "Sem evolucao"}
+                      </span>
+                    </div>
+                  </a>
+                );
+              })}
+            </div>
+          </section>
+        ) : null}
 
         {instructorSlots.length === 0 ? (
           <div className="rounded-[24px] border border-dashed border-brand-line bg-brand-surface px-5 py-10 text-center">
@@ -247,6 +310,40 @@ export default async function InstructorPage({ searchParams }: InstructorPagePro
                         <span className="rounded-full bg-[rgba(25,135,84,0.12)] px-3 py-1 text-xs font-semibold text-brand-success">
                           Selecionado
                         </span>
+                      </div>
+
+                      <div className="mt-5 grid gap-3 md:grid-cols-2">
+                        {selectedBookingNavigation.previous ? (
+                          <a
+                            href={`/instrutor?date=${selectedDate}&slotId=${selectedBookingNavigation.previous.slotId}&studentId=${selectedBookingNavigation.previous.studentId}`}
+                            className="rounded-[18px] border border-brand-line bg-brand-panel px-4 py-3 transition hover:border-brand-primary/30"
+                          >
+                            <p className="text-xs uppercase tracking-[0.18em] text-brand-subtext">Aluno anterior</p>
+                            <p className="mt-1 font-semibold text-brand-secondary">
+                              {formatUtcHour(selectedBookingNavigation.previous.startTime)} - {selectedBookingNavigation.previous.studentName}
+                            </p>
+                          </a>
+                        ) : (
+                          <div className="rounded-[18px] border border-dashed border-brand-line bg-brand-panel px-4 py-3 text-sm text-brand-subtext">
+                            Este e o primeiro aluno da fila.
+                          </div>
+                        )}
+
+                        {selectedBookingNavigation.next ? (
+                          <a
+                            href={`/instrutor?date=${selectedDate}&slotId=${selectedBookingNavigation.next.slotId}&studentId=${selectedBookingNavigation.next.studentId}`}
+                            className="rounded-[18px] border border-brand-line bg-brand-panel px-4 py-3 transition hover:border-brand-primary/30"
+                          >
+                            <p className="text-xs uppercase tracking-[0.18em] text-brand-subtext">Proximo aluno</p>
+                            <p className="mt-1 font-semibold text-brand-secondary">
+                              {formatUtcHour(selectedBookingNavigation.next.startTime)} - {selectedBookingNavigation.next.studentName}
+                            </p>
+                          </a>
+                        ) : (
+                          <div className="rounded-[18px] border border-dashed border-brand-line bg-brand-panel px-4 py-3 text-sm text-brand-subtext">
+                            Este e o ultimo aluno da fila.
+                          </div>
+                        )}
                       </div>
 
                       <div className="mt-5 grid gap-4 xl:grid-cols-[0.95fr_1.05fr]">

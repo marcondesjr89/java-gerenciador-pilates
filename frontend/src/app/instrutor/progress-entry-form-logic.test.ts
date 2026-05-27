@@ -1,5 +1,12 @@
 import { describe, expect, it } from "vitest";
-import { buildProgressEntryPayload, getOptionalProgressEntryAttachment } from "@/app/instrutor/progress-entry-form-logic";
+import {
+  appendProgressEntryNoteTemplate,
+  applyProgressEntryScorePreset,
+  buildProgressEntryPayload,
+  getOptionalProgressEntryAttachment,
+  PROGRESS_ENTRY_NOTE_TEMPLATES,
+  PROGRESS_ENTRY_SCORE_PRESETS
+} from "@/app/instrutor/progress-entry-form-logic";
 
 describe("progress entry form logic", () => {
   it("normaliza o payload da evolucao para o formato esperado", () => {
@@ -29,5 +36,31 @@ describe("progress entry form logic", () => {
     filledFormData.set("attachment", file);
 
     expect(getOptionalProgressEntryAttachment(filledFormData)).toBe(file);
+  });
+
+  it("monta notas rapidas reaproveitando templates operacionais", () => {
+    expect(PROGRESS_ENTRY_NOTE_TEMPLATES).toHaveLength(3);
+
+    expect(appendProgressEntryNoteTemplate("", PROGRESS_ENTRY_NOTE_TEMPLATES[0].text)).toBe(
+      PROGRESS_ENTRY_NOTE_TEMPLATES[0].text
+    );
+    expect(appendProgressEntryNoteTemplate("  Observacao inicial.  ", "  Complemento da sessao.  ")).toBe(
+      "Observacao inicial.\n\nComplemento da sessao."
+    );
+  });
+
+  it("aplica presets de pontuacao para lancamento em tablet", () => {
+    expect(PROGRESS_ENTRY_SCORE_PRESETS.map((preset) => preset.label)).toEqual([
+      "Base",
+      "Boa resposta",
+      "Dor leve",
+      "Regredir carga"
+    ]);
+
+    expect(applyProgressEntryScorePreset(PROGRESS_ENTRY_SCORE_PRESETS[2])).toEqual({
+      flexibilityScore: "65",
+      strengthScore: "65",
+      painLevel: "2"
+    });
   });
 });

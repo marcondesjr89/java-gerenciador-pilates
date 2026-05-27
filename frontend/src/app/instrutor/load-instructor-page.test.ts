@@ -86,6 +86,20 @@ describe("loadInstructorPage", () => {
       scoreSummary: "Flexibilidade: 70 | Forca: - | Dor: 2",
       instructorNotes: "Boa resposta ao controle de tronco."
     });
+    expect(result.careQueue).toEqual([
+      expect.objectContaining({
+        bookingId: "booking-1",
+        slotId: "slot-1",
+        studentId: "student-1",
+        hasActiveAlerts: true,
+        hasLatestEntry: true
+      })
+    ]);
+    expect(result.selectedBookingNavigation).toMatchObject({
+      selectedIndex: 0,
+      previous: null,
+      next: null
+    });
   });
 
   it("respeita slot e aluno selecionados quando eles existem no agregado", async () => {
@@ -125,6 +139,66 @@ describe("loadInstructorPage", () => {
     expect(result.latestEntrySummary).toBeNull();
   });
 
+  it("monta fila de atendimento e navegacao entre alunos do dia", async () => {
+    const firstSlot = buildSlot({
+      id: "slot-1",
+      startTime: "2026-05-20T08:00:00Z",
+      endTime: "2026-05-20T09:00:00Z"
+    });
+    const secondSlot = buildSlot({
+      id: "slot-2",
+      startTime: "2026-05-20T09:00:00Z",
+      endTime: "2026-05-20T10:00:00Z",
+      bookings: [
+        {
+          id: "booking-2",
+          slotId: "slot-2",
+          studentId: "student-2",
+          studentName: "Bruno Aluno",
+          status: "BOOKED",
+          clinicalSummary: {
+            studentId: "student-2",
+            alerts: [],
+            generalObservations: null,
+            latestProgressEntry: null
+          }
+        }
+      ]
+    });
+    vi.mocked(fetchInstructorDaySchedule).mockResolvedValue(buildSchedule([firstSlot, secondSlot]));
+
+    const result = await loadInstructorPage(session, {
+      date: "2026-05-20",
+      slotId: "slot-2",
+      studentId: "student-2"
+    });
+
+    expect(result.careQueue).toEqual([
+      expect.objectContaining({
+        bookingId: "booking-1",
+        slotId: "slot-1",
+        studentId: "student-1",
+        startTime: "2026-05-20T08:00:00Z",
+        hasActiveAlerts: true,
+        hasLatestEntry: true
+      }),
+      expect.objectContaining({
+        bookingId: "booking-2",
+        slotId: "slot-2",
+        studentId: "student-2",
+        startTime: "2026-05-20T09:00:00Z",
+        hasActiveAlerts: false,
+        hasLatestEntry: false
+      })
+    ]);
+    expect(result.selectedBookingNavigation.selectedIndex).toBe(1);
+    expect(result.selectedBookingNavigation.previous).toMatchObject({
+      studentId: "student-1",
+      slotId: "slot-1"
+    });
+    expect(result.selectedBookingNavigation.next).toBeNull();
+  });
+
   it("mantem estado vazio quando o instrutor nao tem agenda no dia", async () => {
     vi.mocked(fetchInstructorDaySchedule).mockResolvedValue(buildSchedule([]));
 
@@ -135,5 +209,11 @@ describe("loadInstructorPage", () => {
     expect(result.selectedBooking).toBeNull();
     expect(result.nextSlot).toBeNull();
     expect(result.totalStudents).toBe(0);
+    expect(result.careQueue).toEqual([]);
+    expect(result.selectedBookingNavigation).toMatchObject({
+      selectedIndex: -1,
+      previous: null,
+      next: null
+    });
   });
 });

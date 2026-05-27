@@ -4,7 +4,14 @@ import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { ClipboardPen, LoaderCircle } from "lucide-react";
 import { readActionErrorMessage, type ResourceIdResponse } from "@/lib/action-responses";
-import { buildProgressEntryPayload, getOptionalProgressEntryAttachment } from "@/app/instrutor/progress-entry-form-logic";
+import {
+  appendProgressEntryNoteTemplate,
+  applyProgressEntryScorePreset,
+  buildProgressEntryPayload,
+  getOptionalProgressEntryAttachment,
+  PROGRESS_ENTRY_NOTE_TEMPLATES,
+  PROGRESS_ENTRY_SCORE_PRESETS
+} from "@/app/instrutor/progress-entry-form-logic";
 
 type ProgressEntryFormProps = {
   studentId: string;
@@ -18,6 +25,12 @@ function getCurrentLocalDateTime() {
 
 export function ProgressEntryForm({ studentId }: ProgressEntryFormProps) {
   const router = useRouter();
+  const [instructorNotes, setInstructorNotes] = useState("");
+  const [scoreState, setScoreState] = useState({
+    flexibilityScore: "70",
+    strengthScore: "70",
+    painLevel: "0"
+  });
   const [errorMessage, setErrorMessage] = useState("");
   const [successMessage, setSuccessMessage] = useState("");
   const [isPending, startTransition] = useTransition();
@@ -91,11 +104,29 @@ export function ProgressEntryForm({ studentId }: ProgressEntryFormProps) {
           name="instructorNotes"
           rows={4}
           maxLength={2000}
+          value={instructorNotes}
+          onChange={(event) => setInstructorNotes(event.target.value)}
           className="w-full rounded-2xl border border-brand-line bg-brand-panel px-4 py-3 text-brand-ink outline-none"
           placeholder="Descreva a sessao, adaptacoes, resposta do aluno e proximo foco."
           required
         />
       </label>
+
+      <div className="rounded-2xl border border-brand-line bg-brand-panel px-4 py-4">
+        <p className="text-sm font-semibold text-brand-secondary">Atalhos de anotacao</p>
+        <div className="mt-3 flex flex-wrap gap-2">
+          {PROGRESS_ENTRY_NOTE_TEMPLATES.map((template) => (
+            <button
+              key={template.label}
+              type="button"
+              onClick={() => setInstructorNotes((currentNotes) => appendProgressEntryNoteTemplate(currentNotes, template.text))}
+              className="rounded-full border border-brand-line bg-brand-soft px-3 py-2 text-xs font-semibold text-brand-secondary transition hover:border-brand-primary hover:text-brand-primary"
+            >
+              {template.label}
+            </button>
+          ))}
+        </div>
+      </div>
 
       <label className="space-y-2">
         <span className="text-sm font-semibold text-brand-secondary">Anexo clinico opcional</span>
@@ -114,7 +145,8 @@ export function ProgressEntryForm({ studentId }: ProgressEntryFormProps) {
             type="number"
             min="0"
             max="100"
-            defaultValue="70"
+            value={scoreState.flexibilityScore}
+            onChange={(event) => setScoreState((current) => ({ ...current, flexibilityScore: event.target.value }))}
             className="w-full rounded-2xl border border-brand-line bg-brand-panel px-4 py-3 text-brand-ink outline-none"
             required
           />
@@ -126,7 +158,8 @@ export function ProgressEntryForm({ studentId }: ProgressEntryFormProps) {
             type="number"
             min="0"
             max="100"
-            defaultValue="70"
+            value={scoreState.strengthScore}
+            onChange={(event) => setScoreState((current) => ({ ...current, strengthScore: event.target.value }))}
             className="w-full rounded-2xl border border-brand-line bg-brand-panel px-4 py-3 text-brand-ink outline-none"
             required
           />
@@ -138,11 +171,28 @@ export function ProgressEntryForm({ studentId }: ProgressEntryFormProps) {
             type="number"
             min="0"
             max="10"
-            defaultValue="0"
+            value={scoreState.painLevel}
+            onChange={(event) => setScoreState((current) => ({ ...current, painLevel: event.target.value }))}
             className="w-full rounded-2xl border border-brand-line bg-brand-panel px-4 py-3 text-brand-ink outline-none"
             required
           />
         </label>
+      </div>
+
+      <div className="rounded-2xl border border-brand-line bg-brand-panel px-4 py-4">
+        <p className="text-sm font-semibold text-brand-secondary">Presets de pontuacao</p>
+        <div className="mt-3 flex flex-wrap gap-2">
+          {PROGRESS_ENTRY_SCORE_PRESETS.map((preset) => (
+            <button
+              key={preset.label}
+              type="button"
+              onClick={() => setScoreState(applyProgressEntryScorePreset(preset))}
+              className="rounded-full border border-brand-line bg-brand-soft px-3 py-2 text-xs font-semibold text-brand-secondary transition hover:border-brand-primary hover:text-brand-primary"
+            >
+              {preset.label}
+            </button>
+          ))}
+        </div>
       </div>
 
       <button
