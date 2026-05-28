@@ -22,6 +22,7 @@ export default async function InstructorPage({ searchParams }: InstructorPagePro
     careQueue,
     selectedBookingNavigation,
     slotOperationalSummaries,
+    bookingOperationalSummaries,
     alertSummary,
     latestEntrySummary,
     nextSlot
@@ -318,6 +319,7 @@ export default async function InstructorPage({ searchParams }: InstructorPagePro
                       <div className="mt-5 grid gap-3 lg:grid-cols-2">
                         {selectedSlotBookings.map((booking) => {
                           const isSelected = selectedBooking?.studentId === booking.studentId;
+                          const bookingSummary = bookingOperationalSummaries[booking.studentId];
 
                           return (
                             <a
@@ -332,10 +334,34 @@ export default async function InstructorPage({ searchParams }: InstructorPagePro
                               <div className="flex items-center justify-between gap-3">
                                 <div>
                                   <p className="font-semibold text-brand-ink">{booking.studentName}</p>
-                                  <p className="mt-1 text-sm text-brand-subtext">Pronto para registrar sessao</p>
+                                  <p className="mt-1 text-sm text-brand-subtext">
+                                    {bookingSummary.hasLatestEntry ? "Com historico recente" : "Sem evolucao recente"}
+                                  </p>
                                 </div>
                                 <span className="rounded-full bg-[rgba(25,135,84,0.12)] px-3 py-1 text-xs font-semibold text-brand-success">
                                   Em pauta
+                                </span>
+                              </div>
+                              <div className="mt-3 flex flex-wrap gap-2">
+                                <span
+                                  className={
+                                    bookingSummary.activeAlertsCount > 0
+                                      ? "rounded-full bg-[rgba(220,53,69,0.08)] px-3 py-1 text-xs font-semibold text-brand-danger"
+                                      : "rounded-full bg-[rgba(25,135,84,0.12)] px-3 py-1 text-xs font-semibold text-brand-success"
+                                  }
+                                >
+                                  {bookingSummary.activeAlertsCount > 0
+                                    ? `${bookingSummary.activeAlertsCount} alerta(s)`
+                                    : "Sem alertas"}
+                                </span>
+                                <span
+                                  className={
+                                    bookingSummary.hasLatestEntry
+                                      ? "rounded-full bg-brand-surface px-3 py-1 text-xs font-semibold text-brand-secondary"
+                                      : "rounded-full bg-[rgba(255,193,7,0.18)] px-3 py-1 text-xs font-semibold text-brand-secondary"
+                                  }
+                                >
+                                  {bookingSummary.hasLatestEntry ? "Evolucao existente" : "Registrar evolucao"}
                                 </span>
                               </div>
                             </a>

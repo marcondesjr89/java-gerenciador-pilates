@@ -104,6 +104,18 @@ function buildSlotOperationalSummaries(slots: InstructorDaySlot[]) {
   );
 }
 
+function buildBookingOperationalSummaries(bookings: InstructorDayBooking[]) {
+  return Object.fromEntries(
+    bookings.map((booking) => [
+      booking.studentId,
+      {
+        activeAlertsCount: booking.clinicalSummary.alerts.length,
+        hasLatestEntry: booking.clinicalSummary.latestProgressEntry !== null
+      }
+    ])
+  );
+}
+
 export async function loadInstructorPage(session: SessionUser, params?: InstructorSearchParams) {
   const selectedDate = params?.date ?? getTodayIsoDate();
   const dateNavigation = buildDateNavigation(selectedDate);
@@ -116,6 +128,7 @@ export async function loadInstructorPage(session: SessionUser, params?: Instruct
   const careQueue = buildCareQueue(instructorSlots);
   const selectedBookingNavigation = buildSelectedBookingNavigation(careQueue, selectedBooking);
   const slotOperationalSummaries = buildSlotOperationalSummaries(instructorSlots);
+  const bookingOperationalSummaries = buildBookingOperationalSummaries(selectedSlotBookings);
 
   return {
     selectedDate,
@@ -128,6 +141,7 @@ export async function loadInstructorPage(session: SessionUser, params?: Instruct
     careQueue,
     selectedBookingNavigation,
     slotOperationalSummaries,
+    bookingOperationalSummaries,
     alertSummary: buildAlertSummary(selectedClinicalSummary),
     latestEntrySummary: buildLatestEntrySummary(selectedClinicalSummary),
     nextSlot: instructorSlots[0] ?? null

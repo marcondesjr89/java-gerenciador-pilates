@@ -111,6 +111,12 @@ describe("loadInstructorPage", () => {
         pendingProgressCount: 0
       }
     });
+    expect(result.bookingOperationalSummaries).toEqual({
+      "student-1": {
+        activeAlertsCount: 1,
+        hasLatestEntry: true
+      }
+    });
   });
 
   it("respeita slot e aluno selecionados quando eles existem no agregado", async () => {
@@ -218,6 +224,12 @@ describe("loadInstructorPage", () => {
         pendingProgressCount: 1
       }
     });
+    expect(result.bookingOperationalSummaries).toEqual({
+      "student-2": {
+        activeAlertsCount: 0,
+        hasLatestEntry: false
+      }
+    });
   });
 
   it("mantem estado vazio quando o instrutor nao tem agenda no dia", async () => {
@@ -237,5 +249,6 @@ describe("loadInstructorPage", () => {
       next: null
     });
     expect(result.slotOperationalSummaries).toEqual({});
+    expect(result.bookingOperationalSummaries).toEqual({});
   });
 });
