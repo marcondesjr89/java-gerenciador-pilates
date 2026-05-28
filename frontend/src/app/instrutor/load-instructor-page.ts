@@ -71,6 +71,25 @@ function buildSelectedBookingNavigation(
   };
 }
 
+function buildSlotOperationalSummaries(slots: InstructorDaySlot[]) {
+  return Object.fromEntries(
+    slots.map((slot) => {
+      const activeAlertsCount = slot.bookings.filter((booking) => booking.clinicalSummary.alerts.length > 0).length;
+      const pendingProgressCount = slot.bookings.filter(
+        (booking) => booking.clinicalSummary.latestProgressEntry === null
+      ).length;
+
+      return [
+        slot.id,
+        {
+          activeAlertsCount,
+          pendingProgressCount
+        }
+      ];
+    })
+  );
+}
+
 export async function loadInstructorPage(session: SessionUser, params?: InstructorSearchParams) {
   const selectedDate = params?.date ?? getTodayIsoDate();
   const instructorDaySchedule = await fetchInstructorDaySchedule(session, selectedDate);
@@ -81,6 +100,7 @@ export async function loadInstructorPage(session: SessionUser, params?: Instruct
   const selectedClinicalSummary = selectedBooking?.clinicalSummary ?? null;
   const careQueue = buildCareQueue(instructorSlots);
   const selectedBookingNavigation = buildSelectedBookingNavigation(careQueue, selectedBooking);
+  const slotOperationalSummaries = buildSlotOperationalSummaries(instructorSlots);
 
   return {
     selectedDate,
@@ -91,6 +111,7 @@ export async function loadInstructorPage(session: SessionUser, params?: Instruct
     selectedBooking,
     careQueue,
     selectedBookingNavigation,
+    slotOperationalSummaries,
     alertSummary: buildAlertSummary(selectedClinicalSummary),
     latestEntrySummary: buildLatestEntrySummary(selectedClinicalSummary),
     nextSlot: instructorSlots[0] ?? null

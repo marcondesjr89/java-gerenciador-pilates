@@ -20,6 +20,7 @@ export default async function InstructorPage({ searchParams }: InstructorPagePro
     selectedBooking,
     careQueue,
     selectedBookingNavigation,
+    slotOperationalSummaries,
     alertSummary,
     latestEntrySummary,
     nextSlot
@@ -192,6 +193,7 @@ export default async function InstructorPage({ searchParams }: InstructorPagePro
               <div className="space-y-3">
                 {instructorSlots.map((slot) => {
                   const isSelected = selectedSlot?.id === slot.id;
+                  const operationalSummary = slotOperationalSummaries[slot.id];
 
                   return (
                     <a
@@ -222,6 +224,31 @@ export default async function InstructorPage({ searchParams }: InstructorPagePro
                         <span className="text-brand-subtext">{slot.bookedCount} confirmado(s)</span>
                         <span className="rounded-full bg-brand-surface px-3 py-1 text-xs font-semibold text-brand-secondary">
                           {slot.availableSpots > 0 ? `${slot.availableSpots} vaga(s)` : "Cheio"}
+                        </span>
+                      </div>
+
+                      <div className="mt-3 flex flex-wrap gap-2">
+                        <span
+                          className={
+                            operationalSummary.activeAlertsCount > 0
+                              ? "rounded-full bg-[rgba(220,53,69,0.08)] px-3 py-1 text-xs font-semibold text-brand-danger"
+                              : "rounded-full bg-[rgba(25,135,84,0.12)] px-3 py-1 text-xs font-semibold text-brand-success"
+                          }
+                        >
+                          {operationalSummary.activeAlertsCount > 0
+                            ? `${operationalSummary.activeAlertsCount} alerta(s)`
+                            : "Sem alertas"}
+                        </span>
+                        <span
+                          className={
+                            operationalSummary.pendingProgressCount > 0
+                              ? "rounded-full bg-[rgba(255,193,7,0.18)] px-3 py-1 text-xs font-semibold text-brand-secondary"
+                              : "rounded-full bg-[rgba(25,135,84,0.12)] px-3 py-1 text-xs font-semibold text-brand-success"
+                          }
+                        >
+                          {operationalSummary.pendingProgressCount > 0
+                            ? `${operationalSummary.pendingProgressCount} sem evolucao`
+                            : "Evolucoes ok"}
                         </span>
                       </div>
                     </a>

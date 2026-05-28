@@ -100,6 +100,12 @@ describe("loadInstructorPage", () => {
       previous: null,
       next: null
     });
+    expect(result.slotOperationalSummaries).toEqual({
+      "slot-1": {
+        activeAlertsCount: 1,
+        pendingProgressCount: 0
+      }
+    });
   });
 
   it("respeita slot e aluno selecionados quando eles existem no agregado", async () => {
@@ -197,6 +203,16 @@ describe("loadInstructorPage", () => {
       slotId: "slot-1"
     });
     expect(result.selectedBookingNavigation.next).toBeNull();
+    expect(result.slotOperationalSummaries).toEqual({
+      "slot-1": {
+        activeAlertsCount: 1,
+        pendingProgressCount: 0
+      },
+      "slot-2": {
+        activeAlertsCount: 0,
+        pendingProgressCount: 1
+      }
+    });
   });
 
   it("mantem estado vazio quando o instrutor nao tem agenda no dia", async () => {
@@ -215,5 +231,6 @@ describe("loadInstructorPage", () => {
       previous: null,
       next: null
     });
+    expect(result.slotOperationalSummaries).toEqual({});
   });
 });
