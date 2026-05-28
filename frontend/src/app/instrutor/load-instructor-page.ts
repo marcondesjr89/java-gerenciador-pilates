@@ -40,6 +40,20 @@ function findSelectedBooking(bookings: InstructorDayBooking[], studentId?: strin
   return bookings.find((booking) => booking.studentId === studentId) ?? bookings[0] ?? null;
 }
 
+function shiftIsoDate(date: string, offsetInDays: number) {
+  const shiftedDate = new Date(`${date}T12:00:00`);
+  shiftedDate.setDate(shiftedDate.getDate() + offsetInDays);
+  return shiftedDate.toISOString().slice(0, 10);
+}
+
+function buildDateNavigation(selectedDate: string) {
+  return {
+    previousDate: shiftIsoDate(selectedDate, -1),
+    todayDate: getTodayIsoDate(),
+    nextDate: shiftIsoDate(selectedDate, 1)
+  };
+}
+
 function buildCareQueue(slots: InstructorDaySlot[]) {
   return slots.flatMap((slot) =>
     slot.bookings.map((booking) => ({
@@ -92,6 +106,7 @@ function buildSlotOperationalSummaries(slots: InstructorDaySlot[]) {
 
 export async function loadInstructorPage(session: SessionUser, params?: InstructorSearchParams) {
   const selectedDate = params?.date ?? getTodayIsoDate();
+  const dateNavigation = buildDateNavigation(selectedDate);
   const instructorDaySchedule = await fetchInstructorDaySchedule(session, selectedDate);
   const instructorSlots = instructorDaySchedule.slots;
   const selectedSlot = instructorSlots.find((slot) => slot.id === params?.slotId) ?? instructorSlots[0] ?? null;
@@ -104,6 +119,7 @@ export async function loadInstructorPage(session: SessionUser, params?: Instruct
 
   return {
     selectedDate,
+    dateNavigation,
     instructorSlots,
     totalStudents: instructorDaySchedule.totalBookings,
     selectedSlot,

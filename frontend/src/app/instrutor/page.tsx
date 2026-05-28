@@ -13,6 +13,7 @@ export default async function InstructorPage({ searchParams }: InstructorPagePro
   const params = await searchParams;
   const {
     selectedDate,
+    dateNavigation,
     instructorSlots,
     totalStudents,
     selectedSlot,
@@ -53,6 +54,26 @@ export default async function InstructorPage({ searchParams }: InstructorPagePro
               >
                 Atualizar agenda
               </button>
+              <div className="grid grid-cols-3 gap-2 pt-1">
+                <a
+                  href={`/instrutor?date=${dateNavigation.previousDate}`}
+                  className="rounded-xl border border-brand-line bg-brand-surface px-3 py-2 text-center text-xs font-semibold text-brand-secondary transition hover:border-brand-primary hover:text-brand-primary"
+                >
+                  Anterior
+                </a>
+                <a
+                  href={`/instrutor?date=${dateNavigation.todayDate}`}
+                  className="rounded-xl border border-brand-line bg-brand-surface px-3 py-2 text-center text-xs font-semibold text-brand-secondary transition hover:border-brand-primary hover:text-brand-primary"
+                >
+                  Hoje
+                </a>
+                <a
+                  href={`/instrutor?date=${dateNavigation.nextDate}`}
+                  className="rounded-xl border border-brand-line bg-brand-surface px-3 py-2 text-center text-xs font-semibold text-brand-secondary transition hover:border-brand-primary hover:text-brand-primary"
+                >
+                  Proximo
+                </a>
+              </div>
             </form>
           </div>
         </section>

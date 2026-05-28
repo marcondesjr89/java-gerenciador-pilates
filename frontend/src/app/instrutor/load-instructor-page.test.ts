@@ -75,6 +75,11 @@ describe("loadInstructorPage", () => {
     const result = await loadInstructorPage(session, { date: "2026-05-20" });
 
     expect(fetchInstructorDaySchedule).toHaveBeenCalledWith(session, "2026-05-20");
+    expect(result.dateNavigation).toMatchObject({
+      previousDate: "2026-05-19",
+      nextDate: "2026-05-21"
+    });
+    expect(result.dateNavigation.todayDate).toMatch(/^\d{4}-\d{2}-\d{2}$/);
     expect(result.selectedSlot?.id).toBe("slot-1");
     expect(result.selectedBooking?.studentId).toBe("student-1");
     expect(result.alertSummary).toMatchObject({
