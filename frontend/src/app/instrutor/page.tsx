@@ -192,6 +192,36 @@ export default async function InstructorPage({ searchParams }: InstructorPagePro
                 Nenhuma pendencia operacional para os alunos confirmados neste dia.
               </div>
             )}
+
+            <div className="mt-5 rounded-[20px] border border-brand-line bg-brand-panel px-4 py-4">
+              <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+                <div>
+                  <p className="text-xs uppercase tracking-[0.18em] text-brand-subtext">Progresso das evolucoes</p>
+                  <p className="mt-1 text-sm font-semibold text-brand-secondary">
+                    {dayOperationalSummary.completionPercentage}% registrado
+                  </p>
+                </div>
+                {dayOperationalSummary.nextPendingProgress ? (
+                  <a
+                    href={`/instrutor?date=${selectedDate}&slotId=${dayOperationalSummary.nextPendingProgress.slotId}&studentId=${dayOperationalSummary.nextPendingProgress.studentId}`}
+                    className="inline-flex items-center justify-center gap-2 rounded-2xl bg-brand-primary px-4 py-2 text-sm font-semibold text-white transition hover:bg-brand-primaryHover"
+                  >
+                    <ClipboardPen className="h-4 w-4" />
+                    Proxima evolucao
+                  </a>
+                ) : (
+                  <span className="rounded-2xl bg-[rgba(25,135,84,0.12)] px-4 py-2 text-sm font-semibold text-brand-success">
+                    Evolucoes do dia completas
+                  </span>
+                )}
+              </div>
+              <div className="mt-4 h-2 overflow-hidden rounded-full bg-brand-soft">
+                <div
+                  className="h-full rounded-full bg-brand-primary"
+                  style={{ width: `${dayOperationalSummary.completionPercentage}%` }}
+                />
+              </div>
+            </div>
           </section>
         ) : null}
 

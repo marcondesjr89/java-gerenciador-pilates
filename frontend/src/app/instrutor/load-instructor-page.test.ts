@@ -108,7 +108,9 @@ describe("loadInstructorPage", () => {
     expect(result.dayOperationalSummary).toMatchObject({
       activeAlertsCount: 1,
       pendingProgressCount: 0,
-      completedProgressCount: 1
+      completedProgressCount: 1,
+      completionPercentage: 100,
+      nextPendingProgress: null
     });
     expect(result.dayOperationalSummary.priorityQueue).toEqual([
       expect.objectContaining({
@@ -229,7 +231,12 @@ describe("loadInstructorPage", () => {
     expect(result.dayOperationalSummary).toMatchObject({
       activeAlertsCount: 1,
       pendingProgressCount: 1,
-      completedProgressCount: 1
+      completedProgressCount: 1,
+      completionPercentage: 50,
+      nextPendingProgress: expect.objectContaining({
+        studentId: "student-2",
+        slotId: "slot-2"
+      })
     });
     expect(result.dayOperationalSummary.priorityQueue).toEqual([
       expect.objectContaining({
@@ -281,6 +288,8 @@ describe("loadInstructorPage", () => {
       activeAlertsCount: 0,
       pendingProgressCount: 0,
       completedProgressCount: 0,
+      completionPercentage: 0,
+      nextPendingProgress: null,
       priorityQueue: []
     });
     expect(result.slotOperationalSummaries).toEqual({});

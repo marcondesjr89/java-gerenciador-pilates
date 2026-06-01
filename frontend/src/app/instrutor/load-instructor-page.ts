@@ -89,11 +89,14 @@ function buildDayOperationalSummary(queue: ReturnType<typeof buildCareQueue>) {
   const activeAlertsCount = queue.filter((item) => item.hasActiveAlerts).length;
   const pendingProgressCount = queue.filter((item) => !item.hasLatestEntry).length;
   const priorityQueue = queue.filter((item) => item.hasActiveAlerts || !item.hasLatestEntry).slice(0, 4);
+  const completedProgressCount = queue.length - pendingProgressCount;
 
   return {
     activeAlertsCount,
     pendingProgressCount,
-    completedProgressCount: queue.length - pendingProgressCount,
+    completedProgressCount,
+    completionPercentage: queue.length > 0 ? Math.round((completedProgressCount / queue.length) * 100) : 0,
+    nextPendingProgress: queue.find((item) => !item.hasLatestEntry) ?? null,
     priorityQueue
   };
 }
