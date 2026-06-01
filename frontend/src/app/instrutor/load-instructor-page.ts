@@ -152,7 +152,8 @@ export async function loadInstructorPage(session: SessionUser, params?: Instruct
   const dateNavigation = buildDateNavigation(selectedDate);
   const instructorDaySchedule = await fetchInstructorDaySchedule(session, selectedDate);
   const instructorSlots = instructorDaySchedule.slots;
-  const selectedSlot = instructorSlots.find((slot) => slot.id === params?.slotId) ?? instructorSlots[0] ?? null;
+  const nextSlot = findNextOperationalSlot(instructorSlots, selectedDate);
+  const selectedSlot = instructorSlots.find((slot) => slot.id === params?.slotId) ?? nextSlot ?? instructorSlots[0] ?? null;
   const selectedSlotBookings = selectedSlot?.bookings ?? [];
   const selectedBooking = findSelectedBooking(selectedSlotBookings, params?.studentId);
   const selectedClinicalSummary = selectedBooking?.clinicalSummary ?? null;
@@ -177,6 +178,6 @@ export async function loadInstructorPage(session: SessionUser, params?: Instruct
     bookingOperationalSummaries,
     alertSummary: buildAlertSummary(selectedClinicalSummary),
     latestEntrySummary: buildLatestEntrySummary(selectedClinicalSummary),
-    nextSlot: findNextOperationalSlot(instructorSlots, selectedDate)
+    nextSlot
   };
 }

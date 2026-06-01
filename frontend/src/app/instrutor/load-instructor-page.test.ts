@@ -320,6 +320,42 @@ describe("loadInstructorPage", () => {
     expect(result.nextSlot?.id).toBe("slot-2");
   });
 
+  it("abre a proxima aula como horario padrao quando a URL nao informa slot", async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-05-20T12:30:00Z"));
+    const finishedSlot = buildSlot({
+      id: "slot-1",
+      startTime: "2026-05-20T10:00:00Z",
+      endTime: "2026-05-20T11:00:00Z"
+    });
+    const currentSlot = buildSlot({
+      id: "slot-2",
+      startTime: "2026-05-20T12:00:00Z",
+      endTime: "2026-05-20T13:00:00Z",
+      bookings: [
+        {
+          id: "booking-2",
+          slotId: "slot-2",
+          studentId: "student-2",
+          studentName: "Bruno Aluno",
+          status: "BOOKED",
+          clinicalSummary: {
+            studentId: "student-2",
+            alerts: [],
+            generalObservations: null,
+            latestProgressEntry: null
+          }
+        }
+      ]
+    });
+    vi.mocked(fetchInstructorDaySchedule).mockResolvedValue(buildSchedule([finishedSlot, currentSlot]));
+
+    const result = await loadInstructorPage(session, { date: "2026-05-20" });
+
+    expect(result.selectedSlot?.id).toBe("slot-2");
+    expect(result.selectedBooking?.studentId).toBe("student-2");
+  });
+
   it("nao mostra proxima aula para data passada e usa o primeiro horario em data futura", async () => {
     vi.useFakeTimers();
     vi.setSystemTime(new Date("2026-05-20T12:30:00Z"));
