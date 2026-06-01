@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { loadInstructorPage } from "@/app/instrutor/load-instructor-page";
 import type { SessionUser } from "@/lib/auth";
 import { fetchInstructorDaySchedule } from "@/lib/schedule";
@@ -67,6 +67,10 @@ function buildSchedule(slots: InstructorDaySlot[]): InstructorDaySchedule {
 describe("loadInstructorPage", () => {
   beforeEach(() => {
     vi.mocked(fetchInstructorDaySchedule).mockReset();
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
   });
 
   it("seleciona o primeiro slot e primeiro aluno quando a URL nao informa selecao", async () => {
@@ -294,5 +298,43 @@ describe("loadInstructorPage", () => {
     });
     expect(result.slotOperationalSummaries).toEqual({});
     expect(result.bookingOperationalSummaries).toEqual({});
+  });
+
+  it("calcula a proxima aula a partir do dia selecionado e horario atual", async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-05-20T12:30:00Z"));
+    const finishedSlot = buildSlot({
+      id: "slot-1",
+      startTime: "2026-05-20T10:00:00Z",
+      endTime: "2026-05-20T11:00:00Z"
+    });
+    const currentSlot = buildSlot({
+      id: "slot-2",
+      startTime: "2026-05-20T12:00:00Z",
+      endTime: "2026-05-20T13:00:00Z"
+    });
+    vi.mocked(fetchInstructorDaySchedule).mockResolvedValue(buildSchedule([finishedSlot, currentSlot]));
+
+    const result = await loadInstructorPage(session, { date: "2026-05-20" });
+
+    expect(result.nextSlot?.id).toBe("slot-2");
+  });
+
+  it("nao mostra proxima aula para data passada e usa o primeiro horario em data futura", async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-05-20T12:30:00Z"));
+    const slot = buildSlot({
+      id: "slot-1",
+      startTime: "2026-05-21T10:00:00Z",
+      endTime: "2026-05-21T11:00:00Z"
+    });
+
+    vi.mocked(fetchInstructorDaySchedule).mockResolvedValue(buildSchedule([slot]));
+    const pastResult = await loadInstructorPage(session, { date: "2026-05-19" });
+    expect(pastResult.nextSlot).toBeNull();
+
+    vi.mocked(fetchInstructorDaySchedule).mockResolvedValue(buildSchedule([slot]));
+    const futureResult = await loadInstructorPage(session, { date: "2026-05-21" });
+    expect(futureResult.nextSlot?.id).toBe("slot-1");
   });
 });

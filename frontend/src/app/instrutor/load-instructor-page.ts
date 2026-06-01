@@ -132,6 +132,21 @@ function buildBookingOperationalSummaries(bookings: InstructorDayBooking[]) {
   );
 }
 
+function findNextOperationalSlot(slots: InstructorDaySlot[], selectedDate: string) {
+  const todayDate = getTodayIsoDate();
+
+  if (selectedDate < todayDate) {
+    return null;
+  }
+
+  if (selectedDate > todayDate) {
+    return slots[0] ?? null;
+  }
+
+  const now = new Date();
+  return slots.find((slot) => new Date(slot.endTime) >= now) ?? null;
+}
+
 export async function loadInstructorPage(session: SessionUser, params?: InstructorSearchParams) {
   const selectedDate = params?.date ?? getTodayIsoDate();
   const dateNavigation = buildDateNavigation(selectedDate);
@@ -162,6 +177,6 @@ export async function loadInstructorPage(session: SessionUser, params?: Instruct
     bookingOperationalSummaries,
     alertSummary: buildAlertSummary(selectedClinicalSummary),
     latestEntrySummary: buildLatestEntrySummary(selectedClinicalSummary),
-    nextSlot: instructorSlots[0] ?? null
+    nextSlot: findNextOperationalSlot(instructorSlots, selectedDate)
   };
 }
