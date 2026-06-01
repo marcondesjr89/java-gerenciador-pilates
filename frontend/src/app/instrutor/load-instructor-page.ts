@@ -85,6 +85,19 @@ function buildSelectedBookingNavigation(
   };
 }
 
+function buildDayOperationalSummary(queue: ReturnType<typeof buildCareQueue>) {
+  const activeAlertsCount = queue.filter((item) => item.hasActiveAlerts).length;
+  const pendingProgressCount = queue.filter((item) => !item.hasLatestEntry).length;
+  const priorityQueue = queue.filter((item) => item.hasActiveAlerts || !item.hasLatestEntry).slice(0, 4);
+
+  return {
+    activeAlertsCount,
+    pendingProgressCount,
+    completedProgressCount: queue.length - pendingProgressCount,
+    priorityQueue
+  };
+}
+
 function buildSlotOperationalSummaries(slots: InstructorDaySlot[]) {
   return Object.fromEntries(
     slots.map((slot) => {
@@ -127,6 +140,7 @@ export async function loadInstructorPage(session: SessionUser, params?: Instruct
   const selectedClinicalSummary = selectedBooking?.clinicalSummary ?? null;
   const careQueue = buildCareQueue(instructorSlots);
   const selectedBookingNavigation = buildSelectedBookingNavigation(careQueue, selectedBooking);
+  const dayOperationalSummary = buildDayOperationalSummary(careQueue);
   const slotOperationalSummaries = buildSlotOperationalSummaries(instructorSlots);
   const bookingOperationalSummaries = buildBookingOperationalSummaries(selectedSlotBookings);
 
@@ -140,6 +154,7 @@ export async function loadInstructorPage(session: SessionUser, params?: Instruct
     selectedBooking,
     careQueue,
     selectedBookingNavigation,
+    dayOperationalSummary,
     slotOperationalSummaries,
     bookingOperationalSummaries,
     alertSummary: buildAlertSummary(selectedClinicalSummary),

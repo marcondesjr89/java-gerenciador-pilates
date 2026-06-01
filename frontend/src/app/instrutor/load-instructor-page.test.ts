@@ -105,6 +105,18 @@ describe("loadInstructorPage", () => {
       previous: null,
       next: null
     });
+    expect(result.dayOperationalSummary).toMatchObject({
+      activeAlertsCount: 1,
+      pendingProgressCount: 0,
+      completedProgressCount: 1
+    });
+    expect(result.dayOperationalSummary.priorityQueue).toEqual([
+      expect.objectContaining({
+        studentId: "student-1",
+        hasActiveAlerts: true,
+        hasLatestEntry: true
+      })
+    ]);
     expect(result.slotOperationalSummaries).toEqual({
       "slot-1": {
         activeAlertsCount: 1,
@@ -214,6 +226,23 @@ describe("loadInstructorPage", () => {
       slotId: "slot-1"
     });
     expect(result.selectedBookingNavigation.next).toBeNull();
+    expect(result.dayOperationalSummary).toMatchObject({
+      activeAlertsCount: 1,
+      pendingProgressCount: 1,
+      completedProgressCount: 1
+    });
+    expect(result.dayOperationalSummary.priorityQueue).toEqual([
+      expect.objectContaining({
+        studentId: "student-1",
+        hasActiveAlerts: true,
+        hasLatestEntry: true
+      }),
+      expect.objectContaining({
+        studentId: "student-2",
+        hasActiveAlerts: false,
+        hasLatestEntry: false
+      })
+    ]);
     expect(result.slotOperationalSummaries).toEqual({
       "slot-1": {
         activeAlertsCount: 1,
@@ -247,6 +276,12 @@ describe("loadInstructorPage", () => {
       selectedIndex: -1,
       previous: null,
       next: null
+    });
+    expect(result.dayOperationalSummary).toEqual({
+      activeAlertsCount: 0,
+      pendingProgressCount: 0,
+      completedProgressCount: 0,
+      priorityQueue: []
     });
     expect(result.slotOperationalSummaries).toEqual({});
     expect(result.bookingOperationalSummaries).toEqual({});

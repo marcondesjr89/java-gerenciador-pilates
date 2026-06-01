@@ -21,6 +21,7 @@ export default async function InstructorPage({ searchParams }: InstructorPagePro
     selectedBooking,
     careQueue,
     selectedBookingNavigation,
+    dayOperationalSummary,
     slotOperationalSummaries,
     bookingOperationalSummaries,
     alertSummary,
@@ -134,6 +135,65 @@ export default async function InstructorPage({ searchParams }: InstructorPagePro
             </div>
           </article>
         </section>
+
+        {careQueue.length > 0 ? (
+          <section className="rounded-[28px] border border-brand-line bg-brand-surface p-5 shadow-panel md:p-6">
+            <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
+              <div>
+                <p className="text-sm uppercase tracking-[0.18em] text-brand-primary">Prioridades do dia</p>
+                <h2 className="mt-2 font-display text-2xl text-brand-secondary">Pendencias de atendimento</h2>
+                <p className="mt-2 text-sm text-brand-subtext">
+                  Alunos com atencao clinica ou evolucao ainda nao registrada.
+                </p>
+              </div>
+              <div className="grid grid-cols-1 gap-2 text-center text-xs font-semibold text-brand-secondary sm:grid-cols-3">
+                <span className="rounded-2xl bg-[rgba(220,53,69,0.08)] px-3 py-2 text-brand-danger">
+                  {dayOperationalSummary.activeAlertsCount} alerta(s)
+                </span>
+                <span className="rounded-2xl bg-[rgba(255,193,7,0.18)] px-3 py-2">
+                  {dayOperationalSummary.pendingProgressCount} sem evolucao
+                </span>
+                <span className="rounded-2xl bg-[rgba(25,135,84,0.12)] px-3 py-2 text-brand-success">
+                  {dayOperationalSummary.completedProgressCount} ok
+                </span>
+              </div>
+            </div>
+
+            {dayOperationalSummary.priorityQueue.length > 0 ? (
+              <div className="mt-5 grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+                {dayOperationalSummary.priorityQueue.map((item) => (
+                  <a
+                    key={item.bookingId}
+                    href={`/instrutor?date=${selectedDate}&slotId=${item.slotId}&studentId=${item.studentId}`}
+                    className="block rounded-[20px] border border-brand-line bg-brand-panel px-4 py-4 transition hover:border-brand-primary/30"
+                  >
+                    <p className="text-xs font-semibold uppercase tracking-[0.18em] text-brand-subtext">
+                      {formatUtcHour(item.startTime)} - {formatSpecialty(item.requiredSpecialty)}
+                    </p>
+                    <p className="mt-2 font-semibold text-brand-ink">{item.studentName}</p>
+                    <div className="mt-3 flex flex-wrap gap-2">
+                      {item.hasActiveAlerts ? (
+                        <span className="inline-flex items-center gap-1 rounded-full bg-[rgba(220,53,69,0.08)] px-3 py-1 text-xs font-semibold text-brand-danger">
+                          <AlertTriangle className="h-3.5 w-3.5" />
+                          Alerta
+                        </span>
+                      ) : null}
+                      {!item.hasLatestEntry ? (
+                        <span className="rounded-full bg-[rgba(255,193,7,0.18)] px-3 py-1 text-xs font-semibold text-brand-secondary">
+                          Evolucao pendente
+                        </span>
+                      ) : null}
+                    </div>
+                  </a>
+                ))}
+              </div>
+            ) : (
+              <div className="mt-5 rounded-[20px] border border-dashed border-brand-line bg-brand-panel px-4 py-6 text-center text-sm text-brand-subtext">
+                Nenhuma pendencia operacional para os alunos confirmados neste dia.
+              </div>
+            )}
+          </section>
+        ) : null}
 
         {careQueue.length > 0 ? (
           <section className="rounded-[28px] border border-brand-line bg-brand-surface p-5 shadow-panel md:p-6">
