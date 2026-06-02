@@ -37,13 +37,16 @@ export function ProgressEntryForm({
 }: ProgressEntryFormProps) {
   const router = useRouter();
   const attachmentInputRef = useRef<HTMLInputElement>(null);
+  const submitInFlightRef = useRef(false);
   const [instructorNotes, setInstructorNotes] = useState("");
   const [scoreState, setScoreState] = useState({ ...DEFAULT_PROGRESS_ENTRY_SCORE_STATE });
   const [errorMessage, setErrorMessage] = useState("");
   const [successMessage, setSuccessMessage] = useState("");
   const [savedProgressEntry, setSavedProgressEntry] = useState(false);
   const [selectedAttachment, setSelectedAttachment] = useState<File | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [isPending, startTransition] = useTransition();
+  const isSubmitBlocked = isPending || isSubmitting || savedProgressEntry;
 
   function releaseAnotherEntry() {
     setInstructorNotes("");
@@ -52,6 +55,8 @@ export function ProgressEntryForm({
     setSuccessMessage("");
     setSavedProgressEntry(false);
     setSelectedAttachment(null);
+    setIsSubmitting(false);
+    submitInFlightRef.current = false;
     if (attachmentInputRef.current) {
       attachmentInputRef.current.value = "";
     }
@@ -59,11 +64,17 @@ export function ProgressEntryForm({
 
   function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    if (submitInFlightRef.current || savedProgressEntry) {
+      return;
+    }
+
     const formData = new FormData(event.currentTarget);
     if (selectedAttachment) {
       formData.set("attachment", selectedAttachment);
     }
 
+    submitInFlightRef.current = true;
+    setIsSubmitting(true);
     startTransition(async () => {
       setErrorMessage("");
       setSuccessMessage("");
@@ -79,6 +90,8 @@ export function ProgressEntryForm({
 
       if (!response.ok) {
         setErrorMessage(await readActionErrorMessage(response, "Nao foi possivel registrar a evolucao."));
+        submitInFlightRef.current = false;
+        setIsSubmitting(false);
         return;
       }
 
@@ -104,12 +117,16 @@ export function ProgressEntryForm({
             "Evolucao registrada, mas nao foi possivel anexar o arquivo clinico."
           ));
           router.refresh();
+          submitInFlightRef.current = false;
+          setIsSubmitting(false);
           return;
         }
       }
 
       setSuccessMessage("Evolucao registrada com sucesso.");
       router.refresh();
+      submitInFlightRef.current = false;
+      setIsSubmitting(false);
     });
   }
 
@@ -244,11 +261,11 @@ export function ProgressEntryForm({
 
       <button
         type="submit"
-        disabled={isPending || savedProgressEntry}
+        disabled={isSubmitBlocked}
         className="flex items-center justify-center gap-2 rounded-2xl bg-brand-primary px-4 py-3 font-semibold text-white transition hover:bg-brand-primaryHover disabled:cursor-not-allowed disabled:opacity-75"
       >
-        {isPending ? <LoaderCircle className="h-4 w-4 animate-spin" /> : <ClipboardPen className="h-4 w-4" />}
-        {isPending ? "Registrando..." : savedProgressEntry ? "Evolucao registrada" : "Registrar evolucao"}
+        {isSubmitting || isPending ? <LoaderCircle className="h-4 w-4 animate-spin" /> : <ClipboardPen className="h-4 w-4" />}
+        {isSubmitting || isPending ? "Registrando..." : savedProgressEntry ? "Evolucao registrada" : "Registrar evolucao"}
       </button>
 
       {savedProgressEntry ? (

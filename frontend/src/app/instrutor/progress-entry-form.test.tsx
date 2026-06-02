@@ -91,4 +91,102 @@ describe("ProgressEntryForm", () => {
     expect(screen.getByRole("button", { name: "Evolucao registrada" })).toBeDisabled();
     expect(screen.getByText("Este e o ultimo aluno da fila do dia.")).toBeInTheDocument();
   });
+
+  it("mantem formulario editavel quando a evolucao nao e criada", async () => {
+    vi.mocked(global.fetch).mockResolvedValue(
+      new Response(JSON.stringify({ message: "Notas obrigatorias." }), {
+        status: 400,
+        headers: { "Content-Type": "application/json" }
+      })
+    );
+
+    render(<ProgressEntryForm studentId="student-1" />);
+
+    const notesField = screen.getByPlaceholderText("Descreva a sessao, adaptacoes, resposta do aluno e proximo foco.");
+    fireEvent.change(notesField, {
+      target: { value: "Sessao que falhara antes da criacao." }
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Registrar evolucao" }));
+
+    expect(await screen.findByText("Notas obrigatorias.")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Registrar evolucao" })).not.toBeDisabled();
+    expect(notesField).toHaveValue("Sessao que falhara antes da criacao.");
+    expect(screen.queryByText("Este e o ultimo aluno da fila do dia.")).not.toBeInTheDocument();
+    expect(refreshMock).not.toHaveBeenCalled();
+  });
+
+  it("ignora toque duplo enquanto o envio principal esta em andamento", async () => {
+    let resolveRequest: (response: Response) => void = () => {};
+    vi.mocked(global.fetch).mockImplementation(
+      () => new Promise<Response>((resolve) => {
+        resolveRequest = resolve;
+      })
+    );
+
+    render(<ProgressEntryForm studentId="student-1" />);
+
+    fireEvent.change(screen.getByPlaceholderText("Descreva a sessao, adaptacoes, resposta do aluno e proximo foco."), {
+      target: { value: "Sessao com envio lento." }
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Registrar evolucao" }));
+    fireEvent.click(screen.getByRole("button", { name: "Registrando..." }));
+
+    expect(global.fetch).toHaveBeenCalledTimes(1);
+
+    resolveRequest(
+      new Response(JSON.stringify({ id: "entry-1" }), {
+        status: 201,
+        headers: { "Content-Type": "application/json" }
+      })
+    );
+
+    expect(await screen.findByText("Evolucao registrada com sucesso.")).toBeInTheDocument();
+    expect(global.fetch).toHaveBeenCalledTimes(1);
+  });
+
+  it("libera novo registro sem reaproveitar anexo que falhou", async () => {
+    vi.mocked(global.fetch)
+      .mockResolvedValueOnce(
+        new Response(JSON.stringify({ id: "entry-1" }), {
+          status: 201,
+          headers: { "Content-Type": "application/json" }
+        })
+      )
+      .mockResolvedValueOnce(
+        new Response(JSON.stringify({ message: "Falha no armazenamento do anexo." }), {
+          status: 500,
+          headers: { "Content-Type": "application/json" }
+        })
+      )
+      .mockResolvedValueOnce(
+        new Response(JSON.stringify({ id: "entry-2" }), {
+          status: 201,
+          headers: { "Content-Type": "application/json" }
+        })
+      );
+
+    render(<ProgressEntryForm studentId="student-1" />);
+
+    const notesField = screen.getByPlaceholderText("Descreva a sessao, adaptacoes, resposta do aluno e proximo foco.");
+    fireEvent.change(notesField, {
+      target: { value: "Sessao registrada com anexo." }
+    });
+    fireEvent.change(screen.getByLabelText("Anexo clinico opcional"), {
+      target: {
+        files: [new File(["imagem"], "evolucao.png", { type: "image/png" })]
+      }
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Registrar evolucao" }));
+
+    expect(await screen.findByText("Falha no armazenamento do anexo.")).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "Liberar novo registro" }));
+    fireEvent.change(notesField, {
+      target: { value: "Nova evolucao sem anexo reaproveitado." }
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Registrar evolucao" }));
+
+    expect(await screen.findByText("Evolucao registrada com sucesso.")).toBeInTheDocument();
+    expect(global.fetch).toHaveBeenCalledTimes(3);
+  });
 });
