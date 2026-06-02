@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useEffect, useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { LoaderCircle, Plus, RefreshCw, Trash2, Users } from "lucide-react";
 import type { ScheduleBooking, ScheduleWaitlistEntry } from "@/lib/schedule-types";
@@ -17,10 +17,32 @@ export function SlotBookingsPanel({ slotId, availableSpots, students }: SlotBook
   const [bookings, setBookings] = useState<ScheduleBooking[] | null>(null);
   const [waitlist, setWaitlist] = useState<ScheduleWaitlistEntry[] | null>(null);
   const [selectedStudentId, setSelectedStudentId] = useState(students[0]?.id ?? "");
+  const [localAvailableSpots, setLocalAvailableSpots] = useState(availableSpots);
   const [errorMessage, setErrorMessage] = useState("");
   const [successMessage, setSuccessMessage] = useState("");
   const [isLoading, startLoading] = useTransition();
   const [isMutating, startMutating] = useTransition();
+  const unavailableStudentIds = useMemo(() => new Set([
+    ...(bookings ?? []).map((booking) => booking.studentId),
+    ...(waitlist ?? []).map((entry) => entry.studentId)
+  ]), [bookings, waitlist]);
+  const availableStudentsForAction = useMemo(
+    () => students.filter((student) => !unavailableStudentIds.has(student.id)),
+    [students, unavailableStudentIds]
+  );
+  const isFull = localAvailableSpots === 0;
+
+  useEffect(() => {
+    setLocalAvailableSpots(availableSpots);
+  }, [availableSpots, slotId]);
+
+  useEffect(() => {
+    if (selectedStudentId && availableStudentsForAction.some((student) => student.id === selectedStudentId)) {
+      return;
+    }
+
+    setSelectedStudentId(availableStudentsForAction[0]?.id ?? "");
+  }, [availableStudentsForAction, selectedStudentId]);
 
   async function fetchBookings() {
     const response = await fetch(`/api/schedule-slots/${slotId}/bookings`, {
@@ -96,9 +118,8 @@ export function SlotBookingsPanel({ slotId, availableSpots, students }: SlotBook
       }
 
       const payload = (await response.json()) as ScheduleBooking;
-      if (bookings) {
-        setBookings([...bookings, payload]);
-      }
+      setBookings([...(bookings ?? []), payload]);
+      setLocalAvailableSpots((currentAvailableSpots) => Math.max(currentAvailableSpots - 1, 0));
       if (waitlist) {
         try {
           setWaitlist(await fetchWaitlist());
@@ -133,9 +154,7 @@ export function SlotBookingsPanel({ slotId, availableSpots, students }: SlotBook
       }
 
       const payload = (await response.json()) as ScheduleWaitlistEntry;
-      if (waitlist) {
-        setWaitlist([...waitlist, payload]);
-      }
+      setWaitlist([...(waitlist ?? []), payload]);
       setSuccessMessage("Aluno incluido na fila de espera deste horario.");
       router.refresh();
     });
@@ -159,6 +178,7 @@ export function SlotBookingsPanel({ slotId, availableSpots, students }: SlotBook
       if (bookings) {
         setBookings(bookings.filter((booking) => booking.id !== bookingId));
       }
+      setLocalAvailableSpots((currentAvailableSpots) => currentAvailableSpots + 1);
       if (waitlist) {
         try {
           setWaitlist(await fetchWaitlist());
@@ -181,9 +201,9 @@ export function SlotBookingsPanel({ slotId, availableSpots, students }: SlotBook
               value={selectedStudentId}
               onChange={(event) => setSelectedStudentId(event.target.value)}
               className="w-full rounded-2xl border border-brand-line bg-brand-panel px-4 py-3 text-brand-ink outline-none"
-              disabled={students.length === 0 || availableSpots === 0 || isMutating}
+              disabled={availableStudentsForAction.length === 0 || isFull || isMutating}
             >
-              {students.map((student) => (
+              {availableStudentsForAction.map((student) => (
                 <option key={student.id} value={student.id}>
                   {student.fullName}
                 </option>
@@ -194,7 +214,7 @@ export function SlotBookingsPanel({ slotId, availableSpots, students }: SlotBook
           <button
             type="button"
             onClick={createBooking}
-            disabled={!selectedStudentId || students.length === 0 || availableSpots === 0 || isMutating}
+            disabled={!selectedStudentId || availableStudentsForAction.length === 0 || isFull || isMutating}
             className="inline-flex items-center justify-center gap-2 rounded-2xl bg-brand-primary px-4 py-3 text-sm font-semibold text-white transition hover:bg-brand-primaryHover disabled:cursor-not-allowed disabled:opacity-75"
           >
             {isMutating ? <LoaderCircle className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />}
@@ -202,11 +222,13 @@ export function SlotBookingsPanel({ slotId, availableSpots, students }: SlotBook
           </button>
         </div>
 
-        {students.length === 0 ? (
-          <p className="mt-3 text-sm text-brand-subtext">Nenhum aluno ativo disponivel para reserva.</p>
+        {availableStudentsForAction.length === 0 ? (
+          <p className="mt-3 text-sm text-brand-subtext">
+            Nenhum aluno ativo disponivel para nova reserva ou fila neste horario.
+          </p>
         ) : null}
 
-        {availableSpots === 0 ? (
+        {isFull ? (
           <div className="mt-3 space-y-3">
             <p className="text-sm text-brand-subtext">Este horario esta lotado. Abaixo voce pode incluir alunos na fila de espera.</p>
 
@@ -214,7 +236,7 @@ export function SlotBookingsPanel({ slotId, availableSpots, students }: SlotBook
               <button
                 type="button"
                 onClick={joinWaitlist}
-                disabled={!selectedStudentId || students.length === 0 || isMutating}
+                disabled={!selectedStudentId || availableStudentsForAction.length === 0 || isMutating}
                 className="inline-flex items-center justify-center gap-2 rounded-2xl border border-brand-line bg-brand-panel px-4 py-3 text-sm font-semibold text-brand-secondary transition hover:border-brand-primary/40 disabled:cursor-not-allowed disabled:opacity-75"
               >
                 {isMutating ? <LoaderCircle className="h-4 w-4 animate-spin" /> : <Users className="h-4 w-4" />}
