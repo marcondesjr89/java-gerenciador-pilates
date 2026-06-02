@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   appendProgressEntryNoteTemplate,
+  buildProgressEntryDraftFromLatest,
   applyProgressEntryScorePreset,
   buildProgressEntryPayload,
   getOptionalProgressEntryAttachment,
@@ -61,6 +62,28 @@ describe("progress entry form logic", () => {
       flexibilityScore: "65",
       strengthScore: "65",
       painLevel: "2"
+    });
+  });
+
+  it("monta rascunho a partir da ultima evolucao clinica", () => {
+    expect(buildProgressEntryDraftFromLatest(null)).toBeNull();
+
+    expect(
+      buildProgressEntryDraftFromLatest({
+        id: "entry-1",
+        recordedAt: "2026-05-20T09:00:00Z",
+        instructorNotes: "Manter foco em mobilidade toracica.",
+        flexibilityScore: 72,
+        strengthScore: null,
+        painLevel: 3
+      })
+    ).toEqual({
+      instructorNotes: "Manter foco em mobilidade toracica.",
+      scores: {
+        flexibilityScore: "72",
+        strengthScore: "70",
+        painLevel: "3"
+      }
     });
   });
 });

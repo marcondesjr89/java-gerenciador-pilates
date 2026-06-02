@@ -1,4 +1,5 @@
 import type { SessionUser } from "@/lib/auth";
+import { buildProgressEntryDraftFromLatest } from "@/app/instrutor/progress-entry-form-logic";
 import { formatDateTime, getTodayIsoDate } from "@/lib/formatters";
 import { fetchInstructorDaySchedule } from "@/lib/schedule";
 import type { InstructorDayBooking, InstructorDayClinicalSummary, InstructorDaySlot } from "@/lib/schedule-types";
@@ -178,6 +179,7 @@ export async function loadInstructorPage(session: SessionUser, params?: Instruct
     bookingOperationalSummaries,
     alertSummary: buildAlertSummary(selectedClinicalSummary),
     latestEntrySummary: buildLatestEntrySummary(selectedClinicalSummary),
+    progressEntryDraft: buildProgressEntryDraftFromLatest(selectedClinicalSummary?.latestProgressEntry ?? null),
     nextSlot
   };
 }

@@ -26,6 +26,7 @@ export default async function InstructorPage({ searchParams }: InstructorPagePro
     bookingOperationalSummaries,
     alertSummary,
     latestEntrySummary,
+    progressEntryDraft,
     nextSlot
   } = await loadInstructorPage(session, params);
 
@@ -556,7 +557,16 @@ export default async function InstructorPage({ searchParams }: InstructorPagePro
                         <div className="rounded-[20px] border border-brand-line bg-brand-panel px-4 py-4">
                           <p className="text-xs uppercase tracking-[0.18em] text-brand-subtext">Registrar sessao</p>
                           <h4 className="mt-2 font-display text-2xl text-brand-secondary">Nova evolucao clinica</h4>
-                          <ProgressEntryForm studentId={selectedBooking.studentId} />
+                          <ProgressEntryForm
+                            studentId={selectedBooking.studentId}
+                            latestEntryDraft={progressEntryDraft}
+                            nextStudentHref={
+                              selectedBookingNavigation.next
+                                ? `/instrutor?date=${selectedDate}&slotId=${selectedBookingNavigation.next.slotId}&studentId=${selectedBookingNavigation.next.studentId}`
+                                : null
+                            }
+                            nextStudentLabel={selectedBookingNavigation.next?.studentName ?? null}
+                          />
                         </div>
                       </div>
                     </article>

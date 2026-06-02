@@ -1,4 +1,5 @@
 import type { CreateStudentProgressEntryPayload } from "@/lib/clinical";
+import type { InstructorDayLatestProgressEntry } from "@/lib/schedule-types";
 
 export type ProgressEntryNoteTemplate = {
   label: string;
@@ -14,6 +15,17 @@ export type ProgressEntryScoreState = {
 export type ProgressEntryScorePreset = {
   label: string;
   values: ProgressEntryScoreState;
+};
+
+export type ProgressEntryDraft = {
+  instructorNotes: string;
+  scores: ProgressEntryScoreState;
+};
+
+export const DEFAULT_PROGRESS_ENTRY_SCORE_STATE: ProgressEntryScoreState = {
+  flexibilityScore: "70",
+  strengthScore: "70",
+  painLevel: "0"
 };
 
 export const PROGRESS_ENTRY_NOTE_TEMPLATES: ProgressEntryNoteTemplate[] = [
@@ -34,11 +46,7 @@ export const PROGRESS_ENTRY_NOTE_TEMPLATES: ProgressEntryNoteTemplate[] = [
 export const PROGRESS_ENTRY_SCORE_PRESETS: ProgressEntryScorePreset[] = [
   {
     label: "Base",
-    values: {
-      flexibilityScore: "70",
-      strengthScore: "70",
-      painLevel: "0"
-    }
+    values: DEFAULT_PROGRESS_ENTRY_SCORE_STATE
   },
   {
     label: "Boa resposta",
@@ -86,6 +94,23 @@ export function applyProgressEntryScorePreset(preset: ProgressEntryScorePreset):
     flexibilityScore: preset.values.flexibilityScore,
     strengthScore: preset.values.strengthScore,
     painLevel: preset.values.painLevel
+  };
+}
+
+export function buildProgressEntryDraftFromLatest(
+  latestProgressEntry: InstructorDayLatestProgressEntry | null
+): ProgressEntryDraft | null {
+  if (!latestProgressEntry) {
+    return null;
+  }
+
+  return {
+    instructorNotes: latestProgressEntry.instructorNotes,
+    scores: {
+      flexibilityScore: String(latestProgressEntry.flexibilityScore ?? 70),
+      strengthScore: String(latestProgressEntry.strengthScore ?? 70),
+      painLevel: String(latestProgressEntry.painLevel ?? 0)
+    }
   };
 }
 

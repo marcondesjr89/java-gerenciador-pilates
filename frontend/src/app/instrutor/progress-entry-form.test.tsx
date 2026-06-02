@@ -1,0 +1,94 @@
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { beforeEach, describe, expect, it, vi } from "vitest";
+import { ProgressEntryForm } from "@/app/instrutor/progress-entry-form";
+
+const refreshMock = vi.fn();
+
+vi.mock("next/navigation", () => ({
+  useRouter: () => ({
+    refresh: refreshMock
+  })
+}));
+
+describe("ProgressEntryForm", () => {
+  beforeEach(() => {
+    refreshMock.mockReset();
+    global.fetch = vi.fn();
+  });
+
+  it("bloqueia novo envio acidental apos registrar evolucao e oferece proximo aluno", async () => {
+    vi.mocked(global.fetch).mockResolvedValue(
+      new Response(JSON.stringify({ id: "entry-1" }), {
+        status: 201,
+        headers: { "Content-Type": "application/json" }
+      })
+    );
+
+    render(
+      <ProgressEntryForm
+        studentId="student-1"
+        nextStudentHref="/instrutor?date=2026-05-20&slotId=slot-2&studentId=student-2"
+        nextStudentLabel="Bruno Aluno"
+      />
+    );
+
+    fireEvent.change(screen.getByPlaceholderText("Descreva a sessao, adaptacoes, resposta do aluno e proximo foco."), {
+      target: { value: "Sessao registrada durante atendimento." }
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Registrar evolucao" }));
+
+    await waitFor(() => {
+      expect(global.fetch).toHaveBeenCalledTimes(1);
+      expect(refreshMock).toHaveBeenCalled();
+    });
+
+    expect(await screen.findByText("Evolucao registrada com sucesso.")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Evolucao registrada" })).toBeDisabled();
+    expect(screen.getByRole("link", { name: "Ir para Bruno Aluno" })).toHaveAttribute(
+      "href",
+      "/instrutor?date=2026-05-20&slotId=slot-2&studentId=student-2"
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "Liberar novo registro" }));
+
+    expect(screen.getByRole("button", { name: "Registrar evolucao" })).not.toBeDisabled();
+    expect(screen.queryByText("Evolucao registrada com sucesso.")).not.toBeInTheDocument();
+  });
+
+  it("bloqueia reenvio quando a evolucao e criada mas o anexo falha", async () => {
+    vi.mocked(global.fetch)
+      .mockResolvedValueOnce(
+        new Response(JSON.stringify({ id: "entry-1" }), {
+          status: 201,
+          headers: { "Content-Type": "application/json" }
+        })
+      )
+      .mockResolvedValueOnce(
+        new Response(JSON.stringify({ message: "Falha no armazenamento do anexo." }), {
+          status: 500,
+          headers: { "Content-Type": "application/json" }
+        })
+      );
+
+    render(<ProgressEntryForm studentId="student-1" />);
+
+    fireEvent.change(screen.getByPlaceholderText("Descreva a sessao, adaptacoes, resposta do aluno e proximo foco."), {
+      target: { value: "Sessao registrada com anexo." }
+    });
+    fireEvent.change(screen.getByLabelText("Anexo clinico opcional"), {
+      target: {
+        files: [new File(["imagem"], "evolucao.png", { type: "image/png" })]
+      }
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Registrar evolucao" }));
+
+    await waitFor(() => {
+      expect(global.fetch).toHaveBeenCalledTimes(2);
+      expect(refreshMock).toHaveBeenCalled();
+    });
+
+    expect(await screen.findByText("Falha no armazenamento do anexo.")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Evolucao registrada" })).toBeDisabled();
+    expect(screen.getByText("Este e o ultimo aluno da fila do dia.")).toBeInTheDocument();
+  });
+});

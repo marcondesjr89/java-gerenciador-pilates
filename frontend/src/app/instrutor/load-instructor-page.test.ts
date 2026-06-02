@@ -95,6 +95,14 @@ describe("loadInstructorPage", () => {
       scoreSummary: "Flexibilidade: 70 | Forca: - | Dor: 2",
       instructorNotes: "Boa resposta ao controle de tronco."
     });
+    expect(result.progressEntryDraft).toEqual({
+      instructorNotes: "Boa resposta ao controle de tronco.",
+      scores: {
+        flexibilityScore: "70",
+        strengthScore: "70",
+        painLevel: "2"
+      }
+    });
     expect(result.careQueue).toEqual([
       expect.objectContaining({
         bookingId: "booking-1",
@@ -172,6 +180,7 @@ describe("loadInstructorPage", () => {
       hasActiveAlerts: false
     });
     expect(result.latestEntrySummary).toBeNull();
+    expect(result.progressEntryDraft).toBeNull();
   });
 
   it("monta fila de atendimento e navegacao entre alunos do dia", async () => {
