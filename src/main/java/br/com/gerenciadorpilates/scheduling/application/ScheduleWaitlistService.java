@@ -100,6 +100,23 @@ public class ScheduleWaitlistService {
     }
 
     @Transactional
+    public WaitlistEntryResponse cancel(UUID slotId, UUID waitlistEntryId) {
+        ScheduleWaitlistEntry entry = waitlistRepository.findById(waitlistEntryId)
+                .orElseThrow(() -> new ResourceNotFoundException("Entrada da fila de espera nao encontrada."));
+
+        if (!entry.getSlotId().equals(slotId)) {
+            throw new ResourceNotFoundException("Entrada da fila de espera nao pertence ao horario informado.");
+        }
+
+        if (entry.getStatus() != WaitlistStatus.WAITING) {
+            throw new IllegalArgumentException("A entrada da fila de espera nao esta ativa.");
+        }
+
+        entry.cancel();
+        return WaitlistEntryResponse.from(waitlistRepository.save(entry));
+    }
+
+    @Transactional
     public void promoteNextIfPossible(UUID slotId) {
         ScheduleSlot slot = slotRepository.findById(slotId)
                 .orElseThrow(() -> new ResourceNotFoundException("Horario nao encontrado."));

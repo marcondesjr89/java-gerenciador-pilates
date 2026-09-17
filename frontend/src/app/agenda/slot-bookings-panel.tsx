@@ -12,7 +12,7 @@ type SlotBookingsPanelProps = {
   students: StudentUser[];
 };
 
-type SlotBookingMutation = "booking" | "waitlist" | "cancel";
+type SlotBookingMutation = "booking" | "waitlist" | "cancel" | "waitlist-cancel";
 
 export function SlotBookingsPanel({ slotId, availableSpots, students }: SlotBookingsPanelProps) {
   const router = useRouter();
@@ -40,6 +40,7 @@ export function SlotBookingsPanel({ slotId, availableSpots, students }: SlotBook
   const isBookingMutating = activeMutation === "booking" && isActionBlocked;
   const isWaitlistMutating = activeMutation === "waitlist" && isActionBlocked;
   const isCancelMutating = activeMutation === "cancel" && isActionBlocked;
+  const isWaitlistCancelMutating = activeMutation === "waitlist-cancel" && isActionBlocked;
 
   useEffect(() => {
     setLocalAvailableSpots(availableSpots);
@@ -225,6 +226,29 @@ export function SlotBookingsPanel({ slotId, availableSpots, students }: SlotBook
     });
   }
 
+  function cancelWaitlistEntry(waitlistEntryId: string) {
+    runMutation("waitlist-cancel", async () => {
+      setErrorMessage("");
+      setSuccessMessage("");
+
+      const response = await fetch(`/api/schedule-slots/${slotId}/waitlist/${waitlistEntryId}`, {
+        method: "DELETE"
+      });
+
+      if (!response.ok) {
+        const payload = (await response.json().catch(() => ({ message: "" }))) as { message?: string };
+        setErrorMessage(payload.message || "Nao foi possivel remover o aluno da fila de espera.");
+        return;
+      }
+
+      if (waitlist) {
+        setWaitlist(waitlist.filter((entry) => entry.id !== waitlistEntryId));
+      }
+      setSuccessMessage("Aluno removido da fila de espera.");
+      router.refresh();
+    });
+  }
+
   return (
     <div className="mt-4 rounded-[20px] border border-brand-line bg-brand-panel p-4">
       <div className="rounded-2xl border border-brand-line bg-brand-surface p-4">
@@ -374,9 +398,20 @@ export function SlotBookingsPanel({ slotId, availableSpots, students }: SlotBook
                   <p className="font-semibold text-brand-ink">{entry.studentName}</p>
                   <p className="text-sm text-brand-subtext">Posicao {index + 1} na fila</p>
                 </div>
-                <span className="rounded-full bg-brand-soft px-3 py-1 text-xs font-semibold text-brand-secondary">
-                  {entry.status}
-                </span>
+                <div className="flex flex-col gap-2 md:items-end">
+                  <span className="rounded-full bg-brand-soft px-3 py-1 text-xs font-semibold text-brand-secondary">
+                    {entry.status}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => cancelWaitlistEntry(entry.id)}
+                    disabled={isActionBlocked}
+                    className="inline-flex items-center justify-center gap-2 rounded-2xl border border-[rgba(220,53,69,0.22)] bg-[rgba(220,53,69,0.08)] px-4 py-2 text-sm font-semibold text-brand-danger transition hover:bg-[rgba(220,53,69,0.12)] disabled:cursor-not-allowed disabled:opacity-75"
+                  >
+                    {isWaitlistCancelMutating ? <LoaderCircle className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
+                    {isWaitlistCancelMutating ? "Removendo..." : "Remover da fila"}
+                  </button>
+                </div>
               </div>
             ))}
           </div>

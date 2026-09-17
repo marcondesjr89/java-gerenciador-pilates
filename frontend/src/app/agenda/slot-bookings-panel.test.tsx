@@ -245,4 +245,55 @@ describe("SlotBookingsPanel", () => {
     expect(await screen.findByText("Aluno incluido na fila de espera deste horario.")).toBeInTheDocument();
     expect(global.fetch).toHaveBeenCalledTimes(1);
   });
+
+  it("remove aluno carregado da fila de espera", async () => {
+    vi.mocked(global.fetch)
+      .mockResolvedValueOnce(
+        new Response(
+          JSON.stringify([
+            {
+              id: "waitlist-1",
+              slotId: "slot-1",
+              studentId: "student-1",
+              studentName: "Ana Aluna",
+              status: "WAITING",
+              promotedAt: null
+            }
+          ]),
+          {
+            status: 200,
+            headers: { "Content-Type": "application/json" }
+          }
+        )
+      )
+      .mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({
+            id: "waitlist-1",
+            slotId: "slot-1",
+            studentId: "student-1",
+            studentName: "Ana Aluna",
+            status: "CANCELED",
+            promotedAt: null
+          }),
+          {
+            status: 200,
+            headers: { "Content-Type": "application/json" }
+          }
+        )
+      );
+
+    render(<SlotBookingsPanel slotId="slot-1" availableSpots={0} students={students} />);
+
+    fireEvent.click(screen.getByRole("button", { name: "Ver fila de espera" }));
+    expect(await screen.findByText("Posicao 1 na fila")).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "Remover da fila" }));
+
+    expect(await screen.findByText("Aluno removido da fila de espera.")).toBeInTheDocument();
+    expect(screen.getByText("Nenhum aluno aguardando neste horario.")).toBeInTheDocument();
+    expect(global.fetch).toHaveBeenLastCalledWith("/api/schedule-slots/slot-1/waitlist/waitlist-1", {
+      method: "DELETE"
+    });
+  });
 });

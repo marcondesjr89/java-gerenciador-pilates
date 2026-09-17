@@ -5,6 +5,7 @@ import { POST as createSlot } from "@/app/api/schedule-slots/route";
 import { POST as createBooking } from "@/app/api/schedule-slots/[slotId]/bookings/route";
 import { DELETE as cancelBooking } from "@/app/api/schedule-slots/[slotId]/bookings/[bookingId]/route";
 import { POST as joinWaitlist } from "@/app/api/schedule-slots/[slotId]/waitlist/route";
+import { DELETE as cancelWaitlistEntry } from "@/app/api/schedule-slots/[slotId]/waitlist/[waitlistEntryId]/route";
 
 const requireInternalApiSessionMock = vi.fn();
 const proxyJsonToBackendMock = vi.fn();
@@ -216,6 +217,34 @@ describe("scheduling api routes", () => {
 
     expect(response.status).toBe(400);
     await expect(response.json()).resolves.toEqual({ message: "Informe a reserva a ser cancelada." });
+    expect(proxyJsonToBackendMock).not.toHaveBeenCalled();
+  });
+
+  it("encaminha remocao da fila de espera com identificador validado", async () => {
+    requireInternalApiSessionMock.mockResolvedValue({ accessToken: "internal-token" });
+    proxyJsonToBackendMock.mockResolvedValue(new Response(JSON.stringify({ id: "wait-1" }), { status: 200 }));
+
+    await cancelWaitlistEntry(new Request("http://localhost/api/schedule-slots/slot-1/waitlist/wait-1", { method: "DELETE" }), {
+      params: Promise.resolve({ slotId: "slot-1", waitlistEntryId: "wait-1" })
+    });
+
+    expect(proxyJsonToBackendMock).toHaveBeenCalledWith({
+      session: { accessToken: "internal-token" },
+      path: "/api/v1/schedule-slots/slot-1/waitlist/wait-1",
+      method: "DELETE",
+      errorMessage: "Nao foi possivel remover o aluno da fila de espera."
+    });
+  });
+
+  it("retorna 400 quando falta a entrada da fila de espera", async () => {
+    requireInternalApiSessionMock.mockResolvedValue({ accessToken: "internal-token" });
+
+    const response = await cancelWaitlistEntry(new Request("http://localhost/api/schedule-slots/slot-1/waitlist/", { method: "DELETE" }), {
+      params: Promise.resolve({ slotId: "slot-1", waitlistEntryId: "   " })
+    });
+
+    expect(response.status).toBe(400);
+    await expect(response.json()).resolves.toEqual({ message: "Informe a entrada da fila de espera." });
     expect(proxyJsonToBackendMock).not.toHaveBeenCalled();
   });
 

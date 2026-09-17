@@ -943,6 +943,72 @@ class GerenciadorPilatesApplicationTests {
     }
 
     @Test
+    void receptionCanRemoveStudentFromWaitlist() throws Exception {
+        AppUser instructor = appUserRepository.save(new AppUser(
+                UUID.randomUUID(),
+                "instrutor.fila@teste.local",
+                "Instrutor Fila",
+                "$2a$10$FKnDJwN6CmxQ0VJ8A5yI0e1IY7PvxI6Bjq5lHppZArYrusS4x2M5K",
+                UserRole.INSTRUCTOR,
+                true,
+                java.util.Set.of(InstructorSpecialty.PILATES_SOLO)
+        ));
+        Student bookedStudent = studentRepository.save(new Student(
+                UUID.randomUUID(),
+                "Aluno Reservado",
+                "11122233344",
+                "reservado@teste.local",
+                "85941112222",
+                LocalDate.of(1990, 1, 1),
+                StudentStatus.ACTIVE,
+                true
+        ));
+        Student waitingStudent = studentRepository.save(new Student(
+                UUID.randomUUID(),
+                "Aluno Fila",
+                "22233344455",
+                "fila@teste.local",
+                "85942223333",
+                LocalDate.of(1991, 1, 1),
+                StudentStatus.ACTIVE,
+                true
+        ));
+
+        String adminToken = loginAndGetToken("admin@test.local", "Admin@12345");
+        OffsetDateTime start = OffsetDateTime.now().plusDays(1).withHour(16).withMinute(0).withSecond(0).withNano(0);
+        UUID slotId = createScheduleSlot(adminToken, instructor.getId(), InstructorSpecialty.PILATES_SOLO, start, start.plusHours(1), 1);
+        createBooking(adminToken, slotId, bookedStudent.getId());
+
+        String waitlistRequest = """
+                {
+                  "studentId": "%s"
+                }
+                """.formatted(waitingStudent.getId());
+
+        String waitlistResponse = mockMvc.perform(post("/api/v1/schedule-slots/{slotId}/waitlist", slotId)
+                        .header("Authorization", "Bearer " + adminToken)
+                        .contentType(APPLICATION_JSON)
+                        .content(waitlistRequest))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.status").value("WAITING"))
+                .andReturn()
+                .getResponse()
+                .getContentAsString();
+
+        UUID waitlistEntryId = UUID.fromString(objectMapper.readTree(waitlistResponse).get("id").asText());
+
+        mockMvc.perform(delete("/api/v1/schedule-slots/{slotId}/waitlist/{waitlistEntryId}", slotId, waitlistEntryId)
+                        .header("Authorization", "Bearer " + adminToken))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value("CANCELED"));
+
+        mockMvc.perform(get("/api/v1/schedule-slots/{slotId}/waitlist", slotId)
+                        .header("Authorization", "Bearer " + adminToken))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$").isEmpty());
+    }
+
+    @Test
     void billingFlowCreatesPlanSubscriptionInvoiceListsOverdueAndRegistersPayment() throws Exception {
         Student student = studentRepository.save(new Student(
                 UUID.randomUUID(),
