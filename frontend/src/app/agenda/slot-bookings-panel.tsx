@@ -204,9 +204,15 @@ export function SlotBookingsPanel({ slotId, availableSpots, students }: SlotBook
       }
 
       if (bookings) {
-        setBookings(bookings.filter((booking) => booking.id !== bookingId));
+        try {
+          const refreshedBookings = await fetchBookings();
+          setBookings(refreshedBookings);
+          setLocalAvailableSpots((currentAvailableSpots) => Math.max(currentAvailableSpots + bookings.length - refreshedBookings.length, 0));
+        } catch {
+          setBookings(bookings.filter((booking) => booking.id !== bookingId));
+          setLocalAvailableSpots((currentAvailableSpots) => currentAvailableSpots + 1);
+        }
       }
-      setLocalAvailableSpots((currentAvailableSpots) => currentAvailableSpots + 1);
       if (waitlist) {
         try {
           setWaitlist(await fetchWaitlist());

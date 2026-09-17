@@ -97,6 +97,84 @@ describe("SlotBookingsPanel", () => {
     expect(screen.queryByText("Reserva ativa neste slot")).not.toBeInTheDocument();
   });
 
+  it("mantem horario lotado quando cancelamento promove aluno da fila", async () => {
+    vi.mocked(global.fetch)
+      .mockResolvedValueOnce(
+        new Response(
+          JSON.stringify([
+            {
+              id: "booking-1",
+              slotId: "slot-1",
+              studentId: "student-1",
+              studentName: "Ana Aluna",
+              status: "BOOKED"
+            }
+          ]),
+          {
+            status: 200,
+            headers: { "Content-Type": "application/json" }
+          }
+        )
+      )
+      .mockResolvedValueOnce(
+        new Response(
+          JSON.stringify([
+            {
+              id: "waitlist-1",
+              slotId: "slot-1",
+              studentId: "student-2",
+              studentName: "Bruno Aluno",
+              status: "WAITING",
+              promotedAt: null
+            }
+          ]),
+          {
+            status: 200,
+            headers: { "Content-Type": "application/json" }
+          }
+        )
+      )
+      .mockResolvedValueOnce(new Response(null, { status: 204 }))
+      .mockResolvedValueOnce(
+        new Response(
+          JSON.stringify([
+            {
+              id: "booking-2",
+              slotId: "slot-1",
+              studentId: "student-2",
+              studentName: "Bruno Aluno",
+              status: "BOOKED"
+            }
+          ]),
+          {
+            status: 200,
+            headers: { "Content-Type": "application/json" }
+          }
+        )
+      )
+      .mockResolvedValueOnce(
+        new Response(JSON.stringify([]), {
+          status: 200,
+          headers: { "Content-Type": "application/json" }
+        })
+      );
+
+    render(<SlotBookingsPanel slotId="slot-1" availableSpots={0} students={students} />);
+
+    fireEvent.click(screen.getByRole("button", { name: "Ver reservas" }));
+    expect(await screen.findByText("Reserva ativa neste slot")).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "Ver fila de espera" }));
+    expect(await screen.findByText("Posicao 1 na fila")).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "Cancelar reserva" }));
+
+    expect(await screen.findByText("Reserva cancelada com sucesso.")).toBeInTheDocument();
+    expect(screen.getByText("Bruno Aluno")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Reservar aluno" })).toBeDisabled();
+    expect(screen.getByText("Nenhum aluno aguardando neste horario.")).toBeInTheDocument();
+  });
+
   it("ignora clique duplo enquanto a reserva esta em andamento", async () => {
     let resolveRequest: (response: Response) => void = () => {};
     vi.mocked(global.fetch).mockImplementation(
