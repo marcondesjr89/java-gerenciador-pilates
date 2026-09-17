@@ -1,10 +1,11 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { CalendarSync, LoaderCircle } from "lucide-react";
 import { readStudentPortalActionErrorMessage } from "@/lib/student-portal-actions";
 import type { StudentPortalRescheduleOption, StudentPortalRescheduleRequest } from "@/lib/student-portal-bookings";
+import { useSingleFlightTransition } from "@/lib/use-single-flight-transition";
 
 type RescheduleBookingPanelProps = {
   bookingId: string;
@@ -18,11 +19,11 @@ export function RescheduleBookingPanel({ bookingId, initialDate }: RescheduleBoo
   const [selectedSlotId, setSelectedSlotId] = useState("");
   const [errorMessage, setErrorMessage] = useState("");
   const [successMessage, setSuccessMessage] = useState("");
-  const [isLoadingOptions, startLoadingOptions] = useTransition();
-  const [isSubmitting, startSubmitting] = useTransition();
+  const { isRunning: isLoadingOptions, run: runLoadOptions } = useSingleFlightTransition();
+  const { isRunning: isSubmitting, run: runSubmit } = useSingleFlightTransition();
 
   function loadOptions() {
-    startLoadingOptions(async () => {
+    runLoadOptions(async () => {
       setErrorMessage("");
       setSuccessMessage("");
       setSelectedSlotId("");
@@ -90,7 +91,7 @@ export function RescheduleBookingPanel({ bookingId, initialDate }: RescheduleBoo
             type="button"
             disabled={!selectedSlotId || isSubmitting}
             onClick={() => {
-              startSubmitting(async () => {
+              runSubmit(async () => {
                 setErrorMessage("");
                 setSuccessMessage("");
 

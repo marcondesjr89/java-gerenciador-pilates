@@ -13,6 +13,15 @@ vi.mock("next/navigation", () => ({
   })
 }));
 
+function deferredResponse() {
+  let resolveRequest: (response: Response) => void = () => {};
+  const request = new Promise<Response>((resolve) => {
+    resolveRequest = resolve;
+  });
+
+  return { request, resolveRequest };
+}
+
 describe("portal actions", () => {
   beforeEach(() => {
     refreshMock.mockReset();
@@ -62,6 +71,63 @@ describe("portal actions", () => {
     });
   });
 
+  it("ignora clique duplo ao reservar horario", async () => {
+    const { request, resolveRequest } = deferredResponse();
+    vi.mocked(global.fetch).mockReturnValue(request);
+
+    render(<BookSlotButton slotId="slot-1" />);
+
+    fireEvent.click(screen.getByRole("button", { name: "Reservar horario" }));
+    fireEvent.click(screen.getByRole("button", { name: "Reservando..." }));
+
+    expect(global.fetch).toHaveBeenCalledTimes(1);
+
+    resolveRequest(new Response(null, { status: 200 }));
+
+    await waitFor(() => {
+      expect(refreshMock).toHaveBeenCalled();
+    });
+    expect(global.fetch).toHaveBeenCalledTimes(1);
+  });
+
+  it("ignora clique duplo ao cancelar reserva", async () => {
+    const { request, resolveRequest } = deferredResponse();
+    vi.mocked(global.fetch).mockReturnValue(request);
+
+    render(<CancelBookingButton bookingId="booking-1" />);
+
+    fireEvent.click(screen.getByRole("button", { name: "Cancelar reserva" }));
+    fireEvent.click(screen.getByRole("button", { name: "Cancelando..." }));
+
+    expect(global.fetch).toHaveBeenCalledTimes(1);
+
+    resolveRequest(new Response(null, { status: 200 }));
+
+    await waitFor(() => {
+      expect(refreshMock).toHaveBeenCalled();
+    });
+    expect(global.fetch).toHaveBeenCalledTimes(1);
+  });
+
+  it("ignora clique duplo ao entrar na lista de espera", async () => {
+    const { request, resolveRequest } = deferredResponse();
+    vi.mocked(global.fetch).mockReturnValue(request);
+
+    render(<JoinWaitlistButton slotId="slot-9" />);
+
+    fireEvent.click(screen.getByRole("button", { name: "Entrar na espera" }));
+    fireEvent.click(screen.getByRole("button", { name: "Entrando..." }));
+
+    expect(global.fetch).toHaveBeenCalledTimes(1);
+
+    resolveRequest(new Response(null, { status: 200 }));
+
+    await waitFor(() => {
+      expect(refreshMock).toHaveBeenCalled();
+    });
+    expect(global.fetch).toHaveBeenCalledTimes(1);
+  });
+
   it("carrega opcoes e envia remarcacao do portal", async () => {
     vi.mocked(global.fetch)
       .mockResolvedValueOnce(
@@ -107,5 +173,44 @@ describe("portal actions", () => {
 
     expect(await screen.findByText("Reserva remarcada com sucesso.")).toBeInTheDocument();
     expect(refreshMock).toHaveBeenCalled();
+  });
+
+  it("ignora clique duplo ao confirmar remarcacao", async () => {
+    const { request, resolveRequest } = deferredResponse();
+    vi.mocked(global.fetch)
+      .mockResolvedValueOnce(
+        new Response(
+          JSON.stringify([
+            {
+              slotId: "slot-2",
+              instructorName: "Instrutor Teste",
+              requiredSpecialty: "PILATES_SOLO",
+              startTime: "2026-04-20T10:00:00Z",
+              endTime: "2026-04-20T11:00:00Z",
+              availableSpots: 1
+            }
+          ]),
+          {
+            status: 200,
+            headers: { "Content-Type": "application/json" }
+          }
+        )
+      )
+      .mockReturnValue(request);
+
+    render(<RescheduleBookingPanel bookingId="booking-1" initialDate="2026-04-20" />);
+
+    fireEvent.click(screen.getByRole("button", { name: "Buscar horarios" }));
+    expect(await screen.findByText("Horario de destino")).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "Confirmar remarcacao" }));
+    fireEvent.click(screen.getByRole("button", { name: "Remarcando..." }));
+
+    expect(global.fetch).toHaveBeenCalledTimes(2);
+
+    resolveRequest(new Response(null, { status: 200 }));
+
+    expect(await screen.findByText("Reserva remarcada com sucesso.")).toBeInTheDocument();
+    expect(global.fetch).toHaveBeenCalledTimes(2);
   });
 });
