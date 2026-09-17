@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState, useTransition } from "react";
+import { useEffect, useMemo, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { LoaderCircle, Plus, RefreshCw, Trash2, Users } from "lucide-react";
 import type { ScheduleBooking, ScheduleWaitlistEntry } from "@/lib/schedule-types";
@@ -12,14 +12,19 @@ type SlotBookingsPanelProps = {
   students: StudentUser[];
 };
 
+type SlotBookingMutation = "booking" | "waitlist" | "cancel";
+
 export function SlotBookingsPanel({ slotId, availableSpots, students }: SlotBookingsPanelProps) {
   const router = useRouter();
+  const mutationInFlightRef = useRef(false);
   const [bookings, setBookings] = useState<ScheduleBooking[] | null>(null);
   const [waitlist, setWaitlist] = useState<ScheduleWaitlistEntry[] | null>(null);
   const [selectedStudentId, setSelectedStudentId] = useState(students[0]?.id ?? "");
   const [localAvailableSpots, setLocalAvailableSpots] = useState(availableSpots);
   const [errorMessage, setErrorMessage] = useState("");
   const [successMessage, setSuccessMessage] = useState("");
+  const [activeMutation, setActiveMutation] = useState<SlotBookingMutation | null>(null);
+  const [isMutationInFlight, setIsMutationInFlight] = useState(false);
   const [isLoading, startLoading] = useTransition();
   const [isMutating, startMutating] = useTransition();
   const unavailableStudentIds = useMemo(() => new Set([
@@ -31,6 +36,10 @@ export function SlotBookingsPanel({ slotId, availableSpots, students }: SlotBook
     [students, unavailableStudentIds]
   );
   const isFull = localAvailableSpots === 0;
+  const isActionBlocked = isMutating || isMutationInFlight;
+  const isBookingMutating = activeMutation === "booking" && isActionBlocked;
+  const isWaitlistMutating = activeMutation === "waitlist" && isActionBlocked;
+  const isCancelMutating = activeMutation === "cancel" && isActionBlocked;
 
   useEffect(() => {
     setLocalAvailableSpots(availableSpots);
@@ -96,8 +105,27 @@ export function SlotBookingsPanel({ slotId, availableSpots, students }: SlotBook
     });
   }
 
-  function createBooking() {
+  function runMutation(mutation: SlotBookingMutation, action: () => Promise<void>) {
+    if (mutationInFlightRef.current) {
+      return;
+    }
+
+    mutationInFlightRef.current = true;
+    setActiveMutation(mutation);
+    setIsMutationInFlight(true);
     startMutating(async () => {
+      try {
+        await action();
+      } finally {
+        mutationInFlightRef.current = false;
+        setActiveMutation(null);
+        setIsMutationInFlight(false);
+      }
+    });
+  }
+
+  function createBooking() {
+    runMutation("booking", async () => {
       setErrorMessage("");
       setSuccessMessage("");
 
@@ -133,7 +161,7 @@ export function SlotBookingsPanel({ slotId, availableSpots, students }: SlotBook
   }
 
   function joinWaitlist() {
-    startMutating(async () => {
+    runMutation("waitlist", async () => {
       setErrorMessage("");
       setSuccessMessage("");
 
@@ -161,7 +189,7 @@ export function SlotBookingsPanel({ slotId, availableSpots, students }: SlotBook
   }
 
   function cancelBooking(bookingId: string) {
-    startMutating(async () => {
+    runMutation("cancel", async () => {
       setErrorMessage("");
       setSuccessMessage("");
 
@@ -201,7 +229,7 @@ export function SlotBookingsPanel({ slotId, availableSpots, students }: SlotBook
               value={selectedStudentId}
               onChange={(event) => setSelectedStudentId(event.target.value)}
               className="w-full rounded-2xl border border-brand-line bg-brand-panel px-4 py-3 text-brand-ink outline-none"
-              disabled={availableStudentsForAction.length === 0 || isFull || isMutating}
+              disabled={availableStudentsForAction.length === 0 || isFull || isActionBlocked}
             >
               {availableStudentsForAction.map((student) => (
                 <option key={student.id} value={student.id}>
@@ -214,11 +242,11 @@ export function SlotBookingsPanel({ slotId, availableSpots, students }: SlotBook
           <button
             type="button"
             onClick={createBooking}
-            disabled={!selectedStudentId || availableStudentsForAction.length === 0 || isFull || isMutating}
+            disabled={!selectedStudentId || availableStudentsForAction.length === 0 || isFull || isActionBlocked}
             className="inline-flex items-center justify-center gap-2 rounded-2xl bg-brand-primary px-4 py-3 text-sm font-semibold text-white transition hover:bg-brand-primaryHover disabled:cursor-not-allowed disabled:opacity-75"
           >
-            {isMutating ? <LoaderCircle className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />}
-            {isMutating ? "Reservando..." : "Reservar aluno"}
+            {isBookingMutating ? <LoaderCircle className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />}
+            {isBookingMutating ? "Reservando..." : "Reservar aluno"}
           </button>
         </div>
 
@@ -236,17 +264,17 @@ export function SlotBookingsPanel({ slotId, availableSpots, students }: SlotBook
               <button
                 type="button"
                 onClick={joinWaitlist}
-                disabled={!selectedStudentId || availableStudentsForAction.length === 0 || isMutating}
+                disabled={!selectedStudentId || availableStudentsForAction.length === 0 || isActionBlocked}
                 className="inline-flex items-center justify-center gap-2 rounded-2xl border border-brand-line bg-brand-panel px-4 py-3 text-sm font-semibold text-brand-secondary transition hover:border-brand-primary/40 disabled:cursor-not-allowed disabled:opacity-75"
               >
-                {isMutating ? <LoaderCircle className="h-4 w-4 animate-spin" /> : <Users className="h-4 w-4" />}
-                {isMutating ? "Incluindo..." : "Entrar na fila de espera"}
+                {isWaitlistMutating ? <LoaderCircle className="h-4 w-4 animate-spin" /> : <Users className="h-4 w-4" />}
+                {isWaitlistMutating ? "Incluindo..." : "Entrar na fila de espera"}
               </button>
 
               <button
                 type="button"
                 onClick={loadWaitlist}
-                disabled={isLoading || isMutating}
+                disabled={isLoading || isActionBlocked}
                 className="inline-flex items-center justify-center gap-2 rounded-2xl border border-brand-line bg-brand-panel px-4 py-3 text-sm font-semibold text-brand-secondary transition hover:border-brand-primary/40 disabled:cursor-not-allowed disabled:opacity-75"
               >
                 {isLoading ? <LoaderCircle className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}
@@ -266,7 +294,7 @@ export function SlotBookingsPanel({ slotId, availableSpots, students }: SlotBook
         <button
           type="button"
           onClick={loadBookings}
-          disabled={isLoading || isMutating}
+          disabled={isLoading || isActionBlocked}
           className="inline-flex items-center justify-center gap-2 rounded-2xl border border-brand-line bg-brand-surface px-4 py-2 text-sm font-semibold text-brand-secondary transition hover:border-brand-primary/40 disabled:cursor-not-allowed disabled:opacity-75"
         >
           {isLoading ? <LoaderCircle className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}
@@ -307,10 +335,10 @@ export function SlotBookingsPanel({ slotId, availableSpots, students }: SlotBook
                 <button
                   type="button"
                   onClick={() => cancelBooking(booking.id)}
-                  disabled={isMutating}
+                  disabled={isActionBlocked}
                   className="inline-flex items-center justify-center gap-2 rounded-2xl border border-[rgba(220,53,69,0.22)] bg-[rgba(220,53,69,0.08)] px-4 py-2 text-sm font-semibold text-brand-danger transition hover:bg-[rgba(220,53,69,0.12)] disabled:cursor-not-allowed disabled:opacity-75"
                 >
-                  {isMutating ? <LoaderCircle className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
+                  {isCancelMutating ? <LoaderCircle className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
                   Cancelar reserva
                 </button>
               </div>

@@ -96,4 +96,75 @@ describe("SlotBookingsPanel", () => {
     expect(screen.getByRole("button", { name: "Reservar aluno" })).not.toBeDisabled();
     expect(screen.queryByText("Reserva ativa neste slot")).not.toBeInTheDocument();
   });
+
+  it("ignora clique duplo enquanto a reserva esta em andamento", async () => {
+    let resolveRequest: (response: Response) => void = () => {};
+    vi.mocked(global.fetch).mockImplementation(
+      () => new Promise<Response>((resolve) => {
+        resolveRequest = resolve;
+      })
+    );
+
+    render(<SlotBookingsPanel slotId="slot-1" availableSpots={1} students={students} />);
+
+    fireEvent.click(screen.getByRole("button", { name: "Reservar aluno" }));
+    fireEvent.click(screen.getByRole("button", { name: "Reservando..." }));
+
+    expect(global.fetch).toHaveBeenCalledTimes(1);
+
+    resolveRequest(
+      new Response(
+        JSON.stringify({
+          id: "booking-1",
+          slotId: "slot-1",
+          studentId: "student-1",
+          studentName: "Ana Aluna",
+          status: "BOOKED"
+        }),
+        {
+          status: 201,
+          headers: { "Content-Type": "application/json" }
+        }
+      )
+    );
+
+    expect(await screen.findByText("Reserva criada com sucesso para este horario.")).toBeInTheDocument();
+    expect(global.fetch).toHaveBeenCalledTimes(1);
+  });
+
+  it("ignora clique duplo enquanto inclusao na fila esta em andamento", async () => {
+    let resolveRequest: (response: Response) => void = () => {};
+    vi.mocked(global.fetch).mockImplementation(
+      () => new Promise<Response>((resolve) => {
+        resolveRequest = resolve;
+      })
+    );
+
+    render(<SlotBookingsPanel slotId="slot-1" availableSpots={0} students={students} />);
+
+    fireEvent.click(screen.getByRole("button", { name: "Entrar na fila de espera" }));
+    fireEvent.click(screen.getByRole("button", { name: "Incluindo..." }));
+
+    expect(global.fetch).toHaveBeenCalledTimes(1);
+
+    resolveRequest(
+      new Response(
+        JSON.stringify({
+          id: "waitlist-1",
+          slotId: "slot-1",
+          studentId: "student-1",
+          studentName: "Ana Aluna",
+          status: "WAITING",
+          promotedAt: null
+        }),
+        {
+          status: 201,
+          headers: { "Content-Type": "application/json" }
+        }
+      )
+    );
+
+    expect(await screen.findByText("Aluno incluido na fila de espera deste horario.")).toBeInTheDocument();
+    expect(global.fetch).toHaveBeenCalledTimes(1);
+  });
 });
