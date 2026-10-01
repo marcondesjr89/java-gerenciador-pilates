@@ -296,4 +296,146 @@ describe("SlotBookingsPanel", () => {
       method: "DELETE"
     });
   });
+
+  it("remarca reserva para outro horario disponivel no dia", async () => {
+    const targetSlots = [
+      {
+        id: "slot-2",
+        instructorUserId: "instructor-2",
+        instructorName: "Carla Instrutora",
+        requiredSpecialty: "PILATES_SOLO",
+        startTime: "2026-10-02T10:00:00Z",
+        endTime: "2026-10-02T11:00:00Z",
+        capacity: 2,
+        bookedCount: 1,
+        availableSpots: 1
+      }
+    ];
+
+    vi.mocked(global.fetch)
+      .mockResolvedValueOnce(
+        new Response(
+          JSON.stringify([
+            {
+              id: "booking-1",
+              slotId: "slot-1",
+              studentId: "student-1",
+              studentName: "Ana Aluna",
+              status: "BOOKED"
+            }
+          ]),
+          { status: 200, headers: { "Content-Type": "application/json" } }
+        )
+      )
+      .mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({
+            canceled: { id: "booking-1", status: "CANCELED" },
+            created: { id: "booking-2", status: "BOOKED", slotId: "slot-2" }
+          }),
+          { status: 200, headers: { "Content-Type": "application/json" } }
+        )
+      )
+      .mockResolvedValueOnce(
+        new Response(JSON.stringify([]), { status: 200, headers: { "Content-Type": "application/json" } })
+      );
+
+    render(
+      <SlotBookingsPanel
+        slotId="slot-1"
+        availableSpots={0}
+        students={students}
+        availableSlotsForReschedule={targetSlots}
+      />
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "Ver reservas" }));
+    expect(await screen.findByText("Reserva ativa neste slot")).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "Remarcar" }));
+    expect(screen.getByRole("combobox", { name: "Novo horario para Ana Aluna" })).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "Confirmar remarcacao" }));
+
+    expect(await screen.findByText("Reserva remarcada com sucesso.")).toBeInTheDocument();
+    expect(global.fetch).toHaveBeenCalledWith("/api/schedule-slots/slot-1/bookings/booking-1/reschedule", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ targetSlotId: "slot-2" })
+    });
+    expect(screen.getByText("Nenhuma reserva ativa neste horario.")).toBeInTheDocument();
+  });
+
+  it("ignora clique duplo durante a remarcacao de reserva", async () => {
+    const targetSlots = [
+      {
+        id: "slot-2",
+        instructorUserId: "instructor-2",
+        instructorName: "Carla Instrutora",
+        requiredSpecialty: "PILATES_SOLO",
+        startTime: "2026-10-02T10:00:00Z",
+        endTime: "2026-10-02T11:00:00Z",
+        capacity: 2,
+        bookedCount: 1,
+        availableSpots: 1
+      }
+    ];
+
+    vi.mocked(global.fetch).mockResolvedValueOnce(
+      new Response(
+        JSON.stringify([
+          {
+            id: "booking-1",
+            slotId: "slot-1",
+            studentId: "student-1",
+            studentName: "Ana Aluna",
+            status: "BOOKED"
+          }
+        ]),
+        { status: 200, headers: { "Content-Type": "application/json" } }
+      )
+    );
+
+    let resolveReschedule: (response: Response) => void = () => {};
+    render(
+      <SlotBookingsPanel
+        slotId="slot-1"
+        availableSpots={0}
+        students={students}
+        availableSlotsForReschedule={targetSlots}
+      />
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "Ver reservas" }));
+    expect(await screen.findByText("Reserva ativa neste slot")).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "Remarcar" }));
+
+    vi.mocked(global.fetch).mockImplementationOnce(
+      () => new Promise<Response>((resolve) => {
+        resolveReschedule = resolve;
+      })
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "Confirmar remarcacao" }));
+    fireEvent.click(screen.getByRole("button", { name: "Remarcando..." }));
+
+    expect(global.fetch).toHaveBeenCalledTimes(2); // 1 listagem + 1 remarcacao
+
+    resolveReschedule(
+      new Response(
+        JSON.stringify({
+          canceled: { id: "booking-1", status: "CANCELED" },
+          created: { id: "booking-2", status: "BOOKED", slotId: "slot-2" }
+        }),
+        { status: 200, headers: { "Content-Type": "application/json" } }
+      )
+    );
+
+    expect(await screen.findByText("Reserva remarcada com sucesso.")).toBeInTheDocument();
+    const rescheduleCalls = vi
+      .mocked(global.fetch)
+      .mock.calls.filter(([url]) => url.toString().includes("reschedule"));
+    expect(rescheduleCalls).toHaveLength(1);
+  });
 });

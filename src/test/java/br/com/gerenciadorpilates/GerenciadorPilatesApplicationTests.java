@@ -1009,6 +1009,87 @@ class GerenciadorPilatesApplicationTests {
     }
 
     @Test
+    void receptionCanRescheduleBookingAndPromoteWaitlist() throws Exception {
+        AppUser instructor = appUserRepository.save(new AppUser(
+                UUID.randomUUID(),
+                "instrutor.remarca@teste.local",
+                "Instrutor Remarcacao",
+                "$2a$10$FKnDJwN6CmxQ0VJ8A5yI0e1IY7PvxI6Bjq5lHppZArYrusS4x2M5K",
+                UserRole.INSTRUCTOR,
+                true,
+                java.util.Set.of(InstructorSpecialty.PILATES_SOLO)
+        ));
+        Student studentToReschedule = studentRepository.save(new Student(
+                UUID.randomUUID(),
+                "Aluno Remarcado",
+                "33344455566",
+                "remarcado@teste.local",
+                "85943334444",
+                LocalDate.of(1992, 2, 2),
+                StudentStatus.ACTIVE,
+                true
+        ));
+        Student waitlistStudent = studentRepository.save(new Student(
+                UUID.randomUUID(),
+                "Aluno Promovido Fila",
+                "44455566677",
+                "promovido@teste.local",
+                "85944445555",
+                LocalDate.of(1993, 3, 3),
+                StudentStatus.ACTIVE,
+                true
+        ));
+
+        String adminToken = loginAndGetToken("admin@test.local", "Admin@12345");
+        OffsetDateTime start1 = OffsetDateTime.now().plusDays(2).withHour(9).withMinute(0).withSecond(0).withNano(0);
+        UUID slot1 = createScheduleSlot(adminToken, instructor.getId(), InstructorSpecialty.PILATES_SOLO, start1, start1.plusHours(1), 1);
+        UUID bookingId = createBooking(adminToken, slot1, studentToReschedule.getId());
+
+        OffsetDateTime start2 = OffsetDateTime.now().plusDays(2).withHour(11).withMinute(0).withSecond(0).withNano(0);
+        UUID slot2 = createScheduleSlot(adminToken, instructor.getId(), InstructorSpecialty.PILATES_SOLO, start2, start2.plusHours(1), 2);
+
+        String waitlistRequest = """
+                {
+                  "studentId": "%s"
+                }
+                """.formatted(waitlistStudent.getId());
+
+        mockMvc.perform(post("/api/v1/schedule-slots/{slotId}/waitlist", slot1)
+                        .header("Authorization", "Bearer " + adminToken)
+                        .contentType(APPLICATION_JSON)
+                        .content(waitlistRequest))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.status").value("WAITING"));
+
+        String rescheduleRequest = """
+                {
+                  "targetSlotId": "%s"
+                }
+                """.formatted(slot2);
+
+        mockMvc.perform(post("/api/v1/schedule-slots/{slotId}/bookings/{bookingId}/reschedule", slot1, bookingId)
+                        .header("Authorization", "Bearer " + adminToken)
+                        .contentType(APPLICATION_JSON)
+                        .content(rescheduleRequest))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.canceledBooking.status").value("CANCELED"))
+                .andExpect(jsonPath("$.newBooking.status").value("BOOKED"))
+                .andExpect(jsonPath("$.newBooking.studentId").value(studentToReschedule.getId().toString()));
+
+        mockMvc.perform(get("/api/v1/schedule-slots/{slotId}/bookings", slot2)
+                        .header("Authorization", "Bearer " + adminToken))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.length()").value(1))
+                .andExpect(jsonPath("$[0].studentId").value(studentToReschedule.getId().toString()));
+
+        mockMvc.perform(get("/api/v1/schedule-slots/{slotId}/bookings", slot1)
+                        .header("Authorization", "Bearer " + adminToken))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.length()").value(1))
+                .andExpect(jsonPath("$[0].studentId").value(waitlistStudent.getId().toString()));
+    }
+
+    @Test
     void billingFlowCreatesPlanSubscriptionInvoiceListsOverdueAndRegistersPayment() throws Exception {
         Student student = studentRepository.save(new Student(
                 UUID.randomUUID(),

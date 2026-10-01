@@ -47,6 +47,15 @@ public class ScheduleBookingController {
         return bookingService.cancel(slotId, bookingId);
     }
 
+    @PostMapping("/{bookingId}/reschedule")
+    public ScheduleRescheduleResponse reschedule(
+            @PathVariable UUID slotId,
+            @PathVariable UUID bookingId,
+            @Valid @RequestBody ScheduleRescheduleRequest request
+    ) {
+        return bookingService.reschedule(slotId, bookingId, request.targetSlotId());
+    }
+
     @PostMapping("/{bookingId}/self-service-cancel")
     public ScheduleBookingResponse selfServiceCancel(
             @PathVariable UUID slotId,

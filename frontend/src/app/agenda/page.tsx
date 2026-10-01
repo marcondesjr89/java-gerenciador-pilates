@@ -185,7 +185,12 @@ export default async function AgendaPage({ searchParams }: AgendaPageProps) {
                       </div>
                     </div>
 
-                    <SlotBookingsPanel slotId={slot.id} availableSpots={slot.availableSpots} students={students} />
+                    <SlotBookingsPanel
+                      slotId={slot.id}
+                      availableSpots={slot.availableSpots}
+                      students={students}
+                      availableSlotsForReschedule={slots.filter((item) => item.id !== slot.id)}
+                    />
                   </article>
                 );
               })}

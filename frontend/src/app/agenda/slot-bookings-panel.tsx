@@ -2,24 +2,33 @@
 
 import { useEffect, useMemo, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { LoaderCircle, Plus, RefreshCw, Trash2, Users } from "lucide-react";
-import type { ScheduleBooking, ScheduleWaitlistEntry } from "@/lib/schedule-types";
+import { ArrowRightLeft, LoaderCircle, Plus, RefreshCw, Trash2, Users } from "lucide-react";
+import type { ScheduleBooking, ScheduleSlot, ScheduleWaitlistEntry } from "@/lib/schedule-types";
+import { formatSpecialty, formatUtcHour } from "@/lib/formatters";
 import type { StudentUser } from "@/lib/users";
 
 type SlotBookingsPanelProps = {
   slotId: string;
   availableSpots: number;
   students: StudentUser[];
+  availableSlotsForReschedule?: ScheduleSlot[];
 };
 
-type SlotBookingMutation = "booking" | "waitlist" | "cancel" | "waitlist-cancel";
+type SlotBookingMutation = "booking" | "waitlist" | "cancel" | "waitlist-cancel" | "reschedule";
 
-export function SlotBookingsPanel({ slotId, availableSpots, students }: SlotBookingsPanelProps) {
+export function SlotBookingsPanel({
+  slotId,
+  availableSpots,
+  students,
+  availableSlotsForReschedule = []
+}: SlotBookingsPanelProps) {
   const router = useRouter();
   const mutationInFlightRef = useRef(false);
   const [bookings, setBookings] = useState<ScheduleBooking[] | null>(null);
   const [waitlist, setWaitlist] = useState<ScheduleWaitlistEntry[] | null>(null);
   const [selectedStudentId, setSelectedStudentId] = useState(students[0]?.id ?? "");
+  const [reschedulingBookingId, setReschedulingBookingId] = useState<string | null>(null);
+  const [targetSlotId, setTargetSlotId] = useState("");
   const [localAvailableSpots, setLocalAvailableSpots] = useState(availableSpots);
   const [errorMessage, setErrorMessage] = useState("");
   const [successMessage, setSuccessMessage] = useState("");
@@ -35,12 +44,17 @@ export function SlotBookingsPanel({ slotId, availableSpots, students }: SlotBook
     () => students.filter((student) => !unavailableStudentIds.has(student.id)),
     [students, unavailableStudentIds]
   );
+  const rescheduleCandidates = useMemo(
+    () => availableSlotsForReschedule.filter((candidate) => candidate.id !== slotId && candidate.availableSpots > 0),
+    [availableSlotsForReschedule, slotId]
+  );
   const isFull = localAvailableSpots === 0;
   const isActionBlocked = isMutating || isMutationInFlight;
   const isBookingMutating = activeMutation === "booking" && isActionBlocked;
   const isWaitlistMutating = activeMutation === "waitlist" && isActionBlocked;
   const isCancelMutating = activeMutation === "cancel" && isActionBlocked;
   const isWaitlistCancelMutating = activeMutation === "waitlist-cancel" && isActionBlocked;
+  const isRescheduleMutating = activeMutation === "reschedule" && isActionBlocked;
 
   useEffect(() => {
     setLocalAvailableSpots(availableSpots);
@@ -53,6 +67,14 @@ export function SlotBookingsPanel({ slotId, availableSpots, students }: SlotBook
 
     setSelectedStudentId(availableStudentsForAction[0]?.id ?? "");
   }, [availableStudentsForAction, selectedStudentId]);
+
+  useEffect(() => {
+    if (targetSlotId && rescheduleCandidates.some((candidate) => candidate.id === targetSlotId)) {
+      return;
+    }
+
+    setTargetSlotId(rescheduleCandidates[0]?.id ?? "");
+  }, [rescheduleCandidates, targetSlotId]);
 
   async function fetchBookings() {
     const response = await fetch(`/api/schedule-slots/${slotId}/bookings`, {
@@ -249,6 +271,55 @@ export function SlotBookingsPanel({ slotId, availableSpots, students }: SlotBook
     });
   }
 
+  function rescheduleBooking(bookingId: string) {
+    if (!targetSlotId) {
+      return;
+    }
+
+    runMutation("reschedule", async () => {
+      setErrorMessage("");
+      setSuccessMessage("");
+
+      const response = await fetch(`/api/schedule-slots/${slotId}/bookings/${bookingId}/reschedule`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+          targetSlotId
+        })
+      });
+
+      if (!response.ok) {
+        const payload = (await response.json().catch(() => ({ message: "" }))) as { message?: string };
+        setErrorMessage(payload.message || "Nao foi possivel remarcar a reserva.");
+        return;
+      }
+
+      setReschedulingBookingId(null);
+
+      if (bookings) {
+        try {
+          const refreshedBookings = await fetchBookings();
+          setBookings(refreshedBookings);
+          setLocalAvailableSpots((currentAvailableSpots) => Math.max(currentAvailableSpots + bookings.length - refreshedBookings.length, 0));
+        } catch {
+          setBookings(bookings.filter((booking) => booking.id !== bookingId));
+          setLocalAvailableSpots((currentAvailableSpots) => currentAvailableSpots + 1);
+        }
+      }
+      if (waitlist) {
+        try {
+          setWaitlist(await fetchWaitlist());
+        } catch {
+          setWaitlist(waitlist);
+        }
+      }
+      setSuccessMessage("Reserva remarcada com sucesso.");
+      router.refresh();
+    });
+  }
+
   return (
     <div className="mt-4 rounded-[20px] border border-brand-line bg-brand-panel p-4">
       <div className="rounded-2xl border border-brand-line bg-brand-surface p-4">
@@ -350,27 +421,95 @@ export function SlotBookingsPanel({ slotId, availableSpots, students }: SlotBook
             {bookings.map((booking) => (
               <div
                 key={booking.id}
-                className="flex flex-col gap-3 rounded-2xl border border-brand-line bg-brand-surface px-4 py-4 md:flex-row md:items-center md:justify-between"
+                className="flex flex-col gap-3 rounded-2xl border border-brand-line bg-brand-surface px-4 py-4"
               >
-                <div className="flex items-center gap-3">
-                  <div className="rounded-2xl bg-brand-soft p-3 text-brand-primary">
-                    <Users className="h-4 w-4" />
+                <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className="rounded-2xl bg-brand-soft p-3 text-brand-primary">
+                      <Users className="h-4 w-4" />
+                    </div>
+                    <div>
+                      <p className="font-semibold text-brand-ink">{booking.studentName}</p>
+                      <p className="text-sm text-brand-subtext">Reserva ativa neste slot</p>
+                    </div>
                   </div>
-                  <div>
-                    <p className="font-semibold text-brand-ink">{booking.studentName}</p>
-                    <p className="text-sm text-brand-subtext">Reserva ativa neste slot</p>
+
+                  <div className="flex flex-wrap items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (reschedulingBookingId === booking.id) {
+                          setReschedulingBookingId(null);
+                        } else {
+                          setReschedulingBookingId(booking.id);
+                          if (rescheduleCandidates.length > 0 && !rescheduleCandidates.some((c) => c.id === targetSlotId)) {
+                            setTargetSlotId(rescheduleCandidates[0].id);
+                          }
+                        }
+                      }}
+                      disabled={isActionBlocked || rescheduleCandidates.length === 0}
+                      title={rescheduleCandidates.length === 0 ? "Nenhum outro horario com vagas disponiveis hoje" : undefined}
+                      className="inline-flex items-center justify-center gap-2 rounded-2xl border border-brand-line bg-brand-panel px-4 py-2 text-sm font-semibold text-brand-secondary transition hover:border-brand-primary/40 disabled:cursor-not-allowed disabled:opacity-60"
+                    >
+                      <ArrowRightLeft className="h-4 w-4" />
+                      {reschedulingBookingId === booking.id ? "Fechar remarcacao" : "Remarcar"}
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => cancelBooking(booking.id)}
+                      disabled={isActionBlocked}
+                      className="inline-flex items-center justify-center gap-2 rounded-2xl border border-[rgba(220,53,69,0.22)] bg-[rgba(220,53,69,0.08)] px-4 py-2 text-sm font-semibold text-brand-danger transition hover:bg-[rgba(220,53,69,0.12)] disabled:cursor-not-allowed disabled:opacity-75"
+                    >
+                      {isCancelMutating ? <LoaderCircle className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
+                      Cancelar reserva
+                    </button>
                   </div>
                 </div>
 
-                <button
-                  type="button"
-                  onClick={() => cancelBooking(booking.id)}
-                  disabled={isActionBlocked}
-                  className="inline-flex items-center justify-center gap-2 rounded-2xl border border-[rgba(220,53,69,0.22)] bg-[rgba(220,53,69,0.08)] px-4 py-2 text-sm font-semibold text-brand-danger transition hover:bg-[rgba(220,53,69,0.12)] disabled:cursor-not-allowed disabled:opacity-75"
-                >
-                  {isCancelMutating ? <LoaderCircle className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
-                  Cancelar reserva
-                </button>
+                {reschedulingBookingId === booking.id ? (
+                  <div className="rounded-2xl border border-brand-line bg-brand-panel p-4">
+                    <p className="text-xs font-semibold uppercase tracking-wider text-brand-secondary">
+                      Remarcar {booking.studentName} para outro horario
+                    </p>
+                    <div className="mt-3 flex flex-col gap-3 sm:flex-row sm:items-center">
+                      <select
+                        aria-label={`Novo horario para ${booking.studentName}`}
+                        value={targetSlotId}
+                        onChange={(e) => setTargetSlotId(e.target.value)}
+                        disabled={isActionBlocked}
+                        className="flex-1 rounded-2xl border border-brand-line bg-brand-surface px-4 py-2 text-sm text-brand-ink outline-none"
+                      >
+                        {rescheduleCandidates.map((candidate) => (
+                          <option key={candidate.id} value={candidate.id}>
+                            {formatUtcHour(candidate.startTime)} - {formatUtcHour(candidate.endTime)} | {candidate.instructorName} ({formatSpecialty(candidate.requiredSpecialty)}) - {candidate.availableSpots} vaga(s)
+                          </option>
+                        ))}
+                      </select>
+
+                      <div className="flex items-center gap-2">
+                        <button
+                          type="button"
+                          onClick={() => rescheduleBooking(booking.id)}
+                          disabled={!targetSlotId || isActionBlocked}
+                          className="inline-flex items-center justify-center gap-2 rounded-2xl bg-brand-primary px-4 py-2 text-sm font-semibold text-white transition hover:bg-brand-primaryHover disabled:cursor-not-allowed disabled:opacity-75"
+                        >
+                          {isRescheduleMutating ? <LoaderCircle className="h-4 w-4 animate-spin" /> : null}
+                          {isRescheduleMutating ? "Remarcando..." : "Confirmar remarcacao"}
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={() => setReschedulingBookingId(null)}
+                          disabled={isActionBlocked}
+                          className="inline-flex items-center justify-center rounded-2xl border border-brand-line bg-brand-surface px-4 py-2 text-sm font-semibold text-brand-subtext transition hover:text-brand-ink disabled:cursor-not-allowed disabled:opacity-75"
+                        >
+                          Cancelar
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                ) : null}
               </div>
             ))}
           </div>

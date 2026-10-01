@@ -143,11 +143,31 @@ public class ScheduleBookingService {
     }
 
     @Transactional
+    public ScheduleRescheduleResponse reschedule(UUID slotId, UUID bookingId, UUID targetSlotId) {
+        return executeReschedule(slotId, bookingId, targetSlotId, false);
+    }
+
+    @Transactional
     public ScheduleRescheduleResponse selfServiceReschedule(UUID slotId, UUID bookingId, UUID targetSlotId) {
+        return executeReschedule(slotId, bookingId, targetSlotId, true);
+    }
+
+    private ScheduleRescheduleResponse executeReschedule(
+            UUID slotId,
+            UUID bookingId,
+            UUID targetSlotId,
+            boolean enforceSelfServiceRules
+    ) {
+        if (targetSlotId.equals(slotId)) {
+            throw new IllegalArgumentException("O horario de destino deve ser diferente do horario atual.");
+        }
+
         ScheduleBooking originalBooking = bookingRepository.findById(bookingId)
                 .orElseThrow(() -> new ResourceNotFoundException("Reserva nao encontrada."));
         ScheduleSlot originalSlot = validateCancelableBooking(slotId, originalBooking);
-        validateSelfServiceWindow(originalSlot.getStartTime(), policyProperties.minHoursBeforeReschedule(), "remarcacao");
+        if (enforceSelfServiceRules) {
+            validateSelfServiceWindow(originalSlot.getStartTime(), policyProperties.minHoursBeforeReschedule(), "remarcacao");
+        }
 
         ScheduleSlot targetSlot = slotRepository.findById(targetSlotId)
                 .orElseThrow(() -> new ResourceNotFoundException("Horario de destino nao encontrado."));

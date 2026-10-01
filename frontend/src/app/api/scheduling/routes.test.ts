@@ -6,6 +6,7 @@ import { POST as createBooking } from "@/app/api/schedule-slots/[slotId]/booking
 import { DELETE as cancelBooking } from "@/app/api/schedule-slots/[slotId]/bookings/[bookingId]/route";
 import { POST as joinWaitlist } from "@/app/api/schedule-slots/[slotId]/waitlist/route";
 import { DELETE as cancelWaitlistEntry } from "@/app/api/schedule-slots/[slotId]/waitlist/[waitlistEntryId]/route";
+import { POST as rescheduleBooking } from "@/app/api/schedule-slots/[slotId]/bookings/[bookingId]/reschedule/route";
 
 const requireInternalApiSessionMock = vi.fn();
 const proxyJsonToBackendMock = vi.fn();
@@ -263,4 +264,63 @@ describe("scheduling api routes", () => {
       errorMessage: "Nao foi possivel remover o bloqueio."
     });
   });
+
+  it("retorna 400 quando o horario de destino nao e informado na remarcacao", async () => {
+    requireInternalApiSessionMock.mockResolvedValue({ accessToken: "internal-token" });
+
+    const response = await rescheduleBooking(
+      new Request("http://localhost/api/schedule-slots/slot-1/bookings/book-1/reschedule", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ targetSlotId: "   " })
+      }),
+      { params: Promise.resolve({ slotId: "slot-1", bookingId: "book-1" }) }
+    );
+
+    expect(response.status).toBe(400);
+    await expect(response.json()).resolves.toEqual({ message: "Informe o horario de destino para a remarcacao." });
+    expect(proxyJsonToBackendMock).not.toHaveBeenCalled();
+  });
+
+  it("retorna 400 quando o horario de destino e igual ao horario atual", async () => {
+    requireInternalApiSessionMock.mockResolvedValue({ accessToken: "internal-token" });
+
+    const response = await rescheduleBooking(
+      new Request("http://localhost/api/schedule-slots/slot-1/bookings/book-1/reschedule", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ targetSlotId: "slot-1" })
+      }),
+      { params: Promise.resolve({ slotId: "slot-1", bookingId: "book-1" }) }
+    );
+
+    expect(response.status).toBe(400);
+    await expect(response.json()).resolves.toEqual({ message: "O horario de destino deve ser diferente do horario atual." });
+    expect(proxyJsonToBackendMock).not.toHaveBeenCalled();
+  });
+
+  it("encaminha remarcacao administrativa com payload normalizado", async () => {
+    requireInternalApiSessionMock.mockResolvedValue({ accessToken: "internal-token" });
+    proxyJsonToBackendMock.mockResolvedValue(new Response(JSON.stringify({ canceled: {}, created: {} }), { status: 200 }));
+
+    await rescheduleBooking(
+      new Request("http://localhost/api/schedule-slots/slot-1/bookings/book-1/reschedule", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ targetSlotId: "  slot-2  " })
+      }),
+      { params: Promise.resolve({ slotId: "slot-1", bookingId: "book-1" }) }
+    );
+
+    expect(proxyJsonToBackendMock).toHaveBeenCalledWith({
+      session: { accessToken: "internal-token" },
+      path: "/api/v1/schedule-slots/slot-1/bookings/book-1/reschedule",
+      method: "POST",
+      body: {
+        targetSlotId: "slot-2"
+      },
+      errorMessage: "Nao foi possivel remarcar a reserva."
+    });
+  });
 });
+
