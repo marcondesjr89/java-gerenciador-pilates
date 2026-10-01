@@ -7,6 +7,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -1523,6 +1524,99 @@ class GerenciadorPilatesApplicationTests {
         assertThat(valuesByKey.get("churnRate")).isEqualTo(round(expectedChurn));
         assertThat(valuesByKey.get("occupancyRate")).isEqualTo(expectedOccupancy);
         assertThat(valuesByKey.get("delinquencyRate")).isEqualTo(expectedDelinquency);
+    }
+
+    @Test
+    void adminCanManageTeamUsersLifecycleAndEdgeCases() throws Exception {
+        String adminToken = loginAndGetToken("admin@test.local", "Admin@12345");
+
+        String createRequest = """
+                {
+                  "email": "carla.instrutora@teste.local",
+                  "fullName": "Carla Instrutora",
+                  "password": "SenhaForte@123",
+                  "role": "INSTRUCTOR",
+                  "specialties": ["PILATES_SOLO", "PILATES_APARELHOS"]
+                }
+                """;
+
+        String createResponse = mockMvc.perform(post("/api/v1/users")
+                        .header("Authorization", "Bearer " + adminToken)
+                        .contentType(APPLICATION_JSON)
+                        .content(createRequest))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.email").value("carla.instrutora@teste.local"))
+                .andExpect(jsonPath("$.fullName").value("Carla Instrutora"))
+                .andExpect(jsonPath("$.role").value("INSTRUCTOR"))
+                .andExpect(jsonPath("$.active").value(true))
+                .andReturn()
+                .getResponse()
+                .getContentAsString();
+
+        UUID carlaId = UUID.fromString(objectMapper.readTree(createResponse).get("id").asText());
+
+        mockMvc.perform(get("/api/v1/users/{id}", carlaId)
+                        .header("Authorization", "Bearer " + adminToken))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.id").value(carlaId.toString()))
+                .andExpect(jsonPath("$.fullName").value("Carla Instrutora"));
+
+        String updateRequest = """
+                {
+                  "fullName": "Carla Mendes Instrutora",
+                  "role": "INSTRUCTOR",
+                  "specialties": ["PILATES_SOLO", "PILATES_APARELHOS", "PILATES_GESTANTES"]
+                }
+                """;
+
+        mockMvc.perform(put("/api/v1/users/{id}", carlaId)
+                        .header("Authorization", "Bearer " + adminToken)
+                        .contentType(APPLICATION_JSON)
+                        .content(updateRequest))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.fullName").value("Carla Mendes Instrutora"))
+                .andExpect(jsonPath("$.specialties", org.hamcrest.Matchers.hasItem("PILATES_GESTANTES")));
+
+        String changePasswordRequest = """
+                {
+                  "newPassword": "NovaSenhaForte@123"
+                }
+                """;
+
+        mockMvc.perform(post("/api/v1/users/{id}/password", carlaId)
+                        .header("Authorization", "Bearer " + adminToken)
+                        .contentType(APPLICATION_JSON)
+                        .content(changePasswordRequest))
+                .andExpect(status().isOk());
+
+        String carlaToken = loginAndGetToken("carla.instrutora@teste.local", "NovaSenhaForte@123");
+        assertThat(carlaToken).isNotBlank();
+
+        mockMvc.perform(patch("/api/v1/users/{id}/status", carlaId)
+                        .header("Authorization", "Bearer " + adminToken)
+                        .contentType(APPLICATION_JSON)
+                        .content("{\"active\": false}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.active").value(false));
+
+        mockMvc.perform(patch("/api/v1/users/{id}/status", carlaId)
+                        .header("Authorization", "Bearer " + adminToken)
+                        .contentType(APPLICATION_JSON)
+                        .content("{\"active\": true}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.active").value(true));
+
+        AppUser adminUser = appUserRepository.findByEmailIgnoreCase("admin@test.local").orElseThrow();
+        mockMvc.perform(patch("/api/v1/users/{id}/status", adminUser.getId())
+                        .header("Authorization", "Bearer " + adminToken)
+                        .contentType(APPLICATION_JSON)
+                        .content("{\"active\": false}"))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.detail").value(containsString("Voce nao pode inativar seu proprio usuario.")));
+
+        mockMvc.perform(get("/api/v1/users")
+                        .header("Authorization", "Bearer " + carlaToken))
+                .andExpect(status().isForbidden());
     }
 
     private UUID createScheduleSlot(

@@ -123,4 +123,34 @@ public class AppUser {
     public OffsetDateTime getUpdatedAt() {
         return updatedAt;
     }
+
+    public void activate() {
+        this.active = true;
+    }
+
+    public void deactivate() {
+        this.active = false;
+    }
+
+    public void updateProfile(String fullName, UserRole role, Set<InstructorSpecialty> specialties) {
+        if (fullName == null || fullName.trim().isEmpty()) {
+            throw new IllegalArgumentException("O nome completo e obrigatorio.");
+        }
+        if (role == null) {
+            throw new IllegalArgumentException("O perfil e obrigatorio.");
+        }
+        this.fullName = fullName.trim();
+        this.role = role;
+        this.specialties.clear();
+        if (specialties != null) {
+            this.specialties.addAll(specialties);
+        }
+    }
+
+    public void changePassword(String newPasswordHash) {
+        if (newPasswordHash == null || newPasswordHash.trim().isEmpty()) {
+            throw new IllegalArgumentException("O hash da senha e obrigatorio.");
+        }
+        this.passwordHash = newPasswordHash;
+    }
 }

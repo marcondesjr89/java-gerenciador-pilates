@@ -1,6 +1,6 @@
 import type { ReactNode } from "react";
 import Link from "next/link";
-import { Activity, BellRing, CalendarDays, CreditCard, FileText, Search, UsersRound } from "lucide-react";
+import { Activity, BellRing, CalendarDays, CreditCard, FileText, Search, UserCog, UsersRound } from "lucide-react";
 import { ThemeToggle } from "@/components/ui/theme-toggle";
 import { LogoutButton } from "@/components/ui/logout-button";
 
@@ -35,6 +35,12 @@ const navItems: NavItem[] = [
     hint: "Billing, DRE e DMED",
     href: "/financeiro",
     icon: <CreditCard className="h-4 w-4" />
+  },
+  {
+    label: "Equipe",
+    hint: "Instrutores e usuarios",
+    href: "/usuarios",
+    icon: <UserCog className="h-4 w-4" />
   },
   {
     label: "Notificacoes",

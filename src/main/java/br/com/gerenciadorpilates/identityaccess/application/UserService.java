@@ -2,6 +2,7 @@ package br.com.gerenciadorpilates.identityaccess.application;
 
 import br.com.gerenciadorpilates.identityaccess.api.CreateUserRequest;
 import br.com.gerenciadorpilates.identityaccess.api.InstructorSummaryResponse;
+import br.com.gerenciadorpilates.identityaccess.api.UpdateUserRequest;
 import br.com.gerenciadorpilates.identityaccess.api.UserResponse;
 import br.com.gerenciadorpilates.identityaccess.domain.AppUser;
 import br.com.gerenciadorpilates.identityaccess.domain.UserRole;
@@ -65,6 +66,65 @@ public class UserService {
     public UserResponse getByEmail(String email) {
         AppUser user = userRepository.findByEmailIgnoreCaseAndActiveTrue(email)
                 .orElseThrow(() -> new ResourceNotFoundException("Usuario nao encontrado."));
+        return UserResponse.from(user);
+    }
+
+    @Transactional(readOnly = true)
+    public UserResponse getById(UUID id) {
+        AppUser user = userRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Usuario nao encontrado."));
+        return UserResponse.from(user);
+    }
+
+    @Transactional
+    public UserResponse update(UUID id, UpdateUserRequest request, String currentUsername) {
+        AppUser user = userRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Usuario nao encontrado."));
+
+        if (user.getRole() == UserRole.ADMIN && request.role() != UserRole.ADMIN && user.isActive()) {
+            long activeAdmins = userRepository.countByRoleAndActiveTrue(UserRole.ADMIN);
+            if (activeAdmins <= 1) {
+                throw new IllegalArgumentException("Nao e possivel alterar o perfil do unico administrador ativo.");
+            }
+        }
+
+        user.updateProfile(request.fullName(), request.role(), request.specialties());
+        return UserResponse.from(user);
+    }
+
+    @Transactional
+    public UserResponse updateStatus(UUID id, boolean active, String currentUsername) {
+        AppUser user = userRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Usuario nao encontrado."));
+
+        if (!active) {
+            if (currentUsername != null && user.getEmail().equalsIgnoreCase(currentUsername.trim())) {
+                throw new IllegalArgumentException("Voce nao pode inativar seu proprio usuario.");
+            }
+            if (user.getRole() == UserRole.ADMIN) {
+                long activeAdmins = userRepository.countByRoleAndActiveTrue(UserRole.ADMIN);
+                if (activeAdmins <= 1) {
+                    throw new IllegalArgumentException("Nao e possivel inativar o unico administrador ativo.");
+                }
+            }
+            user.deactivate();
+        } else {
+            user.activate();
+        }
+
+        return UserResponse.from(user);
+    }
+
+    @Transactional
+    public UserResponse changePassword(UUID id, String newPassword) {
+        AppUser user = userRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Usuario nao encontrado."));
+
+        if (newPassword == null || newPassword.trim().length() < 8) {
+            throw new IllegalArgumentException("A nova senha deve possuir pelo menos 8 caracteres.");
+        }
+
+        user.changePassword(passwordEncoder.encode(newPassword.trim()));
         return UserResponse.from(user);
     }
 }

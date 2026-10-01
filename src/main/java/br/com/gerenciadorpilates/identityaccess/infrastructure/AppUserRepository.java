@@ -14,4 +14,6 @@ public interface AppUserRepository extends JpaRepository<AppUser, UUID> {
     Optional<AppUser> findByEmailIgnoreCaseAndActiveTrue(String email);
 
     List<AppUser> findAllByRoleAndActiveTrueOrderByFullNameAsc(UserRole role);
+
+    long countByRoleAndActiveTrue(UserRole role);
 }
