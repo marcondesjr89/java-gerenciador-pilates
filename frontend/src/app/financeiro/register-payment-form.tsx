@@ -1,12 +1,14 @@
 "use client";
 
-import { useMemo, useState, useTransition } from "react";
+import { useMemo, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { BadgeDollarSign, LoaderCircle } from "lucide-react";
 
 type RegisterPaymentFormProps = {
   invoiceId: string;
   amountDue: string;
+  onSuccess?: () => void;
+  onCancel?: () => void;
 };
 
 const paymentMethods = [
@@ -22,45 +24,73 @@ function getCurrentLocalDateTime() {
   return new Date(now.getTime() - timezoneOffsetInMs).toISOString().slice(0, 16);
 }
 
-export function RegisterPaymentForm({ invoiceId, amountDue }: RegisterPaymentFormProps) {
+export function RegisterPaymentForm({
+  invoiceId,
+  amountDue,
+  onSuccess,
+  onCancel
+}: RegisterPaymentFormProps) {
   const router = useRouter();
+  const mutationInFlightRef = useRef(false);
   const [errorMessage, setErrorMessage] = useState("");
   const [successMessage, setSuccessMessage] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [isPending, startTransition] = useTransition();
   const defaultPaidAt = useMemo(() => getCurrentLocalDateTime(), []);
+
+  const isBlocked = isPending || isSubmitting;
+
+  function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+
+    if (mutationInFlightRef.current) {
+      return;
+    }
+
+    mutationInFlightRef.current = true;
+    setIsSubmitting(true);
+    setErrorMessage("");
+    setSuccessMessage("");
+
+    const form = event.currentTarget;
+    const formData = new FormData(form);
+
+    startTransition(async () => {
+      try {
+        const paidAtValue = String(formData.get("paidAt") ?? "");
+        const response = await fetch(`/api/billing/invoices/${invoiceId}/payments`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify({
+            amountPaid: String(formData.get("amountPaid") ?? "").trim(),
+            paymentMethod: String(formData.get("paymentMethod") ?? ""),
+            paidAt: new Date(paidAtValue).toISOString(),
+            externalReference: String(formData.get("externalReference") ?? "").trim() || null
+          })
+        });
+
+        if (!response.ok) {
+          const payload = (await response.json().catch(() => ({ message: "" }))) as { message?: string };
+          setErrorMessage(payload.message || "Nao foi possivel registrar o pagamento.");
+          return;
+        }
+
+        setSuccessMessage("Pagamento registrado com sucesso.");
+        router.refresh();
+        onSuccess?.();
+      } finally {
+        mutationInFlightRef.current = false;
+        setIsSubmitting(false);
+      }
+    });
+  }
 
   return (
     <form
       className="mt-4 grid gap-3 rounded-2xl border border-brand-line bg-brand-surface px-4 py-4"
-      action={(formData) => {
-        startTransition(async () => {
-          setErrorMessage("");
-          setSuccessMessage("");
-
-          const paidAtValue = String(formData.get("paidAt") ?? "");
-          const response = await fetch(`/api/billing/invoices/${invoiceId}/payments`, {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json"
-            },
-            body: JSON.stringify({
-              amountPaid: String(formData.get("amountPaid") ?? "").trim(),
-              paymentMethod: String(formData.get("paymentMethod") ?? ""),
-              paidAt: new Date(paidAtValue).toISOString(),
-              externalReference: String(formData.get("externalReference") ?? "").trim() || null
-            })
-          });
-
-          if (!response.ok) {
-            const payload = (await response.json().catch(() => ({ message: "" }))) as { message?: string };
-            setErrorMessage(payload.message || "Nao foi possivel registrar o pagamento.");
-            return;
-          }
-
-          setSuccessMessage("Pagamento registrado com sucesso.");
-          router.refresh();
-        });
-      }}
+      onSubmit={handleSubmit}
     >
       <div className="grid gap-3 md:grid-cols-2">
         <label className="space-y-2">
@@ -71,7 +101,8 @@ export function RegisterPaymentForm({ invoiceId, amountDue }: RegisterPaymentFor
             step="0.01"
             min="0.01"
             defaultValue={amountDue}
-            className="w-full rounded-2xl border border-brand-line bg-brand-panel px-4 py-3 text-brand-ink outline-none"
+            disabled={isBlocked}
+            className="w-full rounded-2xl border border-brand-line bg-brand-panel px-4 py-3 text-brand-ink outline-none disabled:opacity-75"
             required
           />
         </label>
@@ -81,7 +112,8 @@ export function RegisterPaymentForm({ invoiceId, amountDue }: RegisterPaymentFor
           <select
             name="paymentMethod"
             defaultValue="PIX"
-            className="w-full rounded-2xl border border-brand-line bg-brand-panel px-4 py-3 text-brand-ink outline-none"
+            disabled={isBlocked}
+            className="w-full rounded-2xl border border-brand-line bg-brand-panel px-4 py-3 text-brand-ink outline-none disabled:opacity-75"
             required
           >
             {paymentMethods.map((method) => (
@@ -100,7 +132,8 @@ export function RegisterPaymentForm({ invoiceId, amountDue }: RegisterPaymentFor
             name="paidAt"
             type="datetime-local"
             defaultValue={defaultPaidAt}
-            className="w-full rounded-2xl border border-brand-line bg-brand-panel px-4 py-3 text-brand-ink outline-none"
+            disabled={isBlocked}
+            className="w-full rounded-2xl border border-brand-line bg-brand-panel px-4 py-3 text-brand-ink outline-none disabled:opacity-75"
             required
           />
         </label>
@@ -111,20 +144,34 @@ export function RegisterPaymentForm({ invoiceId, amountDue }: RegisterPaymentFor
             name="externalReference"
             type="text"
             maxLength={255}
-            className="w-full rounded-2xl border border-brand-line bg-brand-panel px-4 py-3 text-brand-ink outline-none"
+            disabled={isBlocked}
+            className="w-full rounded-2xl border border-brand-line bg-brand-panel px-4 py-3 text-brand-ink outline-none disabled:opacity-75"
             placeholder="ID Pix, NSU ou comprovante"
           />
         </label>
       </div>
 
-      <button
-        type="submit"
-        disabled={isPending}
-        className="flex items-center justify-center gap-2 rounded-2xl bg-brand-primary px-4 py-3 font-semibold text-white transition hover:bg-brand-primaryHover disabled:cursor-not-allowed disabled:opacity-75"
-      >
-        {isPending ? <LoaderCircle className="h-4 w-4 animate-spin" /> : <BadgeDollarSign className="h-4 w-4" />}
-        {isPending ? "Registrando..." : "Registrar pagamento"}
-      </button>
+      <div className="flex flex-wrap items-center gap-2">
+        <button
+          type="submit"
+          disabled={isBlocked}
+          className="flex items-center justify-center gap-2 rounded-2xl bg-brand-primary px-4 py-3 font-semibold text-white transition hover:bg-brand-primaryHover disabled:cursor-not-allowed disabled:opacity-75"
+        >
+          {isBlocked ? <LoaderCircle className="h-4 w-4 animate-spin" /> : <BadgeDollarSign className="h-4 w-4" />}
+          {isBlocked ? "Registrando..." : "Registrar pagamento"}
+        </button>
+
+        {onCancel ? (
+          <button
+            type="button"
+            onClick={onCancel}
+            disabled={isBlocked}
+            className="flex items-center justify-center rounded-2xl border border-brand-line bg-brand-panel px-4 py-3 font-semibold text-brand-subtext transition hover:text-brand-ink disabled:cursor-not-allowed disabled:opacity-75"
+          >
+            Cancelar
+          </button>
+        ) : null}
+      </div>
 
       {successMessage ? <p className="text-sm text-brand-success">{successMessage}</p> : null}
       {errorMessage ? <p className="text-sm text-brand-danger">{errorMessage}</p> : null}

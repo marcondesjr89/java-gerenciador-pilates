@@ -5,6 +5,7 @@ import { FinanceStudentList } from "@/app/financeiro/finance-student-list";
 import { formatCurrency, formatDate } from "@/app/financeiro/helpers";
 import { loadFinancePage, type FinanceSearchParams } from "@/app/financeiro/load-finance-page";
 import { PlansWallet } from "@/app/financeiro/plans-wallet";
+import { OverdueInvoicesPanel } from "@/app/financeiro/overdue-invoices-panel";
 import { StudentFinancialProfile } from "@/app/financeiro/student-financial-profile";
 import { AppShell } from "@/components/ui/app-shell";
 import { SectionCard } from "@/components/ui/section-card";
@@ -131,29 +132,11 @@ export default async function FinancePage({ searchParams }: FinancePageProps) {
             title="Faturas em atraso"
             description="Cobrancas vencidas ate a data final filtrada para acao imediata da recepcao."
           >
-            {overdueInvoices.length === 0 ? (
-              <div className="rounded-[20px] border border-dashed border-brand-line bg-brand-surface px-5 py-10 text-center text-sm text-brand-subtext">
-                Nenhuma fatura vencida no recorte atual.
-              </div>
-            ) : (
-              <div className="space-y-3">
-                {overdueInvoices.map((invoice) => (
-                  <article key={invoice.id} className="rounded-[20px] border border-brand-line bg-brand-surface px-4 py-4">
-                    <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-                      <div>
-                        <p className="font-semibold text-brand-ink">{invoice.studentName}</p>
-                        <p className="mt-1 text-sm text-brand-subtext">
-                          Venceu em {formatDate(invoice.dueDate)} com valor de {formatCurrency(invoice.amountDue)}
-                        </p>
-                      </div>
-                      <span className="rounded-full bg-[rgba(255,193,7,0.18)] px-3 py-1 text-xs font-semibold text-[#8a6200]">
-                        Aberta
-                      </span>
-                    </div>
-                  </article>
-                ))}
-              </div>
-            )}
+            <OverdueInvoicesPanel
+              invoices={overdueInvoices}
+              startDate={startDate}
+              endDate={endDate}
+            />
           </SectionCard>
 
           <SectionCard
