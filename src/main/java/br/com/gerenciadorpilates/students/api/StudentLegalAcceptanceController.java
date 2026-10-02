@@ -13,7 +13,9 @@ import java.security.NoSuchAlgorithmException;
 import java.util.List;
 import java.util.UUID;
 import java.util.HexFormat;
+import java.util.concurrent.TimeUnit;
 import org.springframework.core.io.Resource;
+import org.springframework.http.CacheControl;
 import org.springframework.http.ContentDisposition;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
@@ -124,6 +126,7 @@ public class StudentLegalAcceptanceController {
         var result = attachmentService.download(studentId, acceptanceId, attachmentId);
         MediaType mediaType = MediaType.parseMediaType(result.file().contentType());
         return ResponseEntity.ok()
+                .cacheControl(CacheControl.maxAge(7, TimeUnit.DAYS).cachePrivate())
                 .contentType(mediaType)
                 .contentLength(result.file().size())
                 .header(HttpHeaders.CONTENT_DISPOSITION, ContentDisposition.inline()
@@ -141,6 +144,7 @@ public class StudentLegalAcceptanceController {
         var document = documentService.generatePdf(studentId, acceptanceId);
         Resource resource = new org.springframework.core.io.ByteArrayResource(document.content());
         return ResponseEntity.ok()
+                .cacheControl(CacheControl.maxAge(7, TimeUnit.DAYS).cachePrivate())
                 .contentType(MediaType.APPLICATION_PDF)
                 .contentLength(document.content().length)
                 .header(HttpHeaders.CONTENT_DISPOSITION, ContentDisposition.attachment()

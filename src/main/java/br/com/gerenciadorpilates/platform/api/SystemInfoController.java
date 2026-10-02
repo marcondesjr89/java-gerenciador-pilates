@@ -4,6 +4,9 @@ import br.com.gerenciadorpilates.platform.config.ApplicationProperties;
 import java.time.Instant;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
+import java.util.concurrent.TimeUnit;
+import org.springframework.http.CacheControl;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
@@ -19,9 +22,11 @@ public class SystemInfoController {
     }
 
     @GetMapping("/info")
-    public SystemInfoResponse info() {
+    public ResponseEntity<SystemInfoResponse> info() {
         ZonedDateTime now = Instant.now().atZone(ZoneId.of(properties.timezone()));
-        return new SystemInfoResponse(properties.name(), properties.timezone(), now);
+        return ResponseEntity.ok()
+                .cacheControl(CacheControl.maxAge(60, TimeUnit.SECONDS).cachePublic())
+                .body(new SystemInfoResponse(properties.name(), properties.timezone(), now));
     }
 
     public record SystemInfoResponse(String applicationName, String timezone, ZonedDateTime currentTime) {

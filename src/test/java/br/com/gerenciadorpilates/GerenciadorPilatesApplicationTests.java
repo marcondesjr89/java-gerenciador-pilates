@@ -116,8 +116,10 @@ class GerenciadorPilatesApplicationTests {
 
     @Test
     void infoEndpointReturnsConfiguredApplicationName() {
-        SystemInfoResponse response = controller.info();
-        assertThat(response.applicationName()).isEqualTo("Gerenciador Pilates");
+        var responseEntity = controller.info();
+        assertThat(responseEntity.getBody()).isNotNull();
+        assertThat(responseEntity.getBody().applicationName()).isEqualTo("Gerenciador Pilates");
+        assertThat(responseEntity.getHeaders().getCacheControl()).contains("max-age=60, public");
     }
 
     @Test
@@ -370,6 +372,8 @@ class GerenciadorPilatesApplicationTests {
                         .header("Authorization", "Bearer " + token))
                 .andExpect(status().isOk())
                 .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.header()
+                        .string("Cache-Control", containsString("max-age=604800, private")))
+                .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.header()
                         .string("Content-Type", "application/pdf"))
                 .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.header()
                         .string("Content-Disposition", containsString("attachment;")))
@@ -390,6 +394,8 @@ class GerenciadorPilatesApplicationTests {
         mockMvc.perform(get("/api/v1/public/legal-acceptances/{acceptanceId}/verification", acceptance.getId())
                         .param("code", verificationCode))
                 .andExpect(status().isOk())
+                .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.header()
+                        .string("Cache-Control", containsString("max-age=3600, public, stale-while-revalidate=86400")))
                 .andExpect(jsonPath("$.verified").value(true))
                 .andExpect(jsonPath("$.studentName").value("Laura Documento"))
                 .andExpect(jsonPath("$.termsVersion").value("v2026.04"))

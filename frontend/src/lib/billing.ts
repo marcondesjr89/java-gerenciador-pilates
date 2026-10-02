@@ -37,7 +37,11 @@ async function apiGet<T>(session: SessionUser, path: string) {
 }
 
 export function fetchBillingPlans(session: SessionUser) {
-  return apiGet<BillingPlan[]>(session, "/api/v1/billing/plans");
+  return fetchApiJson<BillingPlan[]>(session, "/api/v1/billing/plans", {
+    errorMessage: "Nao foi possivel carregar os planos de cobranca.",
+    cache: "default",
+    next: { revalidate: 60, tags: ["billing-plans"] }
+  });
 }
 
 export function fetchOverdueInvoices(session: SessionUser, baseDate: string) {

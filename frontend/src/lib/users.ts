@@ -67,7 +67,9 @@ export type ChangeUserPasswordPayload = {
 
 export async function fetchInstructors(session: SessionUser) {
   return fetchApiJson<InstructorUser[]>(session, "/api/v1/users/instructors", {
-    errorMessage: "Nao foi possivel carregar os instrutores."
+    errorMessage: "Nao foi possivel carregar os instrutores.",
+    cache: "default",
+    next: { revalidate: 60, tags: ["instructors"] }
   });
 }
 

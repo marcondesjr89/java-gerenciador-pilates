@@ -4,22 +4,35 @@ type AccessTokenSession = {
   accessToken: string;
 };
 
-type FetchApiJsonOptions = {
+export type FetchNextOptions = {
+  revalidate?: number | false;
+  tags?: string[];
+};
+
+export type FetchApiJsonOptions = {
   errorMessage: string;
   nullStatuses?: number[];
+  cache?: RequestCache;
+  next?: FetchNextOptions;
 };
 
 export async function fetchApiJson<T>(
   session: AccessTokenSession,
   path: string,
-  { errorMessage, nullStatuses = [] }: FetchApiJsonOptions
+  { errorMessage, nullStatuses = [], cache = "no-store", next }: FetchApiJsonOptions
 ) {
-  const response = await fetch(`${API_BASE_URL}${path}`, {
+  const requestInit: RequestInit & { next?: FetchNextOptions } = {
     headers: {
       Authorization: `Bearer ${session.accessToken}`
     },
-    cache: "no-store"
-  });
+    cache
+  };
+
+  if (next) {
+    requestInit.next = next;
+  }
+
+  const response = await fetch(`${API_BASE_URL}${path}`, requestInit);
 
   if (nullStatuses.includes(response.status)) {
     return null as T;

@@ -77,7 +77,10 @@ export async function fetchStudentLegalAcceptanceVerification(acceptanceId: stri
   const response = await fetch(
     `${API_BASE_URL}/api/v1/public/legal-acceptances/${acceptanceId}/verification?${searchParams.toString()}`,
     {
-      cache: "no-store"
+      next: {
+        revalidate: 3600,
+        tags: [`legal-verification-${acceptanceId}`]
+      }
     }
   );
 

@@ -2,6 +2,9 @@ package br.com.gerenciadorpilates.students.api;
 
 import br.com.gerenciadorpilates.students.application.StudentLegalAcceptanceDocumentService;
 import java.util.UUID;
+import java.util.concurrent.TimeUnit;
+import org.springframework.http.CacheControl;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -19,10 +22,13 @@ public class PublicStudentLegalAcceptanceVerificationController {
     }
 
     @GetMapping("/{acceptanceId}/verification")
-    public StudentLegalAcceptanceVerificationResponse verify(
+    public ResponseEntity<StudentLegalAcceptanceVerificationResponse> verify(
             @PathVariable UUID acceptanceId,
             @RequestParam String code
     ) {
-        return documentService.verify(acceptanceId, code);
+        StudentLegalAcceptanceVerificationResponse response = documentService.verify(acceptanceId, code);
+        return ResponseEntity.ok()
+                .cacheControl(CacheControl.maxAge(1, TimeUnit.HOURS).cachePublic().staleWhileRevalidate(1, TimeUnit.DAYS))
+                .body(response);
     }
 }

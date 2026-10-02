@@ -42,17 +42,23 @@ async function readBackendProblem(response: Response) {
 }
 
 async function buildJsonResponse(response: Response, successStatus?: number) {
+  const headers = new Headers();
+  const cacheControl = response.headers.get("cache-control");
+  if (cacheControl) {
+    headers.set("Cache-Control", cacheControl);
+  }
+
   if (response.status === 204) {
-    return new NextResponse(null, { status: 204 });
+    return new NextResponse(null, { status: 204, headers });
   }
 
   const payload = await response.json().catch(() => null);
 
   if (payload === null) {
-    return new NextResponse(null, { status: successStatus ?? response.status });
+    return new NextResponse(null, { status: successStatus ?? response.status, headers });
   }
 
-  return NextResponse.json(payload, { status: successStatus ?? response.status });
+  return NextResponse.json(payload, { status: successStatus ?? response.status, headers });
 }
 
 export async function requireInternalApiSession(allowedRoles: InternalUserRole[], message: string) {
@@ -152,11 +158,29 @@ export async function proxyBinaryToBackend({ session, path, errorMessage }: Prox
     return new Response(errorMessage, { status: response.status });
   }
 
+  const headers = new Headers();
+  headers.set("Content-Type", response.headers.get("content-type") ?? "application/octet-stream");
+  headers.set("Content-Disposition", response.headers.get("content-disposition") ?? "inline");
+
+  const cacheControl = response.headers.get("cache-control");
+  if (cacheControl) {
+    headers.set("Cache-Control", cacheControl);
+  }
+  const etag = response.headers.get("etag");
+  if (etag) {
+    headers.set("ETag", etag);
+  }
+  const lastModified = response.headers.get("last-modified");
+  if (lastModified) {
+    headers.set("Last-Modified", lastModified);
+  }
+  const contentLength = response.headers.get("content-length");
+  if (contentLength) {
+    headers.set("Content-Length", contentLength);
+  }
+
   return new Response(response.body, {
     status: response.status,
-    headers: {
-      "Content-Type": response.headers.get("content-type") ?? "application/octet-stream",
-      "Content-Disposition": response.headers.get("content-disposition") ?? "inline"
-    }
+    headers
   });
 }

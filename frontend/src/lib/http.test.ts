@@ -44,4 +44,39 @@ describe("fetchApiJson", () => {
       fetchApiJson<{ ok: true }>({ accessToken: "token" }, "/api/v1/test", { errorMessage: "falhou" })
     ).resolves.toEqual({ ok: true });
   });
+
+  it("utiliza no-store como estrategia padrao de cache", async () => {
+    fetchMock.mockResolvedValue(new Response(JSON.stringify({ ok: true }), { status: 200 }));
+
+    await fetchApiJson({ accessToken: "token" }, "/api/v1/test", { errorMessage: "falhou" });
+
+    expect(fetchMock).toHaveBeenCalledWith(
+      expect.stringContaining("/api/v1/test"),
+      expect.objectContaining({
+        cache: "no-store"
+      })
+    );
+  });
+
+  it("repassa cache customizado e opcoes de revalidacao Next.js quando configurados", async () => {
+    fetchMock.mockResolvedValue(new Response(JSON.stringify({ ok: true }), { status: 200 }));
+
+    await fetchApiJson(
+      { accessToken: "token" },
+      "/api/v1/plans",
+      {
+        errorMessage: "falhou",
+        cache: "default",
+        next: { revalidate: 60, tags: ["billing-plans"] }
+      }
+    );
+
+    expect(fetchMock).toHaveBeenCalledWith(
+      expect.stringContaining("/api/v1/plans"),
+      expect.objectContaining({
+        cache: "default",
+        next: { revalidate: 60, tags: ["billing-plans"] }
+      })
+    );
+  });
 });
