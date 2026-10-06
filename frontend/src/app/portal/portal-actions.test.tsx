@@ -28,7 +28,7 @@ describe("portal actions", () => {
     global.fetch = vi.fn();
   });
 
-  it("mostra erro ao falhar a reserva de horario", async () => {
+  it("mostra erro acessivel com role=alert ao falhar a reserva de horario", async () => {
     vi.mocked(global.fetch).mockResolvedValue(
       new Response(JSON.stringify({ message: "Horario indisponivel." }), {
         status: 409,
@@ -37,17 +37,24 @@ describe("portal actions", () => {
     );
 
     render(<BookSlotButton slotId="slot-1" />);
-    fireEvent.click(screen.getByRole("button", { name: "Reservar horario" }));
+    const button = screen.getByRole("button", { name: "Reservar horario" });
+    expect(button).toHaveAttribute("aria-busy", "false");
 
-    expect(await screen.findByText("Horario indisponivel.")).toBeInTheDocument();
+    fireEvent.click(button);
+
+    const alert = await screen.findByRole("alert");
+    expect(alert).toHaveTextContent("Horario indisponivel.");
     expect(refreshMock).not.toHaveBeenCalled();
   });
 
-  it("atualiza a tela ao cancelar reserva com sucesso", async () => {
+  it("atualiza a tela ao cancelar reserva com sucesso e expoe atributos a11y", async () => {
     vi.mocked(global.fetch).mockResolvedValue(new Response(null, { status: 200 }));
 
     render(<CancelBookingButton bookingId="booking-1" />);
-    fireEvent.click(screen.getByRole("button", { name: "Cancelar reserva" }));
+    const button = screen.getByRole("button", { name: "Cancelar reserva" });
+    expect(button).toHaveAttribute("aria-busy", "false");
+
+    fireEvent.click(button);
 
     await waitFor(() => {
       expect(global.fetch).toHaveBeenCalledWith("/api/student-portal/bookings/booking-1/cancel", {
@@ -212,5 +219,28 @@ describe("portal actions", () => {
 
     expect(await screen.findByText("Reserva remarcada com sucesso.")).toBeInTheDocument();
     expect(global.fetch).toHaveBeenCalledTimes(2);
+  });
+
+  it("renderiza campos com labels acessiveis e feedback via role=alert no painel de remarcacao", async () => {
+    vi.mocked(global.fetch).mockResolvedValueOnce(
+      new Response(JSON.stringify({ message: "Nenhum horario compativel encontrado." }), {
+        status: 400,
+        headers: { "Content-Type": "application/json" }
+      })
+    );
+
+    render(<RescheduleBookingPanel bookingId="booking-1" initialDate="2026-04-20" />);
+
+    const dateInput = screen.getByLabelText("Data para remarcacao");
+    expect(dateInput).toHaveAttribute("id", "reschedule-date-booking-1");
+    expect(dateInput).toHaveValue("2026-04-20");
+
+    const searchButton = screen.getByRole("button", { name: "Buscar horarios" });
+    expect(searchButton).toHaveAttribute("aria-busy", "false");
+
+    fireEvent.click(searchButton);
+
+    const alert = await screen.findByRole("alert");
+    expect(alert).toHaveTextContent("Nenhum horario compativel encontrado.");
   });
 });

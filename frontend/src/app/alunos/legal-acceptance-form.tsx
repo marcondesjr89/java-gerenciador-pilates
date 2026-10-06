@@ -91,7 +91,9 @@ export function LegalAcceptanceForm({ studentId, studentName }: LegalAcceptanceF
     <form
       ref={formRef}
       className="grid gap-4"
-      action={(formData) => {
+      onSubmit={(event) => {
+        event.preventDefault();
+        const formData = new FormData(event.currentTarget);
         startTransition(async () => {
           setErrorMessage("");
           setSuccessMessage("");
@@ -140,7 +142,7 @@ export function LegalAcceptanceForm({ studentId, studentName }: LegalAcceptanceF
       }}
     >
       {successMessage ? (
-        <div className="rounded-2xl border border-brand-line bg-[rgba(25,135,84,0.12)] px-4 py-3 text-sm text-brand-success">
+        <div role="alert" className="rounded-2xl border border-[rgba(25,135,84,0.22)] bg-[rgba(25,135,84,0.12)] px-4 py-3 text-sm font-medium text-[#0f5132] dark:text-[#75b798]">
           {successMessage}
         </div>
       ) : null}
@@ -155,7 +157,7 @@ export function LegalAcceptanceForm({ studentId, studentName }: LegalAcceptanceF
                   key={preset.label}
                   type="button"
                   onClick={() => applyCoveredTermTypes(preset.values)}
-                  className="rounded-2xl border border-brand-line bg-brand-panel px-4 py-3 text-left transition hover:border-brand-primary hover:bg-brand-soft"
+                  className="rounded-2xl border border-brand-line bg-brand-panel px-4 py-3 text-left transition hover:border-brand-primary hover:bg-brand-soft focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary focus-visible:ring-offset-2"
                 >
                   <span className="block text-sm font-semibold text-brand-secondary">{preset.label}</span>
                   <span className="mt-1 block text-xs leading-5 text-brand-subtext">{preset.helper}</span>
@@ -170,14 +172,14 @@ export function LegalAcceptanceForm({ studentId, studentName }: LegalAcceptanceF
               <button
                 type="button"
                 onClick={() => applyCoveredTermTypes(TERM_OPTIONS.map((option) => option.value))}
-                className="rounded-full border border-brand-line bg-brand-soft px-3 py-1 text-xs font-semibold text-brand-secondary transition hover:border-brand-primary hover:text-brand-primary"
+                className="rounded-full border border-brand-line bg-brand-soft px-3 py-1 text-xs font-semibold text-brand-secondary transition hover:border-brand-primary hover:text-brand-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary focus-visible:ring-offset-1"
               >
                 Marcar todos
               </button>
               <button
                 type="button"
                 onClick={() => applyCoveredTermTypes(["LGPD_DATA_PROCESSING"])}
-                className="rounded-full border border-brand-line bg-brand-panel px-3 py-1 text-xs font-semibold text-brand-subtext transition hover:border-brand-primary hover:text-brand-primary"
+                className="rounded-full border border-brand-line bg-brand-panel px-3 py-1 text-xs font-semibold text-brand-subtext transition hover:border-brand-primary hover:text-brand-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary focus-visible:ring-offset-1"
               >
                 Voltar ao padrao
               </button>
@@ -191,7 +193,7 @@ export function LegalAcceptanceForm({ studentId, studentName }: LegalAcceptanceF
               return (
                 <label
                   key={option.value}
-                  className={`rounded-2xl border px-4 py-3 text-sm transition ${
+                  className={`rounded-2xl border px-4 py-3 text-sm transition focus-within:ring-2 focus-within:ring-brand-primary focus-within:ring-offset-2 ${
                     checked
                       ? "border-brand-primary bg-brand-soft text-brand-secondary"
                       : "border-brand-line bg-brand-panel text-brand-ink"
@@ -355,14 +357,16 @@ export function LegalAcceptanceForm({ studentId, studentName }: LegalAcceptanceF
       <button
         type="submit"
         disabled={isPending}
-        className="flex items-center justify-center gap-2 rounded-2xl bg-brand-primary px-4 py-3 font-semibold text-white transition hover:bg-brand-primaryHover disabled:cursor-not-allowed disabled:opacity-75"
+        aria-busy={isPending}
+        aria-label={isPending ? "Registrando termo..." : "Registrar trilha de aceite"}
+        className="flex items-center justify-center gap-2 rounded-2xl bg-brand-primary px-4 py-3 font-semibold text-white transition hover:bg-brand-primaryHover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-75"
       >
         {isPending ? <LoaderCircle className="h-4 w-4 animate-spin" /> : <FileSignature className="h-4 w-4" />}
         {isPending ? "Registrando termo..." : "Registrar trilha de aceite"}
       </button>
 
       {errorMessage ? (
-        <div className="rounded-2xl border border-brand-line bg-brand-soft px-4 py-3 text-sm text-brand-secondary">
+        <div role="alert" className="rounded-2xl border border-[rgba(220,53,69,0.22)] bg-[rgba(220,53,69,0.08)] px-4 py-3 text-sm font-medium text-[#b02a37] dark:text-[#ea868f]">
           {errorMessage}
         </div>
       ) : null}

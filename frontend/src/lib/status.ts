@@ -1,6 +1,6 @@
-const SUCCESS_BADGE = "rounded-full bg-[rgba(25,135,84,0.12)] px-3 py-1 text-xs font-semibold text-brand-success";
-const WARNING_BADGE = "rounded-full bg-[rgba(255,193,7,0.18)] px-3 py-1 text-xs font-semibold text-[#8a6200]";
-const DANGER_BADGE = "rounded-full bg-[rgba(220,53,69,0.08)] px-3 py-1 text-xs font-semibold text-brand-danger";
+const SUCCESS_BADGE = "rounded-full bg-[rgba(25,135,84,0.12)] px-3 py-1 text-xs font-semibold text-[#0f5132] dark:text-[#75b798]";
+const WARNING_BADGE = "rounded-full bg-[rgba(255,193,7,0.18)] px-3 py-1 text-xs font-semibold text-[#855700] dark:text-[#ffcd39]";
+const DANGER_BADGE = "rounded-full bg-[rgba(220,53,69,0.10)] px-3 py-1 text-xs font-semibold text-[#b02a37] dark:text-[#ff8591]";
 const NEUTRAL_BADGE = "rounded-full bg-brand-soft px-3 py-1 text-xs font-semibold text-brand-secondary";
 
 export function getStatusBadgeClass(status: string) {

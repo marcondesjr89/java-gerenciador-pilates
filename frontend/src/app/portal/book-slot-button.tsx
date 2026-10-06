@@ -20,6 +20,7 @@ export function BookSlotButton({ slotId }: BookSlotButtonProps) {
       <button
         type="button"
         disabled={isRunning}
+        aria-busy={isRunning}
         onClick={() => {
           run(async () => {
             setErrorMessage("");
@@ -36,13 +37,17 @@ export function BookSlotButton({ slotId }: BookSlotButtonProps) {
             router.refresh();
           });
         }}
-        className="flex items-center gap-2 rounded-2xl bg-brand-primary px-4 py-2 text-sm font-semibold text-white transition hover:bg-brand-primaryHover disabled:cursor-not-allowed disabled:opacity-70"
+        className="flex items-center gap-2 rounded-2xl bg-brand-primary px-4 py-2 text-sm font-semibold text-white transition hover:bg-brand-primaryHover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-70"
       >
         {isRunning ? <LoaderCircle className="h-4 w-4 animate-spin" /> : <CheckCircle2 className="h-4 w-4" />}
         {isRunning ? "Reservando..." : "Reservar horario"}
       </button>
 
-      {errorMessage ? <p className="text-sm text-brand-danger">{errorMessage}</p> : null}
+      {errorMessage ? (
+        <p role="alert" className="text-sm font-medium text-[#b02a37] dark:text-[#ea868f]">
+          {errorMessage}
+        </p>
+      ) : null}
     </div>
   );
 }

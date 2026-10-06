@@ -20,6 +20,7 @@ export function CancelBookingButton({ bookingId }: CancelBookingButtonProps) {
       <button
         type="button"
         disabled={isRunning}
+        aria-busy={isRunning}
         onClick={() => {
           run(async () => {
             setErrorMessage("");
@@ -36,13 +37,17 @@ export function CancelBookingButton({ bookingId }: CancelBookingButtonProps) {
             router.refresh();
           });
         }}
-        className="flex items-center gap-2 rounded-2xl bg-[rgba(220,53,69,0.08)] px-4 py-2 text-sm font-semibold text-brand-danger transition hover:bg-[rgba(220,53,69,0.12)] disabled:cursor-not-allowed disabled:opacity-70"
+        className="flex items-center gap-2 rounded-2xl border border-[rgba(220,53,69,0.22)] bg-[rgba(220,53,69,0.09)] px-4 py-2 text-sm font-semibold text-[#b02a37] transition hover:bg-[rgba(220,53,69,0.15)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#b02a37] focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-70 dark:text-[#ff8591]"
       >
         {isRunning ? <LoaderCircle className="h-4 w-4 animate-spin" /> : <XCircle className="h-4 w-4" />}
         {isRunning ? "Cancelando..." : "Cancelar reserva"}
       </button>
 
-      {errorMessage ? <p className="text-sm text-brand-danger">{errorMessage}</p> : null}
+      {errorMessage ? (
+        <p role="alert" className="text-sm font-medium text-[#b02a37] dark:text-[#ea868f]">
+          {errorMessage}
+        </p>
+      ) : null}
     </div>
   );
 }

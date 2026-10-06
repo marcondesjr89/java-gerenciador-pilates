@@ -2,12 +2,18 @@ import { formatDate, formatDateTime } from "@/lib/formatters";
 
 export { formatDate, formatDateTime };
 
-export function formatCpf(value: string) {
+export function formatCpf(value: string | null | undefined) {
+  if (!value) {
+    return "";
+  }
   const digits = value.replace(/\D/g, "");
   return digits.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, "$1.$2.$3-$4");
 }
 
-export function formatPhone(value: string) {
+export function formatPhone(value: string | null | undefined) {
+  if (!value) {
+    return "";
+  }
   const digits = value.replace(/\D/g, "");
   if (digits.length === 11) {
     return digits.replace(/(\d{2})(\d{5})(\d{4})/, "($1) $2-$3");

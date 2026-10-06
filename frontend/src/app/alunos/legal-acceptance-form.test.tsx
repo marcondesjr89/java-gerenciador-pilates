@@ -102,4 +102,25 @@ describe("LegalAcceptanceForm", () => {
       "Autorizo o Studio Gerenciador Pilates a capturar e armazenar imagens e videos exclusivamente para acompanhamento da minha evolucao fisica, comparacao tecnica entre sessoes, registro assistencial e alinhamento do cuidado pela equipe responsavel, sem uso para divulgacao publica ou marketing."
     );
   });
+
+  it("renderiza botao de submit com atributos a11y e exibe feedback acessivel com role=alert", async () => {
+    vi.mocked(global.fetch).mockResolvedValueOnce(
+      new Response(JSON.stringify({ message: "Falha de validacao no aceite." }), {
+        status: 400,
+        headers: { "Content-Type": "application/json" }
+      })
+    );
+
+    render(<LegalAcceptanceForm studentId="student-1" studentName="Aluno Teste" />);
+
+    const submitButton = screen.getByRole("button", { name: "Registrar trilha de aceite" });
+    expect(submitButton).toHaveAttribute("type", "submit");
+    expect(submitButton).toHaveAttribute("aria-busy", "false");
+    expect(submitButton).toHaveAttribute("aria-label", "Registrar trilha de aceite");
+
+    fireEvent.click(submitButton);
+
+    const alert = await screen.findByRole("alert");
+    expect(alert).toHaveTextContent("Falha de validacao no aceite.");
+  });
 });

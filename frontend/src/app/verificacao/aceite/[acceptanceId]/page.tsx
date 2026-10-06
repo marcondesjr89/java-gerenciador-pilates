@@ -228,8 +228,8 @@ function VerificationState({
 }) {
   const palette =
     tone === "danger"
-      ? "border-[rgba(220,53,69,0.18)] bg-[rgba(220,53,69,0.06)] text-brand-danger"
-      : "border-[rgba(255,193,7,0.22)] bg-[rgba(255,193,7,0.14)] text-[#a06b00]";
+      ? "border-[rgba(220,53,69,0.22)] bg-[rgba(220,53,69,0.08)] text-[#842029] dark:text-[#ff8591]"
+      : "border-[rgba(255,193,7,0.25)] bg-[rgba(255,193,7,0.16)] text-[#744210] dark:text-[#ffcd39]";
 
   return (
     <main className="flex min-h-screen items-center justify-center bg-[linear-gradient(180deg,#fff_0%,#fcf6fa_45%,#f7eff4_100%)] px-4">

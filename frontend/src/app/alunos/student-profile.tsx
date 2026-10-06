@@ -163,11 +163,16 @@ export function StudentProfile({
                   </div>
 
                   <div className="flex flex-wrap gap-2 text-xs">
+                    {acceptance.coveredTermTypes.length > 1 ? (
+                      <span className="rounded-full border border-brand-line bg-brand-surface px-3 py-1 font-semibold text-brand-secondary">
+                        Coleta consolidada ({acceptance.coveredTermTypes.length} termos)
+                      </span>
+                    ) : null}
                     <span
                       className={
                         acceptance.status === "ACCEPTED"
-                          ? "rounded-full bg-[rgba(25,135,84,0.12)] px-3 py-1 font-semibold text-brand-success"
-                          : "rounded-full bg-[rgba(255,193,7,0.16)] px-3 py-1 font-semibold text-[#a06b00]"
+                          ? "rounded-full bg-[rgba(25,135,84,0.12)] px-3 py-1 font-semibold text-[#0f5132] dark:text-[#75b798]"
+                          : "rounded-full bg-[rgba(255,193,7,0.18)] px-3 py-1 font-semibold text-[#855700] dark:text-[#ffcd39]"
                       }
                     >
                       {formatLegalStatus(acceptance.status)}
@@ -177,6 +182,20 @@ export function StudentProfile({
                     </span>
                   </div>
                 </div>
+
+                {acceptance.coveredTermTypes.length > 1 ? (
+                  <div className="mt-3 flex flex-wrap items-center gap-1.5 text-xs text-brand-subtext">
+                    <span className="font-semibold text-brand-secondary">Termos cobertos:</span>
+                    {acceptance.coveredTermTypes.map((type) => (
+                      <span
+                        key={type}
+                        className="rounded-lg bg-brand-soft/70 px-2 py-0.5 text-brand-secondary"
+                      >
+                        {formatLegalTermType(type)}
+                      </span>
+                    ))}
+                  </div>
+                ) : null}
 
                 <div className="mt-4 grid gap-3 md:grid-cols-2">
                   <div className="rounded-2xl border border-brand-line bg-brand-surface px-4 py-4">
@@ -224,7 +243,8 @@ export function StudentProfile({
                       href={`/api/students/${student.id}/legal-acceptances/${acceptance.id}/document/download`}
                       target="_blank"
                       rel="noreferrer"
-                      className="inline-flex items-center gap-2 rounded-full border border-brand-line bg-brand-soft px-3 py-2 text-xs font-semibold text-brand-secondary transition hover:border-brand-primary hover:bg-brand-primary hover:text-white"
+                      aria-label={`Baixar PDF consolidado: ${acceptance.title}`}
+                      className="inline-flex items-center gap-2 rounded-full border border-brand-line bg-brand-soft px-3 py-2 text-xs font-semibold text-brand-secondary transition hover:border-brand-primary hover:bg-brand-primary hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary focus-visible:ring-offset-2"
                     >
                       <FileDown className="h-3.5 w-3.5" />
                       Baixar PDF consolidado
@@ -240,7 +260,8 @@ export function StudentProfile({
                           href={`/api/students/${student.id}/legal-acceptances/${acceptance.id}/attachments/${attachment.id}/download`}
                           target="_blank"
                           rel="noreferrer"
-                          className="rounded-full bg-brand-soft px-3 py-2 text-xs font-semibold text-brand-secondary transition hover:bg-brand-primary hover:text-white"
+                          aria-label={`Baixar evidencia: ${attachment.originalFileName}`}
+                          className="rounded-full bg-brand-soft px-3 py-2 text-xs font-semibold text-brand-secondary transition hover:bg-brand-primary hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary focus-visible:ring-offset-2"
                         >
                           {formatAttachmentType(attachment.attachmentType)}: {attachment.originalFileName}
                         </a>

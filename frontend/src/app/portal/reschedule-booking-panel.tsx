@@ -52,17 +52,25 @@ export function RescheduleBookingPanel({ bookingId, initialDate }: RescheduleBoo
       </p>
 
       <div className="mt-4 grid gap-3 md:grid-cols-[1fr_auto]">
-        <input
-          value={selectedDate}
-          onChange={(event) => setSelectedDate(event.target.value)}
-          type="date"
-          className="w-full rounded-2xl border border-brand-line bg-brand-panel px-4 py-3 text-brand-ink outline-none"
-        />
+        <div>
+          <label htmlFor={`reschedule-date-${bookingId}`} className="sr-only">
+            Data para remarcacao
+          </label>
+          <input
+            id={`reschedule-date-${bookingId}`}
+            value={selectedDate}
+            onChange={(event) => setSelectedDate(event.target.value)}
+            type="date"
+            aria-label="Data para remarcacao"
+            className="w-full rounded-2xl border border-brand-line bg-brand-panel px-4 py-3 text-brand-ink outline-none focus-visible:ring-2 focus-visible:ring-brand-primary"
+          />
+        </div>
         <button
           type="button"
           onClick={loadOptions}
           disabled={isLoadingOptions}
-          className="flex items-center justify-center gap-2 rounded-2xl bg-brand-primary px-4 py-3 font-semibold text-white transition hover:bg-brand-primaryHover disabled:cursor-not-allowed disabled:opacity-75"
+          aria-busy={isLoadingOptions}
+          className="flex items-center justify-center gap-2 rounded-2xl bg-brand-primary px-4 py-3 font-semibold text-white transition hover:bg-brand-primaryHover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-75"
         >
           {isLoadingOptions ? <LoaderCircle className="h-4 w-4 animate-spin" /> : <CalendarSync className="h-4 w-4" />}
           {isLoadingOptions ? "Consultando..." : "Buscar horarios"}
@@ -71,12 +79,13 @@ export function RescheduleBookingPanel({ bookingId, initialDate }: RescheduleBoo
 
       {options.length > 0 ? (
         <div className="mt-4 space-y-3">
-          <label className="block space-y-2">
+          <label htmlFor={`reschedule-slot-${bookingId}`} className="block space-y-2">
             <span className="text-sm font-semibold text-brand-secondary">Horario de destino</span>
             <select
+              id={`reschedule-slot-${bookingId}`}
               value={selectedSlotId}
               onChange={(event) => setSelectedSlotId(event.target.value)}
-              className="w-full rounded-2xl border border-brand-line bg-brand-panel px-4 py-3 text-brand-ink outline-none"
+              className="w-full rounded-2xl border border-brand-line bg-brand-panel px-4 py-3 text-brand-ink outline-none focus-visible:ring-2 focus-visible:ring-brand-primary"
             >
               {options.map((option) => (
                 <option key={option.slotId} value={option.slotId}>
@@ -90,6 +99,7 @@ export function RescheduleBookingPanel({ bookingId, initialDate }: RescheduleBoo
           <button
             type="button"
             disabled={!selectedSlotId || isSubmitting}
+            aria-busy={isSubmitting}
             onClick={() => {
               runSubmit(async () => {
                 setErrorMessage("");
@@ -114,7 +124,7 @@ export function RescheduleBookingPanel({ bookingId, initialDate }: RescheduleBoo
                 router.refresh();
               });
             }}
-            className="flex items-center justify-center gap-2 rounded-2xl border border-brand-line bg-brand-panel px-4 py-3 font-semibold text-brand-secondary transition hover:border-brand-primary/30 hover:text-brand-primary disabled:cursor-not-allowed disabled:opacity-70"
+            className="flex items-center justify-center gap-2 rounded-2xl border border-brand-line bg-brand-panel px-4 py-3 font-semibold text-brand-secondary transition hover:border-brand-primary/30 hover:text-brand-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-70"
           >
             {isSubmitting ? <LoaderCircle className="h-4 w-4 animate-spin" /> : <CalendarSync className="h-4 w-4" />}
             {isSubmitting ? "Remarcando..." : "Confirmar remarcacao"}
@@ -122,8 +132,16 @@ export function RescheduleBookingPanel({ bookingId, initialDate }: RescheduleBoo
         </div>
       ) : null}
 
-      {errorMessage ? <p className="mt-3 text-sm text-brand-danger">{errorMessage}</p> : null}
-      {successMessage ? <p className="mt-3 text-sm text-brand-success">{successMessage}</p> : null}
+      {errorMessage ? (
+        <p role="alert" className="mt-3 text-sm font-medium text-[#b02a37] dark:text-[#ea868f]">
+          {errorMessage}
+        </p>
+      ) : null}
+      {successMessage ? (
+        <p role="alert" className="mt-3 text-sm font-medium text-[#0f5132] dark:text-[#75b798]">
+          {successMessage}
+        </p>
+      ) : null}
       {!errorMessage && options.length === 0 ? (
         <p className="mt-3 text-sm text-brand-subtext">Nenhuma opcao carregada ainda para a data selecionada.</p>
       ) : null}

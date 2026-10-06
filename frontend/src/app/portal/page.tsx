@@ -134,7 +134,7 @@ export default async function StudentPortalPage({ searchParams }: StudentPortalP
                 <p className="mt-2 text-sm text-brand-subtext">
                   Proxima cobranca em {formatDate(activeSubscription.nextBillingDate)}
                 </p>
-                <span className="mt-4 inline-flex rounded-full bg-[rgba(25,135,84,0.12)] px-3 py-1 text-xs font-semibold text-brand-success">
+                <span className="mt-4 inline-flex rounded-full bg-[rgba(25,135,84,0.12)] px-3 py-1 text-xs font-semibold text-[#0f5132] dark:text-[#75b798]">
                   Assinatura ativa
                 </span>
               </div>
@@ -199,16 +199,20 @@ export default async function StudentPortalPage({ searchParams }: StudentPortalP
             </div>
 
             <form className="flex flex-col gap-2 rounded-[22px] bg-brand-soft px-5 py-4 text-sm text-brand-secondary">
-              <span className="font-semibold">Filtrar dia</span>
+              <label htmlFor="portal-filter-date" className="font-semibold">
+                Filtrar dia
+              </label>
               <input
+                id="portal-filter-date"
                 name="date"
                 type="date"
+                aria-label="Filtrar horarios por data"
                 defaultValue={selectedDate}
-                className="rounded-2xl border border-brand-line bg-brand-surface px-4 py-2 text-brand-ink outline-none"
+                className="rounded-2xl border border-brand-line bg-brand-surface px-4 py-2 text-brand-ink outline-none focus-visible:ring-2 focus-visible:ring-brand-primary"
               />
               <button
                 type="submit"
-                className="rounded-2xl bg-brand-primary px-4 py-2 font-semibold text-white transition hover:bg-brand-primaryHover"
+                className="rounded-2xl bg-brand-primary px-4 py-2 font-semibold text-white transition hover:bg-brand-primaryHover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary focus-visible:ring-offset-2"
               >
                 Atualizar horarios
               </button>
@@ -287,7 +291,7 @@ export default async function StudentPortalPage({ searchParams }: StudentPortalP
                     </div>
 
                     <div className="flex flex-col gap-3 lg:items-end">
-                      <span className="rounded-full bg-[rgba(25,135,84,0.12)] px-3 py-1 text-xs font-semibold text-brand-success">
+                      <span className="rounded-full bg-[rgba(25,135,84,0.12)] px-3 py-1 text-xs font-semibold text-[#0f5132] dark:text-[#75b798]">
                         Confirmada
                       </span>
                       <CancelBookingButton bookingId={booking.id} />
