@@ -21,6 +21,9 @@ import br.com.gerenciadorpilates.identityaccess.domain.AppUser;
 import br.com.gerenciadorpilates.identityaccess.domain.InstructorSpecialty;
 import br.com.gerenciadorpilates.identityaccess.domain.UserRole;
 import br.com.gerenciadorpilates.identityaccess.infrastructure.AppUserRepository;
+import br.com.gerenciadorpilates.notifications.domain.NotificationChannel;
+import br.com.gerenciadorpilates.notifications.domain.NotificationOutboxEntry;
+import br.com.gerenciadorpilates.notifications.domain.NotificationStatus;
 import br.com.gerenciadorpilates.notifications.infrastructure.NotificationOutboxRepository;
 import br.com.gerenciadorpilates.scheduling.domain.ScheduleBooking;
 import br.com.gerenciadorpilates.scheduling.domain.ScheduleSlot;
@@ -1896,5 +1899,85 @@ class GerenciadorPilatesApplicationTests {
                         """))
                 .andExpect(status().isConflict())
                 .andExpect(jsonPath("$.detail").value("Credenciais invalidas."));
+    }
+
+    @Test
+    void notificationOutboxSummaryReturnsAccurateCounters() throws Exception {
+        notificationOutboxRepository.save(new NotificationOutboxEntry(
+                UUID.randomUUID(),
+                NotificationChannel.WHATSAPP,
+                NotificationStatus.PENDING,
+                "destinatario-pendente",
+                "WAITLIST_PROMOTED",
+                "{}"
+        ));
+        notificationOutboxRepository.save(new NotificationOutboxEntry(
+                UUID.randomUUID(),
+                NotificationChannel.WHATSAPP,
+                NotificationStatus.SENT,
+                "destinatario-enviado",
+                "WAITLIST_PROMOTED",
+                "{}"
+        ));
+        notificationOutboxRepository.save(new NotificationOutboxEntry(
+                UUID.randomUUID(),
+                NotificationChannel.WHATSAPP,
+                NotificationStatus.FAILED,
+                "destinatario-falha",
+                "WAITLIST_PROMOTED",
+                "{}"
+        ));
+
+        String adminToken = loginAndGetToken("admin@test.local", "Admin@12345");
+
+        mockMvc.perform(get("/api/v1/notifications/outbox/summary")
+                        .header("Authorization", "Bearer " + adminToken))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.total").isNumber())
+                .andExpect(jsonPath("$.pending").isNumber())
+                .andExpect(jsonPath("$.sent").isNumber())
+                .andExpect(jsonPath("$.failed").isNumber());
+    }
+
+    @Test
+    void notificationOutboxRetryFailedEntryAndRejectsSentEntry() throws Exception {
+        NotificationOutboxEntry failedEntry = notificationOutboxRepository.save(new NotificationOutboxEntry(
+                UUID.randomUUID(),
+                NotificationChannel.WHATSAPP,
+                NotificationStatus.FAILED,
+                "destinatario-retry",
+                "WAITLIST_PROMOTED",
+                "{}"
+        ));
+
+        NotificationOutboxEntry sentEntry = notificationOutboxRepository.save(new NotificationOutboxEntry(
+                UUID.randomUUID(),
+                NotificationChannel.WHATSAPP,
+                NotificationStatus.SENT,
+                "destinatario-ja-enviado",
+                "WAITLIST_PROMOTED",
+                "{}"
+        ));
+
+        String adminToken = loginAndGetToken("admin@test.local", "Admin@12345");
+
+        mockMvc.perform(post("/api/v1/notifications/outbox/" + failedEntry.getId() + "/retry")
+                        .header("Authorization", "Bearer " + adminToken))
+                .andExpect(status().isOk());
+
+        mockMvc.perform(post("/api/v1/notifications/outbox/" + sentEntry.getId() + "/retry")
+                        .header("Authorization", "Bearer " + adminToken))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.detail").value("Notificacao ja foi enviada com sucesso."));
+    }
+
+    @Test
+    void notificationOutboxProcessEndpointRunsAndReturnsCount() throws Exception {
+        String adminToken = loginAndGetToken("admin@test.local", "Admin@12345");
+
+        mockMvc.perform(post("/api/v1/notifications/outbox/process")
+                        .header("Authorization", "Bearer " + adminToken))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.processed").isNumber());
     }
 }

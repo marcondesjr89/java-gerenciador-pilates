@@ -17,4 +17,8 @@ public interface NotificationOutboxRepository extends JpaRepository<Notification
     default List<NotificationOutboxEntry> findTopByStatusOrderByCreatedAtAsc(NotificationStatus status, int batchSize) {
         return findTopByStatusOrderByCreatedAtAsc(status, org.springframework.data.domain.PageRequest.of(0, batchSize));
     }
+
+    long countByStatus(NotificationStatus status);
+
+    java.util.Optional<NotificationOutboxEntry> findFirstByStatusOrderByAttemptedAtDesc(NotificationStatus status);
 }

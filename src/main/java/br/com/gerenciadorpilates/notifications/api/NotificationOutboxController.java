@@ -27,4 +27,20 @@ public class NotificationOutboxController {
                 .map(NotificationOutboxEntryResponse::from)
                 .toList();
     }
+
+    @GetMapping("/summary")
+    public NotificationOutboxSummaryResponse summary() {
+        return outboxService.getSummary();
+    }
+
+    @org.springframework.web.bind.annotation.PostMapping("/{id}/retry")
+    public NotificationOutboxEntryResponse retry(@org.springframework.web.bind.annotation.PathVariable java.util.UUID id) {
+        return NotificationOutboxEntryResponse.from(outboxService.retry(id));
+    }
+
+    @org.springframework.web.bind.annotation.PostMapping("/process")
+    public java.util.Map<String, Integer> process() {
+        int processed = outboxService.processNow();
+        return java.util.Map.of("processed", processed);
+    }
 }

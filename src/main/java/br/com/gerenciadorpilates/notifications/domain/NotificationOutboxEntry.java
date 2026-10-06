@@ -97,6 +97,11 @@ public class NotificationOutboxEntry {
         this.errorMessage = errorMessage;
     }
 
+    public void markRetrying() {
+        this.status = NotificationStatus.PENDING;
+        this.errorMessage = null;
+    }
+
     public UUID getId() {
         return id;
     }

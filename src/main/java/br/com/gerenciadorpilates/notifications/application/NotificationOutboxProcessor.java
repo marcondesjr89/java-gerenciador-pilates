@@ -33,24 +33,40 @@ public class NotificationOutboxProcessor {
     @Scheduled(fixedDelayString = "${app.notifications.outbox-fixed-delay-ms:30000}")
     @Transactional
     public void processPending() {
+        processPendingNow();
+    }
+
+    @Transactional
+    public int processPendingNow() {
         if (!properties.enabled()) {
-            return;
+            return 0;
         }
 
         List<NotificationOutboxEntry> entries = outboxRepository
                 .findTopByStatusOrderByCreatedAtAsc(NotificationStatus.PENDING, properties.batchSize());
 
         for (NotificationOutboxEntry entry : entries) {
-            entry.markAttempted(OffsetDateTime.now());
-            try {
-                switch (entry.getChannel()) {
-                    case WHATSAPP -> whatsAppDispatcher.dispatch(entry);
-                }
-                entry.markSent(OffsetDateTime.now());
-            } catch (Exception exception) {
-                entry.markFailed(OffsetDateTime.now(), truncateError(exception.getMessage()));
-                log.warn("Falha ao enviar notificacao {} pelo canal {}: {}", entry.getId(), entry.getChannel(), exception.getMessage());
+            processEntry(entry);
+        }
+
+        return entries.size();
+    }
+
+    @Transactional
+    public void processSingle(NotificationOutboxEntry entry) {
+        processEntry(entry);
+    }
+
+    private void processEntry(NotificationOutboxEntry entry) {
+        entry.markAttempted(OffsetDateTime.now());
+        try {
+            switch (entry.getChannel()) {
+                case WHATSAPP -> whatsAppDispatcher.dispatch(entry);
             }
+            entry.markSent(OffsetDateTime.now());
+        } catch (Exception exception) {
+            entry.markFailed(OffsetDateTime.now(), truncateError(exception.getMessage()));
+            log.warn("Falha ao enviar notificacao {} pelo canal {}: {}", entry.getId(), entry.getChannel(), exception.getMessage());
         }
     }
 

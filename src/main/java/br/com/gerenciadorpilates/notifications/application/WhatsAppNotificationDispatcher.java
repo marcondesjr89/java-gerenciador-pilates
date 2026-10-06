@@ -25,18 +25,21 @@ public class WhatsAppNotificationDispatcher {
     private final StudentRepository studentRepository;
     private final ScheduleSlotService slotService;
     private final ObjectMapper objectMapper;
+    private final NotificationConsentPort consentPort;
     private final RestClient restClient;
 
     public WhatsAppNotificationDispatcher(
             NotificationDispatchProperties properties,
             StudentRepository studentRepository,
             ScheduleSlotService slotService,
-            ObjectMapper objectMapper
+            ObjectMapper objectMapper,
+            NotificationConsentPort consentPort
     ) {
         this.properties = properties;
         this.studentRepository = studentRepository;
         this.slotService = slotService;
         this.objectMapper = objectMapper;
+        this.consentPort = consentPort;
         this.restClient = RestClient.builder().build();
     }
 
@@ -51,6 +54,11 @@ public class WhatsAppNotificationDispatcher {
 
         Map<String, String> payload = parsePayload(entry.getPayloadJson());
         Student student = resolveStudent(entry.getRecipientReference(), payload);
+
+        if (!consentPort.hasWhatsAppConsent(student.getId())) {
+            throw new IllegalStateException("Aluno sem consentimento ativo para comunicacao por WhatsApp.");
+        }
+
         String message = buildMessage(entry.getMessageTemplate(), student, payload);
 
         RestClient.RequestBodySpec request = restClient.post()
@@ -90,6 +98,9 @@ public class WhatsAppNotificationDispatcher {
     private String buildMessage(String template, Student student, Map<String, String> payload) {
         return switch (template) {
             case "WAITLIST_PROMOTED" -> buildWaitlistPromotedMessage(student, payload);
+            case "BOOKING_CONFIRMATION" -> buildBookingConfirmationMessage(student, payload);
+            case "INVOICE_OPEN" -> buildInvoiceOpenMessage(student, payload);
+            case "GENERIC_NOTICE" -> buildGenericNoticeMessage(student, payload);
             default -> throw new IllegalArgumentException("Template de notificacao nao suportado: " + template);
         };
     }
@@ -107,5 +118,35 @@ public class WhatsAppNotificationDispatcher {
                 start,
                 slot.getInstructorName()
         );
+    }
+
+    private String buildBookingConfirmationMessage(Student student, Map<String, String> payload) {
+        String slotIdValue = payload.get("slotId");
+        if (slotIdValue == null || slotIdValue.isBlank()) {
+            throw new IllegalArgumentException("Payload sem slotId para notificacao BOOKING_CONFIRMATION.");
+        }
+
+        ScheduleSlot slot = slotService.getEntityById(UUID.fromString(slotIdValue));
+        String start = slot.getStartTime().format(DateTimeFormatter.ofPattern("dd/MM/yyyy 'as' HH:mm"));
+        return "Ola, %s. Sua reserva para a aula de Pilates em %s com %s foi confirmada!".formatted(
+                student.getFullName(),
+                start,
+                slot.getInstructorName()
+        );
+    }
+
+    private String buildInvoiceOpenMessage(Student student, Map<String, String> payload) {
+        String referenceMonth = payload.getOrDefault("referenceMonth", "do mes");
+        String amount = payload.getOrDefault("amount", "");
+        return "Ola, %s. Sua fatura de Pilates referente a %s no valor de R$ %s ja esta disponivel para pagamento.".formatted(
+                student.getFullName(),
+                referenceMonth,
+                amount
+        );
+    }
+
+    private String buildGenericNoticeMessage(Student student, Map<String, String> payload) {
+        String text = payload.getOrDefault("message", "Aviso importante do Gerenciador Pilates.");
+        return "Ola, %s. %s".formatted(student.getFullName(), text);
     }
 }

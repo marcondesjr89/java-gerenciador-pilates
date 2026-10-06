@@ -14,6 +14,14 @@ export type NotificationOutboxEntry = {
   createdAt: string;
 };
 
+export type NotificationOutboxSummary = {
+  total: number;
+  pending: number;
+  sent: number;
+  failed: number;
+  lastAttemptedAt: string | null;
+};
+
 export async function fetchNotificationOutbox(session: SessionUser, status?: string) {
   const searchParams = new URLSearchParams();
   if (status) {
@@ -24,5 +32,13 @@ export async function fetchNotificationOutbox(session: SessionUser, status?: str
     session,
     `/api/v1/notifications/outbox?${searchParams.toString()}`,
     { errorMessage: "Nao foi possivel carregar o outbox de notificacoes." }
+  );
+}
+
+export async function fetchNotificationOutboxSummary(session: SessionUser) {
+  return fetchApiJson<NotificationOutboxSummary>(
+    session,
+    "/api/v1/notifications/outbox/summary",
+    { errorMessage: "Nao foi possivel carregar as metricas do outbox." }
   );
 }
