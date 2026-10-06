@@ -12,6 +12,10 @@ vi.mock("@/app/alunos/portal-account-form", () => ({
   PortalAccountForm: () => <div data-testid="mock-portal-account-form">Conta Mock</div>
 }));
 
+vi.mock("@/app/alunos/student-anonymize-panel", () => ({
+  StudentAnonymizePanel: () => <div data-testid="mock-anonymize-panel">Anonymize Mock</div>
+}));
+
 const mockStudent: Student = {
   id: "student-1",
   fullName: "Mariana Souza",

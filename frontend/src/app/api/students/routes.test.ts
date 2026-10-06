@@ -6,6 +6,7 @@ import { POST as createLegalAcceptance } from "@/app/api/students/[studentId]/le
 import { POST as uploadClinicalAttachment } from "@/app/api/students/[studentId]/progress-entries/[progressEntryId]/attachments/route";
 import { GET as downloadLegalAttachment } from "@/app/api/students/[studentId]/legal-acceptances/[acceptanceId]/attachments/[attachmentId]/download/route";
 import { GET as downloadLegalAcceptanceDocument } from "@/app/api/students/[studentId]/legal-acceptances/[acceptanceId]/document/download/route";
+import { POST as anonymizeStudent } from "@/app/api/students/[studentId]/anonymize/route";
 import type { CreateStudentProgressEntryPayload } from "@/lib/clinical";
 
 const requireInternalApiSessionMock = vi.fn();
@@ -420,6 +421,57 @@ describe("student api routes", () => {
       session: { accessToken: "internal-token" },
       path: "/api/v1/students/student-1/legal-acceptances/acceptance-1/document",
       errorMessage: "Nao foi possivel baixar o PDF consolidado do termo."
+    });
+  });
+
+  it("retorna 400 quando a justificativa da anonimizacao nao e informada", async () => {
+    requireInternalApiSessionMock.mockResolvedValue({ accessToken: "admin-token" });
+
+    const response = await anonymizeStudent(
+      new Request("http://localhost/api/students/student-1/anonymize", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ reason: "   " })
+      }),
+      {
+        params: Promise.resolve({ studentId: "student-1" })
+      }
+    );
+
+    expect(response.status).toBe(400);
+    await expect(response.json()).resolves.toEqual({
+      message: "Informe a justificativa para anonimizacao dos dados."
+    });
+    expect(proxyJsonToBackendMock).not.toHaveBeenCalled();
+  });
+
+  it("encaminha a solicitacao de anonimizacao quando autorizada como ADMIN", async () => {
+    requireInternalApiSessionMock.mockResolvedValue({ accessToken: "admin-token" });
+    proxyJsonToBackendMock.mockResolvedValue(new Response(JSON.stringify({ id: "student-1", status: "ANONYMIZED" }), { status: 200 }));
+
+    await anonymizeStudent(
+      new Request("http://localhost/api/students/student-1/anonymize", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ reason: "Solicitacao LGPD do titular #42" })
+      }),
+      {
+        params: Promise.resolve({ studentId: "student-1" })
+      }
+    );
+
+    expect(requireInternalApiSessionMock).toHaveBeenCalledWith(
+      ["ADMIN"],
+      "Sessao invalida para solicitar a anonimizacao do aluno."
+    );
+    expect(proxyJsonToBackendMock).toHaveBeenCalledWith({
+      session: { accessToken: "admin-token" },
+      path: "/api/v1/students/student-1/anonymize",
+      method: "POST",
+      body: {
+        reason: "Solicitacao LGPD do titular #42"
+      },
+      errorMessage: "Nao foi possivel realizar a anonimizacao do aluno."
     });
   });
 });

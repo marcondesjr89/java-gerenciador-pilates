@@ -6,6 +6,9 @@ export function formatCpf(value: string | null | undefined) {
   if (!value) {
     return "";
   }
+  if (value.startsWith("ANON")) {
+    return value;
+  }
   const digits = value.replace(/\D/g, "");
   return digits.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, "$1.$2.$3-$4");
 }
@@ -91,9 +94,15 @@ export function formatAttachmentType(value: string) {
   }
 }
 
-export function getAge(value: string) {
+export function getAge(value: string | null | undefined) {
+  if (!value) {
+    return "-";
+  }
   const today = new Date();
   const birthDate = new Date(`${value}T12:00:00`);
+  if (isNaN(birthDate.getTime())) {
+    return "-";
+  }
   let age = today.getFullYear() - birthDate.getFullYear();
   const monthDiff = today.getMonth() - birthDate.getMonth();
 

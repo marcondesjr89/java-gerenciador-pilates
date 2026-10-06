@@ -1,7 +1,7 @@
 import type { SessionUser } from "@/lib/auth";
 import { fetchApiJson } from "@/lib/http";
 
-export type StudentStatus = "ACTIVE" | "INACTIVE";
+export type StudentStatus = "ACTIVE" | "INACTIVE" | "ANONYMIZED";
 
 export type Student = {
   id: string;
@@ -9,10 +9,12 @@ export type Student = {
   cpf: string;
   email: string;
   phoneNumber: string;
-  birthDate: string;
+  birthDate: string | null;
   status: StudentStatus;
   lgpdConsent: boolean;
   createdAt: string;
+  anonymizedAt?: string | null;
+  anonymizedReason?: string | null;
 };
 
 export type StudentSummary = Pick<Student, "id" | "fullName" | "status">;

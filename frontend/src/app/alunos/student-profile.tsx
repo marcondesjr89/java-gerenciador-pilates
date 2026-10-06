@@ -14,8 +14,10 @@ import {
 } from "@/app/alunos/helpers";
 import { LegalAcceptanceForm } from "@/app/alunos/legal-acceptance-form";
 import { PortalAccountForm } from "@/app/alunos/portal-account-form";
+import { StudentAnonymizePanel } from "@/app/alunos/student-anonymize-panel";
 import type { ClinicalRecord } from "@/lib/clinical";
 import type { StudentLegalAcceptance } from "@/lib/legal-acceptances";
+import { formatStudentStatus, getStatusBadgeClass } from "@/lib/status";
 import type { StudentPortalAccount } from "@/lib/student-portal";
 import type { Student } from "@/lib/students";
 
@@ -25,6 +27,7 @@ type StudentProfileProps = {
   clinicalRecord: ClinicalRecord | null;
   legalAcceptances: StudentLegalAcceptance[];
   canViewClinicalRecord: boolean;
+  canAnonymize?: boolean;
 };
 
 export function StudentProfile({
@@ -32,7 +35,8 @@ export function StudentProfile({
   portalAccount,
   clinicalRecord,
   legalAcceptances,
-  canViewClinicalRecord
+  canViewClinicalRecord,
+  canAnonymize
 }: StudentProfileProps) {
   if (!student) {
     return (
@@ -50,18 +54,16 @@ export function StudentProfile({
             <p className="text-sm uppercase tracking-[0.18em] text-brand-primary">Aluno selecionado</p>
             <h2 className="mt-2 font-display text-3xl text-brand-secondary">{student.fullName}</h2>
             <p className="mt-2 text-sm text-brand-subtext">
-              {student.status === "ACTIVE" ? "Ativo na operacao atual" : "Inativo na base interna"}
+              {student.status === "ACTIVE"
+                ? "Ativo na operacao atual"
+                : student.status === "ANONYMIZED"
+                  ? "Cadastro anonimizado (LGPD)"
+                  : "Inativo na base interna"}
             </p>
           </div>
 
-          <span
-            className={
-              student.status === "ACTIVE"
-                ? "rounded-full bg-[rgba(25,135,84,0.12)] px-3 py-1 text-xs font-semibold text-brand-success"
-                : "rounded-full bg-[rgba(220,53,69,0.08)] px-3 py-1 text-xs font-semibold text-brand-danger"
-            }
-          >
-            {student.status === "ACTIVE" ? "Ativo" : "Inativo"}
+          <span className={getStatusBadgeClass(student.status)}>
+            {formatStudentStatus(student.status)}
           </span>
         </div>
       </div>
@@ -450,6 +452,11 @@ export function StudentProfile({
           </div>
         )}
       </div>
+
+      <StudentAnonymizePanel
+        student={student}
+        canAnonymize={Boolean(canAnonymize)}
+      />
     </div>
   );
 }

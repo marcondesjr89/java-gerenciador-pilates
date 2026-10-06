@@ -48,4 +48,12 @@ public class StudentController {
     public StudentResponse getById(@PathVariable UUID studentId) {
         return studentService.getById(studentId);
     }
+
+    @PostMapping("/{studentId}/anonymize")
+    public StudentResponse anonymize(
+            @PathVariable UUID studentId,
+            @Valid @RequestBody AnonymizeStudentRequest request
+    ) {
+        return studentService.anonymize(studentId, request);
+    }
 }

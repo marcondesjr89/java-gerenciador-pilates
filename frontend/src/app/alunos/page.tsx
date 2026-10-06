@@ -22,6 +22,7 @@ export default async function StudentsPage({ searchParams }: StudentsPageProps) 
     clinicalRecord,
     legalAcceptances,
     canViewClinicalRecord,
+    canAnonymize,
     pagination,
     metrics
   } = await loadStudentsPage(session, params);
@@ -87,6 +88,7 @@ export default async function StudentsPage({ searchParams }: StudentsPageProps) 
               clinicalRecord={clinicalRecord}
               legalAcceptances={legalAcceptances}
               canViewClinicalRecord={canViewClinicalRecord}
+              canAnonymize={canAnonymize}
             />
           </SectionCard>
         </div>

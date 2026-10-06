@@ -15,8 +15,24 @@ public record StudentResponse(
         LocalDate birthDate,
         StudentStatus status,
         boolean lgpdConsent,
-        OffsetDateTime createdAt
+        OffsetDateTime createdAt,
+        OffsetDateTime anonymizedAt,
+        String anonymizedReason
 ) {
+
+    public StudentResponse(
+            UUID id,
+            String fullName,
+            String cpf,
+            String email,
+            String phoneNumber,
+            LocalDate birthDate,
+            StudentStatus status,
+            boolean lgpdConsent,
+            OffsetDateTime createdAt
+    ) {
+        this(id, fullName, cpf, email, phoneNumber, birthDate, status, lgpdConsent, createdAt, null, null);
+    }
 
     public static StudentResponse from(Student student) {
         return new StudentResponse(
@@ -28,7 +44,9 @@ public record StudentResponse(
                 student.getBirthDate(),
                 student.getStatus(),
                 student.isLgpdConsent(),
-                student.getCreatedAt()
+                student.getCreatedAt(),
+                student.getAnonymizedAt(),
+                student.getAnonymizedReason()
         );
     }
 }

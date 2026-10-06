@@ -12,15 +12,26 @@ import java.util.List;
 import java.util.UUID;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
+import br.com.gerenciadorpilates.students.api.AnonymizeStudentRequest;
+import br.com.gerenciadorpilates.students.domain.StudentPortalAccount;
+import br.com.gerenciadorpilates.students.infrastructure.StudentPortalAccountRepository;
 import org.springframework.transaction.annotation.Transactional;
 
 @Service
 public class StudentService {
 
     private final StudentRepository studentRepository;
+    private final StudentPortalAccountRepository portalAccountRepository;
+    private final StudentActiveObligationsPort activeObligationsPort;
 
-    public StudentService(StudentRepository studentRepository) {
+    public StudentService(
+            StudentRepository studentRepository,
+            StudentPortalAccountRepository portalAccountRepository,
+            StudentActiveObligationsPort activeObligationsPort
+    ) {
         this.studentRepository = studentRepository;
+        this.portalAccountRepository = portalAccountRepository;
+        this.activeObligationsPort = activeObligationsPort;
     }
 
     @Transactional
@@ -87,5 +98,28 @@ public class StudentService {
         Student student = studentRepository.findById(studentId)
                 .orElseThrow(() -> new ResourceNotFoundException("Aluno nao encontrado."));
         return StudentResponse.from(student);
+    }
+
+    @Transactional
+    public StudentResponse anonymize(UUID studentId, AnonymizeStudentRequest request) {
+        Student student = studentRepository.findById(studentId)
+                .orElseThrow(() -> new ResourceNotFoundException("Aluno nao encontrado."));
+
+        if (student.getStatus() == StudentStatus.ANONYMIZED) {
+            throw new IllegalArgumentException("Aluno ja se encontra anonimizado.");
+        }
+
+        List<String> blockingReasons = activeObligationsPort.getBlockingReasons(studentId);
+        if (!blockingReasons.isEmpty()) {
+            throw new IllegalArgumentException(
+                    "Nao e possivel anonimizar o aluno devido a pendencias ativas: " + String.join("; ", blockingReasons)
+            );
+        }
+
+        student.anonymize(request != null ? request.reason() : null);
+        portalAccountRepository.findByStudentId(studentId).ifPresent(StudentPortalAccount::deactivateForAnonymization);
+
+        Student savedStudent = studentRepository.save(student);
+        return StudentResponse.from(savedStudent);
     }
 }

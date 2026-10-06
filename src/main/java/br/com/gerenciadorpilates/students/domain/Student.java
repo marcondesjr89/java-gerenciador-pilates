@@ -47,6 +47,12 @@ public class Student {
     @Column(name = "updated_at", nullable = false)
     private OffsetDateTime updatedAt;
 
+    @Column(name = "anonymized_at")
+    private OffsetDateTime anonymizedAt;
+
+    @Column(name = "anonymized_reason", length = 500)
+    private String anonymizedReason;
+
     protected Student() {
     }
 
@@ -122,7 +128,33 @@ public class Student {
         return updatedAt;
     }
 
+    public OffsetDateTime getAnonymizedAt() {
+        return anonymizedAt;
+    }
+
+    public String getAnonymizedReason() {
+        return anonymizedReason;
+    }
+
     public void updateLgpdConsent(boolean lgpdConsent) {
         this.lgpdConsent = lgpdConsent;
+    }
+
+    public void anonymize(String reason) {
+        if (this.status == StudentStatus.ANONYMIZED) {
+            throw new IllegalStateException("Aluno ja se encontra anonimizado.");
+        }
+        String identifier = id.toString().replace("-", "").toUpperCase(java.util.Locale.ROOT);
+        this.fullName = "Aluno Anonimizado " + identifier.substring(0, 8);
+        this.cpf = "ANON" + identifier.substring(0, 7);
+        this.email = "anonimizado-" + identifier.substring(0, 8).toLowerCase(java.util.Locale.ROOT) + "@gerenciadorpilates.local";
+        this.phoneNumber = "00000000000";
+        this.birthDate = null;
+        this.status = StudentStatus.ANONYMIZED;
+        this.lgpdConsent = false;
+        this.anonymizedAt = OffsetDateTime.now();
+        this.anonymizedReason = reason == null || reason.isBlank()
+                ? "Solicitacao de anonimizacao e exclusao cadastral nos termos da LGPD (Art. 18)."
+                : reason.trim();
     }
 }

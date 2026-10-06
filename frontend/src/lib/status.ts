@@ -12,6 +12,7 @@ export function getStatusBadgeClass(status: string) {
     case "OPEN":
       return WARNING_BADGE;
     case "PENDING":
+    case "ANONYMIZED":
       return NEUTRAL_BADGE;
     default:
       return DANGER_BADGE;
@@ -25,6 +26,8 @@ export function formatStudentStatus(status: string) {
     case "INACTIVE":
     case "CANCELED":
       return "Inativo";
+    case "ANONYMIZED":
+      return "Anonimizado";
     default:
       return status;
   }

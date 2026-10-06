@@ -106,6 +106,9 @@ class GerenciadorPilatesApplicationTests {
     private ScheduleBookingRepository scheduleBookingRepository;
 
     @Autowired
+    private br.com.gerenciadorpilates.students.infrastructure.StudentPortalAccountRepository studentPortalAccountRepository;
+
+    @Autowired
     private PasswordEncoder passwordEncoder;
 
     @Test
@@ -1736,5 +1739,162 @@ class GerenciadorPilatesApplicationTests {
         } catch (Exception exception) {
             throw new IllegalStateException("Falha ao ler o PDF gerado no teste.", exception);
         }
+    }
+
+    @Test
+    void receptionCannotAnonymizeStudent() throws Exception {
+        AppUser reception = appUserRepository.save(new AppUser(
+                UUID.randomUUID(),
+                "recepcao.compliance@teste.local",
+                "Recepcao Compliance",
+                passwordEncoder.encode("Admin@12345"),
+                UserRole.RECEPTION,
+                true,
+                java.util.Set.of()
+        ));
+
+        Student student = studentRepository.save(new Student(
+                UUID.randomUUID(),
+                "Aluno Anonimizar Nao Autorizado",
+                "12345678910",
+                "naoautorizado@teste.local",
+                "85988881111",
+                LocalDate.of(1995, 1, 1),
+                StudentStatus.ACTIVE,
+                true
+        ));
+
+        String receptionToken = loginAndGetToken(reception.getEmail(), "Admin@12345");
+
+        mockMvc.perform(post("/api/v1/students/" + student.getId() + "/anonymize")
+                        .header("Authorization", "Bearer " + receptionToken)
+                        .contentType(APPLICATION_JSON)
+                        .content("""
+                        {
+                          "reason": "Tentativa por perfil recepcao"
+                        }
+                        """))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
+    void anonymizeStudentBlocksWhenActiveBookingExists() throws Exception {
+        AppUser instructor = appUserRepository.save(new AppUser(
+                UUID.randomUUID(),
+                "instrutor.agenda.bloqueio@teste.local",
+                "Instrutor Agenda Bloqueio",
+                passwordEncoder.encode("Admin@12345"),
+                UserRole.INSTRUCTOR,
+                true,
+                java.util.Set.of(InstructorSpecialty.PILATES_SOLO)
+        ));
+
+        Student student = studentRepository.save(new Student(
+                UUID.randomUUID(),
+                "Aluno Com Reserva Ativa",
+                "12345678911",
+                "aluno.reserva@teste.local",
+                "85988882222",
+                LocalDate.of(1994, 2, 2),
+                StudentStatus.ACTIVE,
+                true
+        ));
+
+        OffsetDateTime start = OffsetDateTime.now().plusDays(2);
+        OffsetDateTime end = start.plusHours(1);
+        ScheduleSlot slot = scheduleSlotRepository.save(new ScheduleSlot(
+                UUID.randomUUID(),
+                instructor.getId(),
+                instructor.getFullName(),
+                InstructorSpecialty.PILATES_SOLO,
+                start,
+                end,
+                3
+        ));
+
+        scheduleBookingRepository.save(new ScheduleBooking(
+                UUID.randomUUID(),
+                slot.getId(),
+                student.getId(),
+                student.getFullName()
+        ));
+
+        String adminToken = loginAndGetToken("admin@test.local", "Admin@12345");
+
+        mockMvc.perform(post("/api/v1/students/" + student.getId() + "/anonymize")
+                        .header("Authorization", "Bearer " + adminToken)
+                        .contentType(APPLICATION_JSON)
+                        .content("""
+                        {
+                          "reason": "Tentativa com reserva ativa"
+                        }
+                        """))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.detail", containsString("Possui 1 reserva(s) ativa(s) na agenda")));
+    }
+
+    @Test
+    void anonymizeStudentSucceedsAndRevokesPortalAccount() throws Exception {
+        Student student = studentRepository.save(new Student(
+                UUID.randomUUID(),
+                "Aluno Para Anonimizacao Completa",
+                "12345678912",
+                "aluno.anonimizar@teste.local",
+                "85988883333",
+                LocalDate.of(1990, 8, 15),
+                StudentStatus.ACTIVE,
+                true
+        ));
+
+        studentPortalAccountService.configure(
+                student.getId(),
+                new ConfigureStudentPortalAccountRequest("portal.aluno@teste.local", "SenhaForte@123")
+        );
+
+        String initialToken = loginStudentPortalAndGetToken("portal.aluno@teste.local", "SenhaForte@123");
+        assertThat(initialToken).isNotBlank();
+
+        String adminToken = loginAndGetToken("admin@test.local", "Admin@12345");
+
+        mockMvc.perform(post("/api/v1/students/" + student.getId() + "/anonymize")
+                        .header("Authorization", "Bearer " + adminToken)
+                        .contentType(APPLICATION_JSON)
+                        .content("""
+                        {
+                          "reason": "Exclusao LGPD solicitada pelo titular protocolo #888"
+                        }
+                        """))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value("ANONYMIZED"))
+                .andExpect(jsonPath("$.fullName", containsString("Aluno Anonimizado ")))
+                .andExpect(jsonPath("$.cpf", containsString("ANON")))
+                .andExpect(jsonPath("$.phoneNumber").value("00000000000"))
+                .andExpect(jsonPath("$.anonymizedReason").value("Exclusao LGPD solicitada pelo titular protocolo #888"));
+
+        Student updated = studentRepository.findById(student.getId()).orElseThrow();
+        assertThat(updated.getStatus()).isEqualTo(StudentStatus.ANONYMIZED);
+        assertThat(updated.getFullName()).startsWith("Aluno Anonimizado ");
+        assertThat(updated.getCpf()).startsWith("ANON");
+        assertThat(updated.getCpf().length()).isEqualTo(11);
+        assertThat(updated.getEmail()).startsWith("anonimizado-");
+        assertThat(updated.getPhoneNumber()).isEqualTo("00000000000");
+        assertThat(updated.getBirthDate()).isNull();
+        assertThat(updated.isLgpdConsent()).isFalse();
+        assertThat(updated.getAnonymizedAt()).isNotNull();
+        assertThat(updated.getAnonymizedReason()).isEqualTo("Exclusao LGPD solicitada pelo titular protocolo #888");
+
+        var portalAccount = studentPortalAccountRepository.findByStudentId(student.getId()).orElseThrow();
+        assertThat(portalAccount.isActive()).isFalse();
+
+        mockMvc.perform(post("/api/v1/student-portal/auth/login")
+                        .contentType(APPLICATION_JSON)
+                        .content("""
+                        {
+                          "email": "portal.aluno@teste.local",
+                          "password": "SenhaForte@123"
+                        }
+                        """))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.detail").value("Credenciais invalidas."));
     }
 }

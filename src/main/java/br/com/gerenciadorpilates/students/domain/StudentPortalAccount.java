@@ -51,6 +51,12 @@ public class StudentPortalAccount {
         this.active = true;
     }
 
+    public void deactivateForAnonymization() {
+        this.active = false;
+        this.email = "anonimizado-" + studentId.toString().substring(0, 8) + "@portal.local";
+        this.passwordHash = "REVOKED_ANONYMIZED";
+    }
+
     @PrePersist
     void prePersist() {
         OffsetDateTime now = OffsetDateTime.now();

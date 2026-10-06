@@ -21,4 +21,6 @@ public interface BillingInvoiceRepository extends JpaRepository<BillingInvoice, 
     List<BillingInvoice> findAllByStudentIdOrderByReferenceMonthDesc(UUID studentId);
 
     List<BillingInvoice> findAllByDueDateBetweenOrderByDueDateAsc(LocalDate startDate, LocalDate endDate);
+
+    List<BillingInvoice> findAllByStudentIdAndStatus(UUID studentId, InvoiceStatus status);
 }

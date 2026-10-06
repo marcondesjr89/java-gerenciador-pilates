@@ -56,6 +56,7 @@ export async function loadStudentsPage(session: SessionUser, params?: StudentsSe
     clinicalRecord,
     legalAcceptances,
     canViewClinicalRecord,
+    canAnonymize: session.role === "ADMIN",
     pagination: {
       page: searchResult.page,
       size: searchResult.size,

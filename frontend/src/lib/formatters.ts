@@ -11,7 +11,10 @@ export function getTodayIsoDate() {
   }).format(new Date());
 }
 
-export function formatDate(value: string, options?: Intl.DateTimeFormatOptions) {
+export function formatDate(value: string | null | undefined, options?: Intl.DateTimeFormatOptions) {
+  if (!value) {
+    return "Nao informado";
+  }
   return toLocalDate(value).toLocaleDateString(BRAZIL_LOCALE, options);
 }
 

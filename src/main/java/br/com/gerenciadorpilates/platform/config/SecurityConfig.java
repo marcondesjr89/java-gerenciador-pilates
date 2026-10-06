@@ -65,6 +65,7 @@ public class SecurityConfig {
                         .requestMatchers("/api/v1/financial/**").hasAnyRole("ADMIN", "RECEPTION")
                         .requestMatchers("/api/v1/notifications/**").hasAnyRole("ADMIN", "RECEPTION")
                         .requestMatchers("/api/v1/dashboard/**").hasAnyRole("ADMIN", "RECEPTION")
+                        .requestMatchers(HttpMethod.POST, "/api/v1/students/*/anonymize").hasRole("ADMIN")
                         .requestMatchers(HttpMethod.GET, "/api/v1/students/**").hasAnyRole("ADMIN", "RECEPTION", "INSTRUCTOR")
                         .requestMatchers("/api/v1/students/**").hasAnyRole("ADMIN", "RECEPTION")
                         .anyRequest().authenticated()

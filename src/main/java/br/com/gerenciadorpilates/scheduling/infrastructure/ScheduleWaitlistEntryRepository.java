@@ -14,4 +14,6 @@ public interface ScheduleWaitlistEntryRepository extends JpaRepository<ScheduleW
     Optional<ScheduleWaitlistEntry> findBySlotIdAndStudentIdAndStatus(UUID slotId, UUID studentId, WaitlistStatus status);
 
     List<ScheduleWaitlistEntry> findAllBySlotIdAndStatusOrderByCreatedAtAsc(UUID slotId, WaitlistStatus status);
+
+    List<ScheduleWaitlistEntry> findAllByStudentIdAndStatus(UUID studentId, WaitlistStatus status);
 }
