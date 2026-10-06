@@ -70,6 +70,13 @@ public class StudentLegalAcceptancePdfGenerator {
             canvas.writePair("Hash SHA-256 do termo", data.documentHash());
             canvas.writePair("Codigo de verificacao", data.verificationCode());
             canvas.writePair("URL de verificacao", data.verificationUrl());
+            canvas.writePair("Nivel da assinatura", data.signatureLevelLabel());
+            canvas.writePair("Fundamentacao legal", data.legalFramework());
+            if (data.certificateSubject() != null && !data.certificateSubject().isBlank()) {
+                canvas.writePair("Titular do certificado", data.certificateSubject());
+                canvas.writePair("Autoridade emissora", data.certificateIssuer());
+                canvas.writePair("Numero de serie", data.certificateSerialNumber());
+            }
             canvas.writeQrCode(data.qrCodeImage());
 
             canvas.writeSectionTitle("Auditoria tecnica");
@@ -125,7 +132,12 @@ public class StudentLegalAcceptancePdfGenerator {
             BufferedImage qrCodeImage,
             String documentReference,
             String verificationStatement,
-            String footerText
+            String footerText,
+            String signatureLevelLabel,
+            String legalFramework,
+            String certificateSubject,
+            String certificateIssuer,
+            String certificateSerialNumber
     ) {
     }
 

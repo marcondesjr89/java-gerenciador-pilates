@@ -80,6 +80,16 @@ app:
   students:
     legal-acceptances:
       verification-base-url: ${LEGAL_ACCEPTANCE_VERIFICATION_BASE_URL:http://localhost:3000}
+      digital-signature:
+        enabled: ${DIGITAL_SIGNATURE_ENABLED:false}
+        keystore-type: ${DIGITAL_SIGNATURE_KEYSTORE_TYPE:PKCS12}
+        keystore-path: ${DIGITAL_SIGNATURE_KEYSTORE_PATH:}
+        keystore-password: ${DIGITAL_SIGNATURE_KEYSTORE_PASSWORD:}
+        key-alias: ${DIGITAL_SIGNATURE_KEY_ALIAS:}
+        key-password: ${DIGITAL_SIGNATURE_KEY_PASSWORD:}
+        signature-reason: ${DIGITAL_SIGNATURE_REASON:Autenticidade e integridade do registro juridico institucional}
+        signature-location: ${DIGITAL_SIGNATURE_LOCATION:Studio de Pilates}
+        icp-brasil: ${DIGITAL_SIGNATURE_ICP_BRASIL:false}
 
 ---
 spring:

@@ -1,5 +1,6 @@
 package br.com.gerenciadorpilates.students.api;
 
+import br.com.gerenciadorpilates.students.application.DigitalSignatureMetadata;
 import br.com.gerenciadorpilates.students.domain.StudentLegalAcceptance;
 import br.com.gerenciadorpilates.students.domain.StudentLegalAcceptanceStatus;
 import br.com.gerenciadorpilates.students.domain.StudentLegalCollectionMethod;
@@ -29,7 +30,14 @@ public record StudentLegalAcceptanceVerificationResponse(
         String verificationCode,
         String documentReference,
         String verificationStatement,
-        boolean verified
+        boolean verified,
+        boolean digitalSignaturePresent,
+        String digitalSignatureType,
+        String certificateIssuer,
+        String certificateSubject,
+        String certificateSerialNumber,
+        String legalFramework,
+        OffsetDateTime signatureTimestamp
 ) {
 
     public static StudentLegalAcceptanceVerificationResponse from(
@@ -43,6 +51,33 @@ public record StudentLegalAcceptanceVerificationResponse(
             String verificationStatement,
             boolean verified
     ) {
+        return from(
+                acceptance,
+                studentName,
+                studentCpfMasked,
+                issuerName,
+                issuerDocument,
+                verificationCode,
+                documentReference,
+                verificationStatement,
+                verified,
+                DigitalSignatureMetadata.simple()
+        );
+    }
+
+    public static StudentLegalAcceptanceVerificationResponse from(
+            StudentLegalAcceptance acceptance,
+            String studentName,
+            String studentCpfMasked,
+            String issuerName,
+            String issuerDocument,
+            String verificationCode,
+            String documentReference,
+            String verificationStatement,
+            boolean verified,
+            DigitalSignatureMetadata signatureMetadata
+    ) {
+        DigitalSignatureMetadata meta = signatureMetadata != null ? signatureMetadata : DigitalSignatureMetadata.simple();
         return new StudentLegalAcceptanceVerificationResponse(
                 acceptance.getId(),
                 acceptance.getStudentId(),
@@ -64,7 +99,14 @@ public record StudentLegalAcceptanceVerificationResponse(
                 verificationCode,
                 documentReference,
                 verificationStatement,
-                verified
+                verified,
+                meta.signed(),
+                meta.signatureType().name(),
+                meta.certificateIssuer(),
+                meta.certificateSubject(),
+                meta.certificateSerialNumber(),
+                meta.legalFramework(),
+                meta.signedAt()
         );
     }
 }

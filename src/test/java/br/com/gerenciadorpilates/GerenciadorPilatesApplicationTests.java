@@ -37,6 +37,7 @@ import br.com.gerenciadorpilates.students.domain.StudentLegalAcceptanceStatus;
 import br.com.gerenciadorpilates.students.domain.StudentLegalCollectionMethod;
 import br.com.gerenciadorpilates.students.domain.StudentLegalTermType;
 import br.com.gerenciadorpilates.students.domain.StudentStatus;
+import br.com.gerenciadorpilates.students.infrastructure.BouncyCastlePdfDigitalSigner;
 import br.com.gerenciadorpilates.students.infrastructure.StudentLegalAcceptanceRepository;
 import br.com.gerenciadorpilates.students.infrastructure.StudentRepository;
 import br.com.gerenciadorpilates.platform.api.SystemInfoController.SystemInfoResponse;
@@ -113,6 +114,9 @@ class GerenciadorPilatesApplicationTests {
 
     @Autowired
     private PasswordEncoder passwordEncoder;
+
+    @Autowired
+    private BouncyCastlePdfDigitalSigner bouncyCastlePdfDigitalSigner;
 
     @Test
     void contextLoads() {
@@ -395,6 +399,8 @@ class GerenciadorPilatesApplicationTests {
         assertThat(pdfText).contains("Referencia formal do documento");
         assertThat(pdfText).contains("Previa da assinatura coletada");
         assertThat(pdfText).contains("Abrangencia: Aceite consolidado em coleta unica");
+        assertThat(pdfText).contains("Nivel da assinatura: Simples (Registro Eletronico)");
+        assertThat(pdfText).contains("Fundamentacao legal");
         assertThat(pdfText).contains("Laura Documento");
 
         mockMvc.perform(get("/api/v1/public/legal-acceptances/{acceptanceId}/verification", acceptance.getId())
@@ -411,7 +417,10 @@ class GerenciadorPilatesApplicationTests {
                 .andExpect(jsonPath("$.issuerName").value("Studio Pilates Exemplo Ltda"))
                 .andExpect(jsonPath("$.issuerDocument").value("12.345.678/0001-99"))
                 .andExpect(jsonPath("$.documentReference").value("ACEITE-V202604-" + acceptance.getId().toString().substring(0, 8).toUpperCase()))
-                .andExpect(jsonPath("$.verificationStatement").value("O documento consultado corresponde a um aceite consolidado, formalizado em coleta unica e vinculado ao hash versionado armazenado no sistema."));
+                .andExpect(jsonPath("$.verificationStatement").value("O documento consultado corresponde a um aceite consolidado, formalizado em coleta unica e vinculado ao hash versionado armazenado no sistema."))
+                .andExpect(jsonPath("$.digitalSignaturePresent").value(false))
+                .andExpect(jsonPath("$.digitalSignatureType").value("SIMPLE"))
+                .andExpect(jsonPath("$.legalFramework").isNotEmpty());
 
         mockMvc.perform(get("/api/v1/public/legal-acceptances/{acceptanceId}/verification", acceptance.getId())
                         .param("code", "CODIGOINVALIDO123"))
@@ -419,6 +428,99 @@ class GerenciadorPilatesApplicationTests {
                 .andExpect(jsonPath("$.verified").value(false))
                 .andExpect(jsonPath("$.verificationCode").value(verificationCode))
                 .andExpect(jsonPath("$.documentReference").value("ACEITE-V202604-" + acceptance.getId().toString().substring(0, 8).toUpperCase()));
+    }
+
+    @Test
+    void studentLegalAcceptanceCanBeSignedWithDigitalCertificateAndVerified() throws Exception {
+        var ks = BouncyCastlePdfDigitalSigner.generateSelfSignedKeystore(
+                "Studio Pilates Exemplo Certificadora",
+                "Autoridade Certificadora Institucional",
+                "secret123",
+                "studio-test-alias"
+        );
+        var privateKey = (java.security.PrivateKey) ks.getKey("studio-test-alias", "secret123".toCharArray());
+        var certChain = ks.getCertificateChain("studio-test-alias");
+
+        try {
+            bouncyCastlePdfDigitalSigner.configureManualCredentials(privateKey, certChain, true);
+
+            Student student = studentRepository.save(new Student(
+                    UUID.randomUUID(),
+                    "Carlos Assinatura Digital",
+                    "55443322110",
+                    "carlos.digital@teste.local",
+                    "85988887777",
+                    LocalDate.of(1991, 7, 20),
+                    StudentStatus.ACTIVE,
+                    true
+            ));
+
+            StudentLegalAcceptance acceptance = studentLegalAcceptanceRepository.save(new StudentLegalAcceptance(
+                    UUID.randomUUID(),
+                    student.getId(),
+                    StudentLegalTermType.LGPD_DATA_PROCESSING,
+                    java.util.List.of(StudentLegalTermType.LGPD_DATA_PROCESSING),
+                    "Termo com Certificacao Digital ICP-Brasil",
+                    "v2026.04-icp",
+                    "Lei Federal 14.063/2020",
+                    sha256("termo-com-certificacao-digital-icp"),
+                    "Corpo do termo validado digitalmente.",
+                    StudentLegalAcceptanceStatus.ACCEPTED,
+                    StudentLegalCollectionMethod.TABLET_SIGNATURE,
+                    OffsetDateTime.now(),
+                    "Aceite coletado e certificado",
+                    UUID.randomUUID(),
+                    "Recepcao Teste",
+                    "192.168.1.50",
+                    "Mozilla/5.0",
+                    "session-icp-123",
+                    "TABLET_RECEPCAO"
+            ));
+
+            String verificationCode = sha256("%s|%s|%s|%s".formatted(
+                    acceptance.getId(),
+                    acceptance.getTermsVersion(),
+                    acceptance.getDocumentHash(),
+                    acceptance.getAcceptedAt().toInstant()
+            )).substring(0, 16).toUpperCase(java.util.Locale.ROOT);
+
+            String token = loginAndGetToken("admin@test.local", "Admin@12345");
+
+            byte[] pdfBytes = mockMvc.perform(get("/api/v1/students/{studentId}/legal-acceptances/{acceptanceId}/document",
+                                    student.getId(), acceptance.getId())
+                            .header("Authorization", "Bearer " + token))
+                    .andExpect(status().isOk())
+                    .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.header()
+                            .string("Content-Type", "application/pdf"))
+                    .andReturn()
+                    .getResponse()
+                    .getContentAsByteArray();
+
+            try (PDDocument doc = Loader.loadPDF(pdfBytes)) {
+                assertThat(doc.getSignatureDictionaries()).hasSize(1);
+                var sig = doc.getSignatureDictionaries().getFirst();
+                assertThat(sig.getName()).contains("Studio Pilates Exemplo");
+            }
+
+            String pdfText = extractTextFromPdf(pdfBytes);
+            assertThat(pdfText).contains("Nivel da assinatura: Qualificada (ICP-Brasil)");
+            assertThat(pdfText).contains("MP nº 2.200-2/2001 (ICP-Brasil)");
+            assertThat(pdfText).contains("Titular do certificado");
+
+            mockMvc.perform(get("/api/v1/public/legal-acceptances/{acceptanceId}/verification", acceptance.getId())
+                            .param("code", verificationCode))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.verified").value(true))
+                    .andExpect(jsonPath("$.digitalSignaturePresent").value(true))
+                    .andExpect(jsonPath("$.digitalSignatureType").value("QUALIFIED"))
+                    .andExpect(jsonPath("$.certificateSubject").value(containsString("Studio Pilates Exemplo Certificadora")))
+                    .andExpect(jsonPath("$.certificateIssuer").value(containsString("Autoridade Certificadora Institucional")))
+                    .andExpect(jsonPath("$.certificateSerialNumber").isNotEmpty())
+                    .andExpect(jsonPath("$.legalFramework").value(containsString("ICP-Brasil")));
+
+        } finally {
+            bouncyCastlePdfDigitalSigner.configureManualCredentials(null, null, false);
+        }
     }
 
     @Test

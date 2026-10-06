@@ -64,6 +64,13 @@ export type StudentLegalAcceptanceVerification = {
   documentReference: string;
   verificationStatement: string;
   verified: boolean;
+  digitalSignaturePresent?: boolean;
+  digitalSignatureType?: "SIMPLE" | "ADVANCED" | "QUALIFIED";
+  certificateIssuer?: string | null;
+  certificateSubject?: string | null;
+  certificateSerialNumber?: string | null;
+  legalFramework?: string | null;
+  signatureTimestamp?: string | null;
 };
 
 export async function fetchStudentLegalAcceptances(session: SessionUser, studentId: string) {

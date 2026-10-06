@@ -58,6 +58,7 @@ public class StudentLegalAcceptanceDocumentService {
     private final ApplicationProperties applicationProperties;
     private final DmedProperties dmedProperties;
     private final StudentLegalAcceptanceDocumentProperties documentProperties;
+    private final PdfDigitalSigner digitalSigner;
 
     public StudentLegalAcceptanceDocumentService(
             StudentRepository studentRepository,
@@ -66,7 +67,8 @@ public class StudentLegalAcceptanceDocumentService {
             StudentLegalAcceptancePdfGenerator pdfGenerator,
             ApplicationProperties applicationProperties,
             DmedProperties dmedProperties,
-            StudentLegalAcceptanceDocumentProperties documentProperties
+            StudentLegalAcceptanceDocumentProperties documentProperties,
+            PdfDigitalSigner digitalSigner
     ) {
         this.studentRepository = studentRepository;
         this.acceptanceRepository = acceptanceRepository;
@@ -75,6 +77,7 @@ public class StudentLegalAcceptanceDocumentService {
         this.applicationProperties = applicationProperties;
         this.dmedProperties = dmedProperties;
         this.documentProperties = documentProperties;
+        this.digitalSigner = digitalSigner;
     }
 
     @Transactional(readOnly = true)
@@ -86,8 +89,9 @@ public class StudentLegalAcceptanceDocumentService {
         var tabletSignaturePreview = attachmentService.loadTabletSignaturePreview(studentId, acceptanceId).orElse(null);
         String verificationCode = buildVerificationCode(acceptance);
         String verificationUrl = buildVerificationUrl(acceptanceId, verificationCode);
+        var signatureMetadata = digitalSigner.getActiveMetadata();
 
-        byte[] pdfBytes = pdfGenerator.generate(new StudentLegalAcceptancePdfGenerator.DocumentData(
+        byte[] rawPdfBytes = pdfGenerator.generate(new StudentLegalAcceptancePdfGenerator.DocumentData(
                 applicationProperties.name(),
                 defaultValue(dmedProperties.providerName(), applicationProperties.name()),
                 formatCnpj(dmedProperties.providerCnpj()),
@@ -122,15 +126,22 @@ public class StudentLegalAcceptanceDocumentService {
                 generateQrCodeImage(verificationUrl),
                 buildDocumentReference(acceptance),
                 buildVerificationStatement(acceptance),
-                buildFooterText(acceptance, student)
+                buildFooterText(acceptance, student),
+                signatureMetadata.signatureType().getDescription(),
+                signatureMetadata.legalFramework(),
+                signatureMetadata.certificateSubject(),
+                signatureMetadata.certificateIssuer(),
+                signatureMetadata.certificateSerialNumber()
         ));
+
+        byte[] finalPdfBytes = digitalSigner.signPdf(rawPdfBytes);
 
         String fileName = "aceite-legal-%s-%s.pdf".formatted(
                 acceptance.getTermsVersion().replaceAll("[^a-zA-Z0-9._-]", "-"),
                 acceptance.getId()
         );
 
-        return new GeneratedDocument(fileName, pdfBytes);
+        return new GeneratedDocument(fileName, finalPdfBytes);
     }
 
     @Transactional(readOnly = true)
@@ -140,6 +151,7 @@ public class StudentLegalAcceptanceDocumentService {
         Student student = studentRepository.findById(acceptance.getStudentId())
                 .orElseThrow(() -> new ResourceNotFoundException("Aluno nao encontrado."));
         String expectedCode = buildVerificationCode(acceptance);
+        var signatureMetadata = digitalSigner.getActiveMetadata();
 
         return StudentLegalAcceptanceVerificationResponse.from(
                 acceptance,
@@ -150,7 +162,8 @@ public class StudentLegalAcceptanceDocumentService {
                 expectedCode,
                 buildDocumentReference(acceptance),
                 buildVerificationStatement(acceptance),
-                expectedCode.equals(code)
+                expectedCode.equals(code),
+                signatureMetadata
         );
     }
 

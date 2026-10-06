@@ -66,6 +66,52 @@ describe("LegalAcceptanceVerificationPage", () => {
     expect(screen.getByText(/Esta validacao cobre, em um unico documento/)).toBeInTheDocument();
     expect(screen.getAllByText("ACEITE-V202604-ABC12345")).toHaveLength(2);
     expect(screen.getAllByText("Documento consistente com o registro juridico.")).toHaveLength(2);
+    expect(screen.getByText("Simples (Registro Eletronico)")).toBeInTheDocument();
+  });
+
+  it("renderiza a verificacao publica com assinatura qualificada ICP-Brasil e dados do certificado", async () => {
+    fetchStudentLegalAcceptanceVerificationMock.mockResolvedValue({
+      acceptanceId: "acceptance-2",
+      studentId: "student-2",
+      studentName: "Carlos Assinatura Digital",
+      studentCpfMasked: "***.554.433-**",
+      issuerName: "Studio Pilates Exemplo Ltda",
+      issuerDocument: "12.345.678/0001-99",
+      termType: "LGPD_DATA_PROCESSING",
+      coveredTermTypes: ["LGPD_DATA_PROCESSING"],
+      title: "Termo com Certificacao Digital ICP-Brasil",
+      termsVersion: "v2026.04-icp",
+      legalBasis: "Lei Federal 14.063/2020",
+      documentHash: "hash-icp-456",
+      status: "ACCEPTED",
+      collectionMethod: "TABLET_SIGNATURE",
+      acceptedAt: "2026-04-16T11:00:00Z",
+      createdAt: "2026-04-16T10:55:00Z",
+      capturedByUserName: "Recepcao Teste",
+      verificationCode: "ICP1234567890ABC",
+      documentReference: "ACEITE-V202604ICP-12345678",
+      verificationStatement: "Documento com certificado digital valido.",
+      verified: true,
+      digitalSignaturePresent: true,
+      digitalSignatureType: "QUALIFIED",
+      certificateIssuer: "AC Instituto Nacional de Tecnologia da Informacao ICP-Brasil",
+      certificateSubject: "CN=Studio Pilates Exemplo Certificadora",
+      certificateSerialNumber: "1A2B3C4D",
+      legalFramework: "Lei Federal nº 14.063/2020, Art. 4º, III e MP nº 2.200-2/2001 (ICP-Brasil)"
+    });
+
+    render(
+      await LegalAcceptanceVerificationPage({
+        params: Promise.resolve({ acceptanceId: "acceptance-2" }),
+        searchParams: Promise.resolve({ code: "ICP1234567890ABC" })
+      })
+    );
+
+    expect(screen.getByText("Qualificada (ICP-Brasil)")).toBeInTheDocument();
+    expect(screen.getByText("CN=Studio Pilates Exemplo Certificadora")).toBeInTheDocument();
+    expect(screen.getByText("AC Instituto Nacional de Tecnologia da Informacao ICP-Brasil")).toBeInTheDocument();
+    expect(screen.getByText("1A2B3C4D")).toBeInTheDocument();
+    expect(screen.getByText("Assinado com chave criptografica")).toBeInTheDocument();
   });
 
   it("exibe estado de falha quando a verificacao publica cai", async () => {

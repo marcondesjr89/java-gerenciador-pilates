@@ -113,6 +113,51 @@ export default async function LegalAcceptanceVerificationPage({
 
             <section className="grid gap-4 border-t border-brand-line px-6 py-6 md:grid-cols-2 md:px-8">
               <InfoCard
+                title="Certificacao e assinatura digital"
+                rows={[
+                  [
+                    "Nivel da assinatura",
+                    verification.digitalSignatureType === "QUALIFIED"
+                      ? "Qualificada (ICP-Brasil)"
+                      : verification.digitalSignatureType === "ADVANCED"
+                      ? "Avancada (Certificado Institucional)"
+                      : "Simples (Registro Eletronico)"
+                  ],
+                  [
+                    "Enquadramento legal",
+                    verification.legalFramework || "Lei Federal nº 14.063/2020"
+                  ],
+                  [
+                    "Certificado digital",
+                    verification.digitalSignaturePresent ? "Assinado com chave criptografica" : "Nao aplicavel (Assinatura Simples)"
+                  ],
+                  ...(verification.certificateSubject
+                    ? ([["Titular do certificado", verification.certificateSubject]] as [string, string][])
+                    : []),
+                  ...(verification.certificateIssuer
+                    ? ([["Autoridade emissora", verification.certificateIssuer]] as [string, string][])
+                    : []),
+                  ...(verification.certificateSerialNumber
+                    ? ([["Numero de serie", verification.certificateSerialNumber]] as [string, string][])
+                    : [])
+                ]}
+              />
+              <InfoCard
+                title="Integridade criptografica"
+                rows={[
+                  ["Algoritmo de resumo", "SHA-256 (FIPS 180-4)"],
+                  ["Hash do termo", verification.documentHash],
+                  [
+                    "Inviolabilidade",
+                    "Qualquer adulteracao invalida o hash versionado e o selo de conformidade."
+                  ]
+                ]}
+                monoLastRow
+              />
+            </section>
+
+            <section className="grid gap-4 border-t border-brand-line px-6 py-6 md:grid-cols-2 md:px-8">
+              <InfoCard
                 title="Emitente institucional"
                 rows={[
                   ["Emitente", verification.issuerName],
