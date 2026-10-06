@@ -61,23 +61,23 @@ export default async function LoginPage({ searchParams }: LoginPageProps) {
           </div>
         </section>
 
-        <section className="rounded-[32px] border border-brand-line bg-[var(--hero-background)] p-8 text-white shadow-panel lg:p-10">
+        <section className="rounded-[32px] border border-brand-line bg-brand-surface p-8 text-brand-ink shadow-panel lg:p-10">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm uppercase tracking-[0.24em] text-white/70">Acesso</p>
-              <h2 className="mt-2 font-display text-4xl">Entrar no painel</h2>
+              <p className="text-sm uppercase tracking-[0.24em] text-brand-primary">Acesso</p>
+              <h2 className="mt-2 font-display text-4xl text-brand-secondary">Entrar no painel</h2>
             </div>
-            <div className="rounded-full bg-white/10 p-3">
+            <div className="rounded-full bg-brand-soft p-3 text-brand-primary">
               <ArrowRight className="h-6 w-6" />
             </div>
           </div>
 
           <LoginForm initialError={initialError} />
 
-          <div className="mt-8 rounded-[28px] border border-white/12 bg-white/8 p-5">
-            <p className="text-sm font-semibold">Primeiro bloco de UI</p>
-            <p className="mt-2 text-sm leading-6 text-white/70">
-              Esta tela ja define o tema visual, a hierarquia tipografica e o padrao de formularios do sistema.
+          <div className="mt-8 rounded-[28px] border border-brand-line bg-brand-panel p-5">
+            <p className="text-sm font-semibold text-brand-secondary">Acesso seguro ao estúdio</p>
+            <p className="mt-2 text-sm leading-6 text-brand-subtext">
+              Entre com suas credenciais cadastradas para gerenciar a agenda, prontuários clínicos e finanças.
             </p>
           </div>
         </section>

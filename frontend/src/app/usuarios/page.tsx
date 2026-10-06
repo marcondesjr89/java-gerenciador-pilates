@@ -51,7 +51,7 @@ export default async function UsuariosPage() {
 
         <UsersManagementPanel
           initialUsers={users}
-          currentUserEmail={session.username}
+          currentUserEmail={session.email}
         />
       </div>
     </AppShell>

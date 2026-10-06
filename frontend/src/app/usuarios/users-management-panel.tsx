@@ -703,7 +703,9 @@ export function UsersManagementPanel({ initialUsers, currentUserEmail }: Props) 
         ) : (
           <div className="mt-4 divide-y divide-brand-line">
             {filteredUsers.map((user) => {
-              const isCurrentUser = user.email.toLowerCase() === currentUserEmail.toLowerCase();
+              const isCurrentUser =
+                Boolean(user.email && currentUserEmail) &&
+                user.email.toLowerCase() === currentUserEmail.toLowerCase();
               return (
                 <div
                   key={user.id}

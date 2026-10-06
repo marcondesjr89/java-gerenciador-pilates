@@ -3,6 +3,7 @@
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { ArrowRight, LoaderCircle } from "lucide-react";
+import { readActionErrorMessage } from "@/lib/action-responses";
 
 type LoginFormProps = {
   initialError?: string;
@@ -27,8 +28,7 @@ export function LoginForm({ initialError }: LoginFormProps) {
     });
 
     if (!response.ok) {
-      const payload = (await response.json().catch(() => ({ message: "" }))) as { message?: string };
-      setErrorMessage(payload.message || "Nao foi possivel entrar no painel.");
+      setErrorMessage(await readActionErrorMessage(response, "Nao foi possivel entrar no painel."));
       return;
     }
 
@@ -43,36 +43,42 @@ export function LoginForm({ initialError }: LoginFormProps) {
   return (
     <form
       className="mt-10 space-y-5"
-      action={(formData) => {
+      onSubmit={(event) => {
+        event.preventDefault();
+        const formData = new FormData(event.currentTarget);
         startTransition(async () => {
           await handleSubmit(formData);
         });
       }}
     >
-      <label className="block">
-        <span className="mb-2 block text-sm text-white/74">E-mail</span>
+      <label htmlFor="login-email" className="block">
+        <span className="mb-2 block text-sm font-medium text-brand-subtext">E-mail</span>
         <input
+          id="login-email"
           name="email"
           type="email"
+          autoComplete="email"
           placeholder="admin@gerenciadorpilates.local"
-          className="w-full rounded-2xl border border-white/15 bg-white/8 px-4 py-3 text-white outline-none transition focus:border-white/50 focus:bg-white/12"
+          className="w-full rounded-2xl border border-brand-line bg-brand-panel px-4 py-3 text-brand-ink outline-none transition placeholder:text-brand-subtext/70 focus-visible:border-brand-primary focus-visible:bg-brand-surface focus-visible:ring-2 focus-visible:ring-brand-primary"
           required
         />
       </label>
 
-      <label className="block">
-        <span className="mb-2 block text-sm text-white/74">Senha</span>
+      <label htmlFor="login-password" className="block">
+        <span className="mb-2 block text-sm font-medium text-brand-subtext">Senha</span>
         <input
+          id="login-password"
           name="password"
           type="password"
+          autoComplete="current-password"
           placeholder="********"
-          className="w-full rounded-2xl border border-white/15 bg-white/8 px-4 py-3 text-white outline-none transition focus:border-white/50 focus:bg-white/12"
+          className="w-full rounded-2xl border border-brand-line bg-brand-panel px-4 py-3 text-brand-ink outline-none transition placeholder:text-brand-subtext/70 focus-visible:border-brand-primary focus-visible:bg-brand-surface focus-visible:ring-2 focus-visible:ring-brand-primary"
           required
         />
       </label>
 
       {errorMessage ? (
-        <div className="rounded-2xl border border-white/18 bg-white/10 px-4 py-3 text-sm text-white/88">
+        <div role="alert" className="rounded-2xl border border-[rgba(220,53,69,0.22)] bg-[rgba(220,53,69,0.08)] px-4 py-3 text-sm font-medium text-[#b02a37] dark:text-[#ea868f]">
           {errorMessage}
         </div>
       ) : null}
@@ -80,7 +86,9 @@ export function LoginForm({ initialError }: LoginFormProps) {
       <button
         type="submit"
         disabled={isPending}
-        className="flex w-full items-center justify-center gap-2 rounded-2xl bg-brand-primary px-4 py-3 font-semibold text-white transition hover:bg-brand-primaryHover disabled:cursor-not-allowed disabled:opacity-75"
+        aria-busy={isPending}
+        aria-label={isPending ? "Entrando no painel..." : "Entrar no painel"}
+        className="flex w-full items-center justify-center gap-2 rounded-2xl bg-brand-primary px-4 py-3 font-semibold text-white transition hover:bg-brand-primaryHover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-75"
       >
         {isPending ? <LoaderCircle className="h-4 w-4 animate-spin" /> : <ArrowRight className="h-4 w-4" />}
         {isPending ? "Entrando..." : "Entrar"}
