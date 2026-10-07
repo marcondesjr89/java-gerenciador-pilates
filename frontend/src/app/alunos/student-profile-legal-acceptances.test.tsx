@@ -4,6 +4,13 @@ import { StudentProfile } from "@/app/alunos/student-profile";
 import type { StudentLegalAcceptance } from "@/lib/legal-acceptances";
 import type { Student } from "@/lib/students";
 
+vi.mock("next/navigation", () => ({
+  useRouter: () => ({
+    push: vi.fn(),
+    refresh: vi.fn()
+  })
+}));
+
 vi.mock("@/app/alunos/legal-acceptance-form", () => ({
   LegalAcceptanceForm: () => <div data-testid="mock-legal-acceptance-form">Formulario Mock</div>
 }));
@@ -59,6 +66,7 @@ describe("StudentProfile - Seção de Termos Consolidados", () => {
         clinicalRecord={null}
         legalAcceptances={[mockConsolidatedAcceptance]}
         canViewClinicalRecord={false}
+        initialTab="legal"
       />
     );
 

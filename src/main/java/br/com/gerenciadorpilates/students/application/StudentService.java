@@ -4,6 +4,7 @@ import br.com.gerenciadorpilates.students.api.CreateStudentRequest;
 import br.com.gerenciadorpilates.students.api.StudentResponse;
 import br.com.gerenciadorpilates.students.api.StudentSearchResponse;
 import br.com.gerenciadorpilates.students.api.StudentSearchSummary;
+import br.com.gerenciadorpilates.students.api.UpdateStudentRequest;
 import br.com.gerenciadorpilates.students.domain.Student;
 import br.com.gerenciadorpilates.students.domain.StudentStatus;
 import br.com.gerenciadorpilates.students.infrastructure.StudentRepository;
@@ -53,6 +54,23 @@ public class StudentService {
                 request.status(),
                 request.lgpdConsent()
         );
+
+        Student savedStudent = studentRepository.save(student);
+        return StudentResponse.from(savedStudent);
+    }
+
+    @Transactional
+    public StudentResponse update(UUID studentId, UpdateStudentRequest request) {
+        Student student = studentRepository.findById(studentId)
+                .orElseThrow(() -> new ResourceNotFoundException("Aluno nao encontrado."));
+
+        student.updatePersonalData(
+                request.fullName().trim(),
+                request.email().trim().toLowerCase(),
+                request.phoneNumber().trim(),
+                request.birthDate()
+        );
+        student.updateStatus(request.status());
 
         Student savedStudent = studentRepository.save(student);
         return StudentResponse.from(savedStudent);

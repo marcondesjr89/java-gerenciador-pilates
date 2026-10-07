@@ -140,6 +140,31 @@ public class Student {
         this.lgpdConsent = lgpdConsent;
     }
 
+    public void updatePersonalData(
+            String fullName,
+            String email,
+            String phoneNumber,
+            LocalDate birthDate
+    ) {
+        if (this.status == StudentStatus.ANONYMIZED) {
+            throw new IllegalStateException("Nao e permitido alterar dados de um aluno anonimizado.");
+        }
+        this.fullName = fullName;
+        this.email = email;
+        this.phoneNumber = phoneNumber;
+        this.birthDate = birthDate;
+    }
+
+    public void updateStatus(StudentStatus newStatus) {
+        if (this.status == StudentStatus.ANONYMIZED) {
+            throw new IllegalStateException("Nao e permitido alterar o status de um aluno anonimizado.");
+        }
+        if (newStatus == StudentStatus.ANONYMIZED) {
+            throw new IllegalArgumentException("Para anonimizar o aluno, utilize a operacao de anonimizacao com justificativa.");
+        }
+        this.status = newStatus;
+    }
+
     public void anonymize(String reason) {
         if (this.status == StudentStatus.ANONYMIZED) {
             throw new IllegalStateException("Aluno ja se encontra anonimizado.");

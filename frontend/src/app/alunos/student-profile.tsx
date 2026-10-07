@@ -1,6 +1,19 @@
-import { AlertTriangle, FileDown, FileHeart } from "lucide-react";
+"use client";
+
+import { useState } from "react";
+import { useRouter } from "next/navigation";
 import {
-  formatAttachmentType,
+  AlertTriangle,
+  FileDown,
+  FileHeart,
+  FileText,
+  KeyRound,
+  Pencil,
+  ShieldCheck,
+  UserX,
+  X
+} from "lucide-react";
+import {
   formatCollectionMethod,
   formatCpf,
   formatDate,
@@ -12,6 +25,8 @@ import {
   formatPhone,
   getAge
 } from "@/app/alunos/helpers";
+import { AnamnesisForm } from "@/app/alunos/anamnesis-form";
+import { EditStudentModal } from "@/app/alunos/edit-student-modal";
 import { LegalAcceptanceForm } from "@/app/alunos/legal-acceptance-form";
 import { PortalAccountForm } from "@/app/alunos/portal-account-form";
 import { StudentAnonymizePanel } from "@/app/alunos/student-anonymize-panel";
@@ -21,6 +36,8 @@ import { formatStudentStatus, getStatusBadgeClass } from "@/lib/status";
 import type { StudentPortalAccount } from "@/lib/student-portal";
 import type { Student } from "@/lib/students";
 
+type TabKey = "clinical" | "cadastral" | "legal" | "portal" | "privacy";
+
 type StudentProfileProps = {
   student: Student | null;
   portalAccount: StudentPortalAccount | null;
@@ -28,6 +45,8 @@ type StudentProfileProps = {
   legalAcceptances: StudentLegalAcceptance[];
   canViewClinicalRecord: boolean;
   canAnonymize?: boolean;
+  initialTab?: TabKey;
+  onClose?: () => void;
 };
 
 export function StudentProfile({
@@ -36,427 +55,489 @@ export function StudentProfile({
   clinicalRecord,
   legalAcceptances,
   canViewClinicalRecord,
-  canAnonymize
+  canAnonymize,
+  initialTab,
+  onClose
 }: StudentProfileProps) {
+  const router = useRouter();
+  const [activeTab, setActiveTab] = useState<TabKey>(initialTab ?? "clinical");
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+
   if (!student) {
     return (
       <div className="rounded-[20px] border border-dashed border-brand-line bg-brand-surface px-5 py-10 text-center text-sm text-brand-subtext">
-        Nenhum aluno encontrado para o filtro informado.
+        Nenhum aluno selecionado. Clique em um aluno da lista para abrir a ficha.
       </div>
     );
   }
 
+  function handleCloseProfile() {
+    if (onClose) {
+      onClose();
+    } else {
+      router.push("/alunos");
+    }
+  }
+
+  const activeAlerts = clinicalRecord?.anamnesis?.alerts ?? [];
+
   return (
     <div className="space-y-6">
-      <div className="rounded-[20px] border border-brand-line bg-brand-surface px-5 py-5">
+      {/* Modal de Edição de Dados */}
+      {student && (
+        <EditStudentModal
+          student={student}
+          isOpen={isEditModalOpen}
+          onClose={() => setIsEditModalOpen(false)}
+        />
+      )}
+
+      {/* Cabeçalho do Aluno com Ações Rápidas */}
+      <div className="rounded-[24px] border border-brand-line bg-brand-surface p-6 shadow-sm">
         <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
-          <div>
-            <p className="text-sm uppercase tracking-[0.18em] text-brand-primary">Aluno selecionado</p>
-            <h2 className="mt-2 font-display text-3xl text-brand-secondary">{student.fullName}</h2>
-            <p className="mt-2 text-sm text-brand-subtext">
-              {student.status === "ACTIVE"
-                ? "Ativo na operacao atual"
-                : student.status === "ANONYMIZED"
-                  ? "Cadastro anonimizado (LGPD)"
-                  : "Inativo na base interna"}
-            </p>
-          </div>
-
-          <span className={getStatusBadgeClass(student.status)}>
-            {formatStudentStatus(student.status)}
-          </span>
-        </div>
-      </div>
-
-      <div className="grid gap-3 md:grid-cols-2">
-        <div className="rounded-2xl border border-brand-line bg-brand-surface px-4 py-4">
-          <p className="text-xs uppercase tracking-[0.18em] text-brand-subtext">CPF</p>
-          <p className="mt-2 font-semibold text-brand-ink">{formatCpf(student.cpf)}</p>
-        </div>
-        <div className="rounded-2xl border border-brand-line bg-brand-surface px-4 py-4">
-          <p className="text-xs uppercase tracking-[0.18em] text-brand-subtext">Telefone</p>
-          <p className="mt-2 font-semibold text-brand-ink">{formatPhone(student.phoneNumber)}</p>
-        </div>
-        <div className="rounded-2xl border border-brand-line bg-brand-surface px-4 py-4">
-          <p className="text-xs uppercase tracking-[0.18em] text-brand-subtext">Nascimento</p>
-          <p className="mt-2 font-semibold text-brand-ink">
-            {formatDate(student.birthDate)} ({getAge(student.birthDate)} anos)
-          </p>
-        </div>
-        <div className="rounded-2xl border border-brand-line bg-brand-surface px-4 py-4">
-          <p className="text-xs uppercase tracking-[0.18em] text-brand-subtext">LGPD</p>
-          <p className="mt-2 font-semibold text-brand-ink">
-            {student.lgpdConsent ? "Consentimento registrado" : "Consentimento pendente"}
-          </p>
-        </div>
-      </div>
-
-      <div className="rounded-[20px] border border-brand-line bg-brand-surface px-5 py-5">
-        <p className="text-xs uppercase tracking-[0.18em] text-brand-subtext">Contato principal</p>
-        <p className="mt-3 font-semibold text-brand-ink">{student.email}</p>
-        <p className="mt-2 text-sm text-brand-subtext">{formatPhone(student.phoneNumber)}</p>
-        <p className="mt-4 text-xs text-brand-subtext">Cadastro criado em {formatDateTime(student.createdAt)}</p>
-      </div>
-
-      <div className="rounded-[20px] border border-brand-line bg-brand-surface px-5 py-5">
-        <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
-          <div>
-            <p className="text-xs uppercase tracking-[0.18em] text-brand-subtext">LGPD e termos</p>
-            <h3 className="mt-2 font-display text-2xl text-brand-secondary">Trilha juridica do aluno</h3>
-            <p className="mt-2 text-sm leading-6 text-brand-subtext">
-              Registre o texto exibido ao aluno, a versao do termo e o metodo usado para coleta no papel ou no tablet.
-            </p>
-          </div>
-
-          <span
-            className={
-              student.lgpdConsent
-                ? "rounded-full bg-[rgba(25,135,84,0.12)] px-3 py-1 text-xs font-semibold text-brand-success"
-                : "rounded-full bg-[rgba(255,193,7,0.16)] px-3 py-1 text-xs font-semibold text-[#a06b00]"
-            }
-          >
-            {student.lgpdConsent ? "Consentimento resumido ativo" : "Consentimento resumido pendente"}
-          </span>
-        </div>
-
-        <div className="mt-5 grid gap-3 md:grid-cols-2">
-          <div className="rounded-2xl border border-brand-line bg-brand-panel px-4 py-4">
-            <p className="text-xs uppercase tracking-[0.18em] text-brand-subtext">Termos registrados</p>
-            <p className="mt-2 font-semibold text-brand-ink">{legalAcceptances.length}</p>
-            <p className="mt-2 text-sm text-brand-subtext">
-              {legalAcceptances.filter((item) => item.status === "ACCEPTED").length} aceite(s) ja formalizados na trilha.
-            </p>
-          </div>
-
-          <div className="rounded-2xl border border-brand-line bg-brand-panel px-4 py-4">
-            <p className="text-xs uppercase tracking-[0.18em] text-brand-subtext">Ultima captura</p>
-            <p className="mt-2 font-semibold text-brand-ink">
-              {legalAcceptances[0] ? formatDateTimeWithTimezone(legalAcceptances[0].createdAt) : "Sem registro"}
-            </p>
-            <p className="mt-2 text-sm text-brand-subtext">
-              {legalAcceptances[0]
-                ? `${formatLegalStatus(legalAcceptances[0].status)} por ${legalAcceptances[0].capturedByUserName ?? "usuario interno"}`
-                : "Use a ficha abaixo para abrir a trilha do primeiro termo."}
-            </p>
-          </div>
-        </div>
-
-        <div className="mt-5">
-          <LegalAcceptanceForm studentId={student.id} studentName={student.fullName} />
-        </div>
-
-        <div className="mt-5 space-y-3">
-          <div className="flex items-center justify-between gap-3">
-            <p className="text-sm font-semibold text-brand-secondary">Historico de termos</p>
-            <span className="text-xs text-brand-subtext">{legalAcceptances.length} registro(s)</span>
-          </div>
-
-          {legalAcceptances.length > 0 ? (
-            legalAcceptances.map((acceptance) => (
-              <article key={acceptance.id} className="rounded-2xl border border-brand-line bg-brand-panel px-4 py-4">
-                <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
-                  <div>
-                    <p className="font-semibold text-brand-ink">{acceptance.title}</p>
-                    <p className="mt-1 text-sm text-brand-subtext">
-                      {acceptance.coveredTermTypes.length > 1
-                        ? `${formatLegalTermTypes(acceptance.coveredTermTypes)} - versao ${acceptance.termsVersion}`
-                        : `${formatLegalTermType(acceptance.termType)} - versao ${acceptance.termsVersion}`}
-                    </p>
-                  </div>
-
-                  <div className="flex flex-wrap gap-2 text-xs">
-                    {acceptance.coveredTermTypes.length > 1 ? (
-                      <span className="rounded-full border border-brand-line bg-brand-surface px-3 py-1 font-semibold text-brand-secondary">
-                        Coleta consolidada ({acceptance.coveredTermTypes.length} termos)
-                      </span>
-                    ) : null}
-                    <span
-                      className={
-                        acceptance.status === "ACCEPTED"
-                          ? "rounded-full bg-[rgba(25,135,84,0.12)] px-3 py-1 font-semibold text-[#0f5132] dark:text-[#75b798]"
-                          : "rounded-full bg-[rgba(255,193,7,0.18)] px-3 py-1 font-semibold text-[#855700] dark:text-[#ffcd39]"
-                      }
-                    >
-                      {formatLegalStatus(acceptance.status)}
-                    </span>
-                    <span className="rounded-full bg-brand-soft px-3 py-1 font-semibold text-brand-secondary">
-                      {formatCollectionMethod(acceptance.collectionMethod)}
-                    </span>
-                  </div>
-                </div>
-
-                {acceptance.coveredTermTypes.length > 1 ? (
-                  <div className="mt-3 flex flex-wrap items-center gap-1.5 text-xs text-brand-subtext">
-                    <span className="font-semibold text-brand-secondary">Termos cobertos:</span>
-                    {acceptance.coveredTermTypes.map((type) => (
-                      <span
-                        key={type}
-                        className="rounded-lg bg-brand-soft/70 px-2 py-0.5 text-brand-secondary"
-                      >
-                        {formatLegalTermType(type)}
-                      </span>
-                    ))}
-                  </div>
-                ) : null}
-
-                <div className="mt-4 grid gap-3 md:grid-cols-2">
-                  <div className="rounded-2xl border border-brand-line bg-brand-surface px-4 py-4">
-                    <p className="text-xs uppercase tracking-[0.18em] text-brand-subtext">Base legal</p>
-                    <p className="mt-2 text-sm leading-6 text-brand-subtext">
-                      {acceptance.legalBasis || "Nao informada neste registro."}
-                    </p>
-                  </div>
-
-                  <div className="rounded-2xl border border-brand-line bg-brand-surface px-4 py-4">
-                    <p className="text-xs uppercase tracking-[0.18em] text-brand-subtext">Hash do documento</p>
-                    <p className="mt-2 break-all font-mono text-xs text-brand-subtext">{acceptance.documentHash}</p>
-                  </div>
-                </div>
-
-                <p className="mt-4 text-sm leading-6 text-brand-subtext">
-                  {acceptance.termBody.length > 220 ? `${acceptance.termBody.slice(0, 220)}...` : acceptance.termBody}
-                </p>
-
-                <div className="mt-4 space-y-1 text-xs text-brand-subtext">
-                  <p>Capturado em {formatDateTimeWithTimezone(acceptance.createdAt)}</p>
-                  <p>Operador: {acceptance.capturedByUserName ?? "Nao identificado"}</p>
-                  <p>
-                    Aceite formal:{" "}
-                    {acceptance.acceptedAt ? formatDateTimeWithTimezone(acceptance.acceptedAt) : "aguardando assinatura"}
-                  </p>
-                  <p>Evidencia: {acceptance.evidenceNote || "Nenhuma observacao adicional registrada."}</p>
-                  <p>Origem tecnica: {acceptance.auditCollectionOrigin || "Nao registrada"}</p>
-                  <p>IP da coleta: {acceptance.auditIpAddress || "Nao registrado"}</p>
-                  <p>
-                    Sessao tecnica:{" "}
-                    {acceptance.auditSessionKey ? acceptance.auditSessionKey.slice(0, 16) : "Nao registrada"}
-                  </p>
-                  <p>
-                    User-Agent:{" "}
-                    {acceptance.auditUserAgent
-                      ? acceptance.auditUserAgent.slice(0, 120)
-                      : "Nao registrado"}
-                  </p>
-                </div>
-
-                <div className="mt-4 space-y-2">
-                  <div className="flex flex-wrap gap-2">
-                    <a
-                      href={`/api/students/${student.id}/legal-acceptances/${acceptance.id}/document/download`}
-                      target="_blank"
-                      rel="noreferrer"
-                      aria-label={`Baixar PDF consolidado: ${acceptance.title}`}
-                      className="inline-flex items-center gap-2 rounded-full border border-brand-line bg-brand-soft px-3 py-2 text-xs font-semibold text-brand-secondary transition hover:border-brand-primary hover:bg-brand-primary hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary focus-visible:ring-offset-2"
-                    >
-                      <FileDown className="h-3.5 w-3.5" />
-                      Baixar PDF consolidado
-                    </a>
-                  </div>
-
-                  <p className="text-xs uppercase tracking-[0.18em] text-brand-subtext">Arquivos de evidencia</p>
-                  {acceptance.attachments.length > 0 ? (
-                    <div className="flex flex-wrap gap-2">
-                      {acceptance.attachments.map((attachment) => (
-                        <a
-                          key={attachment.id}
-                          href={`/api/students/${student.id}/legal-acceptances/${acceptance.id}/attachments/${attachment.id}/download`}
-                          target="_blank"
-                          rel="noreferrer"
-                          aria-label={`Baixar evidencia: ${attachment.originalFileName}`}
-                          className="rounded-full bg-brand-soft px-3 py-2 text-xs font-semibold text-brand-secondary transition hover:bg-brand-primary hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary focus-visible:ring-offset-2"
-                        >
-                          {formatAttachmentType(attachment.attachmentType)}: {attachment.originalFileName}
-                        </a>
-                      ))}
-                    </div>
-                  ) : (
-                    <p className="text-xs text-brand-subtext">Nenhum arquivo anexado a este aceite.</p>
-                  )}
-                </div>
-              </article>
-            ))
-          ) : (
-            <div className="rounded-2xl border border-dashed border-brand-line bg-brand-panel px-4 py-8 text-sm text-brand-subtext">
-              Nenhum termo juridico arquivado para este aluno.
+          <div className="space-y-1">
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="text-xs uppercase tracking-[0.18em] text-brand-primary font-semibold">
+                Ficha do Aluno
+              </span>
+              <span className={getStatusBadgeClass(student.status)}>
+                {formatStudentStatus(student.status)}
+              </span>
+              {activeAlerts.length > 0 && (
+                <span className="rounded-full bg-[rgba(220,53,69,0.12)] px-2.5 py-0.5 text-xs font-semibold text-brand-danger">
+                  {activeAlerts.length} alerta{activeAlerts.length > 1 ? "s" : ""} clínico{activeAlerts.length > 1 ? "s" : ""}
+                </span>
+              )}
             </div>
+            <h2 className="font-display text-3xl text-brand-secondary">{student.fullName}</h2>
+            <p className="text-sm text-brand-subtext">
+              CPF: <strong className="text-brand-ink">{formatCpf(student.cpf)}</strong> • Tel: <strong className="text-brand-ink">{formatPhone(student.phoneNumber)}</strong>
+            </p>
+          </div>
+
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => setIsEditModalOpen(true)}
+              className="flex items-center gap-2 rounded-2xl border border-brand-line bg-brand-soft px-3.5 py-2 text-xs font-semibold text-brand-secondary transition hover:bg-brand-panel hover:text-brand-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary"
+              aria-label="Editar dados cadastrais do aluno"
+            >
+              <Pencil className="h-3.5 w-3.5" />
+              Editar Dados
+            </button>
+            <button
+              type="button"
+              onClick={handleCloseProfile}
+              className="rounded-full p-2 text-brand-subtext hover:bg-brand-soft hover:text-brand-ink transition"
+              aria-label="Fechar ficha do aluno"
+              title="Fechar ficha"
+            >
+              <X className="h-5 w-5" />
+            </button>
+          </div>
+        </div>
+
+        {/* Abas de Navegação */}
+        <div className="mt-6 flex flex-wrap gap-2 border-b border-brand-line pb-2" role="tablist">
+          <button
+            type="button"
+            role="tab"
+            aria-selected={activeTab === "clinical"}
+            onClick={() => setActiveTab("clinical")}
+            className={`flex items-center gap-2 rounded-xl px-4 py-2 text-xs font-semibold transition ${
+              activeTab === "clinical"
+                ? "bg-brand-primary text-white shadow-sm"
+                : "text-brand-subtext hover:bg-brand-soft hover:text-brand-ink"
+            }`}
+          >
+            <FileHeart className="h-4 w-4" />
+            Clínico & Anamnese
+            {activeAlerts.length > 0 && (
+              <span className={`rounded-full px-1.5 py-0.2 text-[10px] ${activeTab === "clinical" ? "bg-white text-brand-primary" : "bg-brand-danger text-white"}`}>
+                {activeAlerts.length}
+              </span>
+            )}
+          </button>
+
+          <button
+            type="button"
+            role="tab"
+            aria-selected={activeTab === "cadastral"}
+            onClick={() => setActiveTab("cadastral")}
+            className={`flex items-center gap-2 rounded-xl px-4 py-2 text-xs font-semibold transition ${
+              activeTab === "cadastral"
+                ? "bg-brand-primary text-white shadow-sm"
+                : "text-brand-subtext hover:bg-brand-soft hover:text-brand-ink"
+            }`}
+          >
+            <FileText className="h-4 w-4" />
+            Dados Cadastrais
+          </button>
+
+          <button
+            type="button"
+            role="tab"
+            aria-selected={activeTab === "legal"}
+            onClick={() => setActiveTab("legal")}
+            className={`flex items-center gap-2 rounded-xl px-4 py-2 text-xs font-semibold transition ${
+              activeTab === "legal"
+                ? "bg-brand-primary text-white shadow-sm"
+                : "text-brand-subtext hover:bg-brand-soft hover:text-brand-ink"
+            }`}
+          >
+            <ShieldCheck className="h-4 w-4" />
+            LGPD & Termos
+            <span className="text-[10px] opacity-80">({legalAcceptances.length})</span>
+          </button>
+
+          <button
+            type="button"
+            role="tab"
+            aria-selected={activeTab === "portal"}
+            onClick={() => setActiveTab("portal")}
+            className={`flex items-center gap-2 rounded-xl px-4 py-2 text-xs font-semibold transition ${
+              activeTab === "portal"
+                ? "bg-brand-primary text-white shadow-sm"
+                : "text-brand-subtext hover:bg-brand-soft hover:text-brand-ink"
+            }`}
+          >
+            <KeyRound className="h-4 w-4" />
+            Portal do Aluno
+          </button>
+
+          {canAnonymize && (
+            <button
+              type="button"
+              role="tab"
+              aria-selected={activeTab === "privacy"}
+              onClick={() => setActiveTab("privacy")}
+              className={`flex items-center gap-2 rounded-xl px-4 py-2 text-xs font-semibold transition ${
+                activeTab === "privacy"
+                  ? "bg-brand-primary text-white shadow-sm"
+                  : "text-brand-subtext hover:bg-brand-soft hover:text-brand-ink"
+              }`}
+            >
+              <UserX className="h-4 w-4" />
+              Privacidade (LGPD)
+            </button>
           )}
         </div>
       </div>
 
-      <div className="rounded-[20px] border border-brand-line bg-brand-surface px-5 py-5">
-        <div className="flex flex-col gap-2 md:flex-row md:items-start md:justify-between">
-          <div>
-            <p className="text-xs uppercase tracking-[0.18em] text-brand-subtext">Portal do aluno</p>
-            <h3 className="mt-2 font-display text-2xl text-brand-secondary">Conta de acesso</h3>
-            <p className="mt-2 text-sm leading-6 text-brand-subtext">
-              Configure o login do aluno para habilitar o portal com o e-mail e a senha inicial.
-            </p>
+      {/* Conteúdo da Aba Ativa */}
+
+      {/* 1. ABA CLÍNICO & ANAMNESE */}
+      {activeTab === "clinical" && (
+        <div className="space-y-6 animate-in fade-in">
+          {/* Card de Alertas Clínicos Ativos */}
+          <div className="rounded-[20px] border border-brand-line bg-brand-surface p-6 shadow-sm">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-xs uppercase tracking-[0.18em] text-brand-subtext">Sinais e Atenção</p>
+                <h3 className="text-xl font-display text-brand-secondary mt-1">Alertas Clínicos Ativos</h3>
+              </div>
+              <span
+                className={`rounded-full px-3 py-1 text-xs font-semibold ${
+                  activeAlerts.length > 0
+                    ? "bg-[rgba(220,53,69,0.12)] text-brand-danger"
+                    : "bg-[rgba(25,135,84,0.12)] text-brand-success"
+                }`}
+              >
+                {activeAlerts.length > 0 ? `${activeAlerts.length} alerta(s)` : "Sem alertas clínicos"}
+              </span>
+            </div>
+
+            <div className="mt-4 flex flex-wrap gap-2">
+              {activeAlerts.length > 0 ? (
+                activeAlerts.map((alert) => (
+                  <span
+                    key={alert}
+                    className="flex items-center gap-1.5 rounded-full border border-brand-danger/30 bg-[rgba(220,53,69,0.08)] px-3 py-1 text-xs font-semibold text-brand-danger"
+                  >
+                    <AlertTriangle className="h-3.5 w-3.5" />
+                    {alert}
+                  </span>
+                ))
+              ) : (
+                <p className="text-sm text-brand-subtext">
+                  Nenhum alerta crítico ativo. Preencha a anamnese abaixo para registrar patologias ou dores.
+                </p>
+              )}
+            </div>
           </div>
 
-          <span className="rounded-full bg-brand-soft px-3 py-1 text-xs font-semibold text-brand-secondary">
-            {portalAccount?.active ? "Configurado" : "Aguardando ativacao"}
-          </span>
-        </div>
-
-        <div className="mt-5">
-          <PortalAccountForm studentId={student.id} defaultEmail={student.email} currentAccount={portalAccount} />
-        </div>
-      </div>
-
-      <div className="rounded-[20px] border border-brand-line bg-brand-surface px-5 py-5">
-        <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
-          <div>
-            <p className="text-xs uppercase tracking-[0.18em] text-brand-subtext">Prontuario clinico</p>
-            <h3 className="mt-2 font-display text-2xl text-brand-secondary">Anamnese e historico</h3>
-            <p className="mt-2 text-sm leading-6 text-brand-subtext">
-              Resumo de alertas clinicos e evolucoes mais recentes do aluno.
-            </p>
-          </div>
-          <div className="rounded-2xl bg-brand-soft p-3 text-brand-primary">
-            <FileHeart className="h-5 w-5" />
-          </div>
-        </div>
-
-        {canViewClinicalRecord ? (
-          <div className="mt-5 space-y-5">
-            {clinicalRecord?.anamnesis ? (
-              <div className="space-y-4">
-                <div className="flex flex-wrap gap-2">
-                  {clinicalRecord.anamnesis.alerts.length > 0 ? (
-                    clinicalRecord.anamnesis.alerts.map((alert) => (
-                      <span
-                        key={alert}
-                        className="rounded-full bg-[rgba(220,53,69,0.08)] px-3 py-1 text-xs font-semibold text-brand-danger"
-                      >
-                        {alert}
-                      </span>
-                    ))
-                  ) : (
-                    <span className="rounded-full bg-[rgba(25,135,84,0.12)] px-3 py-1 text-xs font-semibold text-brand-success">
-                      Nenhum alerta clinico ativo
-                    </span>
-                  )}
-                </div>
-
-                <div className="grid gap-3 md:grid-cols-2">
-                  <div className="rounded-2xl border border-brand-line bg-brand-panel px-4 py-4">
-                    <p className="text-xs uppercase tracking-[0.18em] text-brand-subtext">Patologias</p>
-                    <p className="mt-2 font-semibold text-brand-ink">{clinicalRecord.anamnesis.hasPathologies ? "Sim" : "Nao"}</p>
-                    {clinicalRecord.anamnesis.pathologyDetails ? (
-                      <p className="mt-2 text-sm leading-6 text-brand-subtext">{clinicalRecord.anamnesis.pathologyDetails}</p>
-                    ) : null}
-                  </div>
-
-                  <div className="rounded-2xl border border-brand-line bg-brand-panel px-4 py-4">
-                    <p className="text-xs uppercase tracking-[0.18em] text-brand-subtext">Cirurgias</p>
-                    <p className="mt-2 font-semibold text-brand-ink">{clinicalRecord.anamnesis.hasSurgeries ? "Sim" : "Nao"}</p>
-                    {clinicalRecord.anamnesis.surgeryDetails ? (
-                      <p className="mt-2 text-sm leading-6 text-brand-subtext">{clinicalRecord.anamnesis.surgeryDetails}</p>
-                    ) : null}
-                  </div>
-
-                  <div className="rounded-2xl border border-brand-line bg-brand-panel px-4 py-4">
-                    <p className="text-xs uppercase tracking-[0.18em] text-brand-subtext">Dor em acompanhamento</p>
-                    <p className="mt-2 font-semibold text-brand-ink">{clinicalRecord.anamnesis.hasPain ? "Sim" : "Nao"}</p>
-                    {clinicalRecord.anamnesis.painDetails ? (
-                      <p className="mt-2 text-sm leading-6 text-brand-subtext">{clinicalRecord.anamnesis.painDetails}</p>
-                    ) : null}
-                  </div>
-
-                  <div className="rounded-2xl border border-brand-line bg-brand-panel px-4 py-4">
-                    <p className="text-xs uppercase tracking-[0.18em] text-brand-subtext">Marcadores de atencao</p>
-                    <div className="mt-2 space-y-1 text-sm text-brand-subtext">
-                      <p>Hipertensao: {clinicalRecord.anamnesis.hasHypertension ? "Sim" : "Nao"}</p>
-                      <p>Osteoporose: {clinicalRecord.anamnesis.hasOsteoporosis ? "Sim" : "Nao"}</p>
-                      <p>Gestacao: {clinicalRecord.anamnesis.isPregnant ? "Sim" : "Nao"}</p>
-                      <p>Liberacao medica: {clinicalRecord.anamnesis.medicalClearanceRequired ? "Obrigatoria" : "Nao"}</p>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="rounded-2xl border border-brand-line bg-brand-panel px-4 py-4">
-                  <p className="text-xs uppercase tracking-[0.18em] text-brand-subtext">Observacoes gerais</p>
-                  <p className="mt-2 text-sm leading-6 text-brand-subtext">
-                    {clinicalRecord.anamnesis.generalObservations || "Nenhuma observacao registrada ate o momento."}
-                  </p>
-                  <p className="mt-4 text-xs text-brand-subtext">
-                    Anamnese atualizada em {formatDateTimeWithTimezone(clinicalRecord.anamnesis.updatedAt)}
+          {/* Formulário de Anamnese */}
+          {canViewClinicalRecord ? (
+            <div className="rounded-[20px] border border-brand-line bg-brand-surface p-6 shadow-sm">
+              <AnamnesisForm
+                studentId={student.id}
+                studentName={student.fullName}
+                initialAnamnesis={clinicalRecord?.anamnesis ?? null}
+              />
+            </div>
+          ) : (
+            <div className="rounded-2xl border border-dashed border-brand-line bg-brand-panel p-5">
+              <div className="flex items-start gap-3">
+                <AlertTriangle className="h-5 w-5 text-[#a06b00]" />
+                <div>
+                  <p className="font-semibold text-brand-ink">Acesso clínico restrito</p>
+                  <p className="text-sm text-brand-subtext mt-1">
+                    Anamnese e alertas clínicos são restritos aos perfis de Administrador e Instrutores.
                   </p>
                 </div>
               </div>
-            ) : (
-              <div className="rounded-2xl border border-dashed border-brand-line bg-brand-panel px-4 py-8 text-sm text-brand-subtext">
-                Nenhuma anamnese cadastrada para este aluno.
-              </div>
-            )}
+            </div>
+          )}
 
-            <div className="space-y-3">
-              <div className="flex items-center justify-between gap-3">
-                <p className="text-sm font-semibold text-brand-secondary">Historico de evolucao</p>
-                <span className="text-xs text-brand-subtext">{clinicalRecord?.progressEntries.length ?? 0} registro(s)</span>
+          {/* Histórico de Evoluções Clínicas */}
+          {canViewClinicalRecord && (
+            <div className="rounded-[20px] border border-brand-line bg-brand-surface p-6 shadow-sm space-y-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-xs uppercase tracking-[0.18em] text-brand-subtext">Acompanhamento</p>
+                  <h3 className="text-xl font-display text-brand-secondary mt-1">Histórico de Evolução Clínica</h3>
+                </div>
+                <span className="text-xs text-brand-subtext">
+                  {clinicalRecord?.progressEntries.length ?? 0} registro(s)
+                </span>
               </div>
 
               {clinicalRecord && clinicalRecord.progressEntries.length > 0 ? (
-                clinicalRecord.progressEntries.map((entry) => (
-                  <article key={entry.id} className="rounded-2xl border border-brand-line bg-brand-panel px-4 py-4">
+                <div className="space-y-3">
+                  {clinicalRecord.progressEntries.map((entry) => (
+                    <article key={entry.id} className="rounded-2xl border border-brand-line bg-brand-panel p-4">
+                      <div className="flex flex-col gap-2 md:flex-row md:items-start md:justify-between">
+                        <div>
+                          <p className="font-semibold text-brand-ink">
+                            Registro de {formatDateTimeWithTimezone(entry.recordedAt)}
+                          </p>
+                          <p className="text-xs text-brand-subtext mt-0.5">
+                            Lançado por {entry.createdByUserName} em {formatDateTimeWithTimezone(entry.createdAt)}
+                          </p>
+                        </div>
+                        <div className="flex flex-wrap gap-2 text-xs">
+                          <span className="rounded-full bg-brand-soft px-3 py-1 font-semibold text-brand-secondary">
+                            Flexibilidade: {entry.flexibilityScore ?? "-"}
+                          </span>
+                          <span className="rounded-full bg-brand-soft px-3 py-1 font-semibold text-brand-secondary">
+                            Força: {entry.strengthScore ?? "-"}
+                          </span>
+                          <span className="rounded-full bg-brand-soft px-3 py-1 font-semibold text-brand-secondary">
+                            Dor: {entry.painLevel ?? "-"}
+                          </span>
+                        </div>
+                      </div>
+
+                      <p className="mt-3 text-sm leading-6 text-brand-subtext">{entry.instructorNotes}</p>
+
+                      <p className="mt-3 text-xs text-brand-subtext">
+                        {entry.attachments.length > 0
+                          ? `${entry.attachments.length} anexo(s): ${entry.attachments.map((a) => a.originalFileName).join(", ")}`
+                          : "Sem anexos neste registro."}
+                      </p>
+                    </article>
+                  ))}
+                </div>
+              ) : (
+                <div className="rounded-2xl border border-dashed border-brand-line bg-brand-panel p-6 text-center text-sm text-brand-subtext">
+                  Nenhuma evolução clínica registrada ainda para este aluno.
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* 2. ABA DADOS CADASTRAIS */}
+      {activeTab === "cadastral" && (
+        <div className="space-y-6 animate-in fade-in">
+          <div className="rounded-[20px] border border-brand-line bg-brand-surface p-6 shadow-sm">
+            <div className="flex items-center justify-between border-b border-brand-line pb-4 mb-4">
+              <h3 className="font-display text-xl text-brand-secondary">Informações Cadastrais</h3>
+              <button
+                type="button"
+                onClick={() => setIsEditModalOpen(true)}
+                className="flex items-center gap-2 rounded-2xl bg-brand-primary px-4 py-2 text-xs font-semibold text-white transition hover:bg-brand-primaryHover"
+              >
+                <Pencil className="h-3.5 w-3.5" />
+                Editar Dados
+              </button>
+            </div>
+
+            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+              <div className="rounded-2xl border border-brand-line bg-brand-panel p-4">
+                <p className="text-xs uppercase tracking-wider text-brand-subtext">Nome Completo</p>
+                <p className="mt-1 font-semibold text-brand-ink">{student.fullName}</p>
+              </div>
+
+              <div className="rounded-2xl border border-brand-line bg-brand-panel p-4">
+                <p className="text-xs uppercase tracking-wider text-brand-subtext">CPF</p>
+                <p className="mt-1 font-semibold text-brand-ink">{formatCpf(student.cpf)}</p>
+              </div>
+
+              <div className="rounded-2xl border border-brand-line bg-brand-panel p-4">
+                <p className="text-xs uppercase tracking-wider text-brand-subtext">Telefone / WhatsApp</p>
+                <p className="mt-1 font-semibold text-brand-ink">{formatPhone(student.phoneNumber)}</p>
+              </div>
+
+              <div className="rounded-2xl border border-brand-line bg-brand-panel p-4">
+                <p className="text-xs uppercase tracking-wider text-brand-subtext">E-mail</p>
+                <p className="mt-1 font-semibold text-brand-ink">{student.email}</p>
+              </div>
+
+              <div className="rounded-2xl border border-brand-line bg-brand-panel p-4">
+                <p className="text-xs uppercase tracking-wider text-brand-subtext">Nascimento</p>
+                <p className="mt-1 font-semibold text-brand-ink">
+                  {student.birthDate ? `${formatDate(student.birthDate)} (${getAge(student.birthDate)} anos)` : "Não informado"}
+                </p>
+              </div>
+
+              <div className="rounded-2xl border border-brand-line bg-brand-panel p-4">
+                <p className="text-xs uppercase tracking-wider text-brand-subtext">Data de Cadastro</p>
+                <p className="mt-1 font-semibold text-brand-ink">{formatDateTime(student.createdAt)}</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 3. ABA LGPD & TERMOS */}
+      {activeTab === "legal" && (
+        <div className="space-y-6 animate-in fade-in">
+          <div className="rounded-[20px] border border-brand-line bg-brand-surface p-6 shadow-sm">
+            <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
+              <div>
+                <p className="text-xs uppercase tracking-[0.18em] text-brand-subtext">Compliance & Jurídico</p>
+                <h3 className="mt-1 font-display text-2xl text-brand-secondary">Trilha Jurídica do Aluno</h3>
+                <p className="mt-1 text-sm text-brand-subtext">
+                  Registro de consentimentos, termos de adesão, imagem e assinaturas digitais avançadas.
+                </p>
+              </div>
+
+              <span
+                className={
+                  student.lgpdConsent
+                    ? "rounded-full bg-[rgba(25,135,84,0.12)] px-3 py-1 text-xs font-semibold text-brand-success"
+                    : "rounded-full bg-[rgba(255,193,7,0.16)] px-3 py-1 text-xs font-semibold text-[#a06b00]"
+                }
+              >
+                {student.lgpdConsent ? "Consentimento geral ativo" : "Consentimento geral pendente"}
+              </span>
+            </div>
+
+            <div className="mt-6">
+              <LegalAcceptanceForm studentId={student.id} studentName={student.fullName} />
+            </div>
+
+            <div className="mt-8 space-y-3">
+              <div className="flex items-center justify-between">
+                <p className="text-sm font-semibold text-brand-secondary">Histórico de Termos Cadastrados</p>
+                <span className="text-xs text-brand-subtext">{legalAcceptances.length} registro(s)</span>
+              </div>
+
+              {legalAcceptances.length > 0 ? (
+                legalAcceptances.map((acceptance) => (
+                  <article key={acceptance.id} className="rounded-2xl border border-brand-line bg-brand-panel p-4">
                     <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
                       <div>
-                        <p className="font-semibold text-brand-ink">Registro de {formatDateTimeWithTimezone(entry.recordedAt)}</p>
-                        <p className="mt-1 text-sm text-brand-subtext">
-                          Lancado por {entry.createdByUserName} em {formatDateTimeWithTimezone(entry.createdAt)}
+                        <p className="font-semibold text-brand-ink">{acceptance.title}</p>
+                        <p className="mt-1 text-xs text-brand-subtext">
+                          {acceptance.coveredTermTypes.length > 1
+                            ? `${formatLegalTermTypes(acceptance.coveredTermTypes)} - versão ${acceptance.termsVersion}`
+                            : `${formatLegalTermType(acceptance.termType)} - versão ${acceptance.termsVersion}`}
                         </p>
                       </div>
+
                       <div className="flex flex-wrap gap-2 text-xs">
-                        <span className="rounded-full bg-brand-soft px-3 py-1 font-semibold text-brand-secondary">
-                          Flexibilidade: {entry.flexibilityScore ?? "-"}
+                        {acceptance.coveredTermTypes.length > 1 && (
+                          <span className="rounded-full border border-brand-line bg-brand-surface px-3 py-1 font-semibold text-brand-secondary">
+                            Coleta consolidada ({acceptance.coveredTermTypes.length} termos)
+                          </span>
+                        )}
+                        <span
+                          className={
+                            acceptance.status === "ACCEPTED"
+                              ? "rounded-full bg-[rgba(25,135,84,0.12)] px-3 py-1 font-semibold text-brand-success"
+                              : "rounded-full bg-[rgba(255,193,7,0.18)] px-3 py-1 font-semibold text-[#855700]"
+                          }
+                        >
+                          {formatLegalStatus(acceptance.status)}
                         </span>
                         <span className="rounded-full bg-brand-soft px-3 py-1 font-semibold text-brand-secondary">
-                          Forca: {entry.strengthScore ?? "-"}
-                        </span>
-                        <span className="rounded-full bg-brand-soft px-3 py-1 font-semibold text-brand-secondary">
-                          Dor: {entry.painLevel ?? "-"}
+                          {formatCollectionMethod(acceptance.collectionMethod)}
                         </span>
                       </div>
                     </div>
 
-                    <p className="mt-4 text-sm leading-6 text-brand-subtext">{entry.instructorNotes}</p>
+                    {acceptance.coveredTermTypes.length > 1 ? (
+                      <div className="mt-3 flex flex-wrap items-center gap-1.5 text-xs text-brand-subtext">
+                        <span className="font-semibold text-brand-secondary">Termos cobertos:</span>
+                        {acceptance.coveredTermTypes.map((type) => (
+                          <span
+                            key={type}
+                            className="rounded-lg bg-brand-soft/70 px-2 py-0.5 text-brand-secondary"
+                          >
+                            {formatLegalTermType(type)}
+                          </span>
+                        ))}
+                      </div>
+                    ) : null}
 
-                    <p className="mt-4 text-xs text-brand-subtext">
-                      {entry.attachments.length > 0
-                        ? `${entry.attachments.length} anexo(s): ${entry.attachments.map((attachment) => attachment.originalFileName).join(", ")}`
-                        : "Sem anexos neste registro."}
-                    </p>
+                    <div className="mt-4 flex flex-wrap gap-2">
+                      <a
+                        href={`/api/students/${student.id}/legal-acceptances/${acceptance.id}/document/download`}
+                        target="_blank"
+                        rel="noreferrer"
+                        aria-label={`Baixar PDF consolidado: ${acceptance.title}`}
+                        className="inline-flex items-center gap-2 rounded-full border border-brand-line bg-brand-soft px-3.5 py-1.5 text-xs font-semibold text-brand-secondary transition hover:border-brand-primary hover:bg-brand-primary hover:text-white"
+                      >
+                        <FileDown className="h-3.5 w-3.5" />
+                        Baixar PDF consolidado assinado
+                      </a>
+                    </div>
                   </article>
                 ))
               ) : (
-                <div className="rounded-2xl border border-dashed border-brand-line bg-brand-panel px-4 py-8 text-sm text-brand-subtext">
-                  Nenhuma evolucao clinica registrada para este aluno.
+                <div className="rounded-2xl border border-dashed border-brand-line bg-brand-panel p-6 text-center text-sm text-brand-subtext">
+                  Nenhum termo arquivado para este aluno.
                 </div>
               )}
             </div>
           </div>
-        ) : (
-          <div className="mt-5 rounded-2xl border border-dashed border-brand-line bg-brand-panel px-4 py-5">
-            <div className="flex items-start gap-3">
-              <div className="rounded-2xl bg-[rgba(255,193,7,0.16)] p-2 text-[#a06b00]">
-                <AlertTriangle className="h-4 w-4" />
-              </div>
+        </div>
+      )}
+
+      {/* 4. ABA PORTAL DO ALUNO */}
+      {activeTab === "portal" && (
+        <div className="space-y-6 animate-in fade-in">
+          <div className="rounded-[20px] border border-brand-line bg-brand-surface p-6 shadow-sm">
+            <div className="flex flex-col gap-2 md:flex-row md:items-start md:justify-between">
               <div>
-                <p className="font-semibold text-brand-ink">Leitura clinica restrita neste perfil</p>
-                <p className="mt-2 text-sm leading-6 text-brand-subtext">
-                  O backend libera anamnese e evolucao apenas para administracao e instrutores. Neste painel de recepcao,
-                  a ficha clinica permanece protegida.
+                <p className="text-xs uppercase tracking-[0.18em] text-brand-subtext">Autosserviço</p>
+                <h3 className="mt-1 font-display text-2xl text-brand-secondary">Conta do Portal do Aluno</h3>
+                <p className="mt-1 text-sm text-brand-subtext">
+                  Habilite o acesso do aluno ao portal para visualização de faturas e marcação de aulas.
                 </p>
               </div>
+
+              <span className="rounded-full bg-brand-soft px-3 py-1 text-xs font-semibold text-brand-secondary">
+                {portalAccount?.active ? "Conta Ativa" : "Aguardando Ativação"}
+              </span>
+            </div>
+
+            <div className="mt-6">
+              <PortalAccountForm studentId={student.id} defaultEmail={student.email} currentAccount={portalAccount} />
             </div>
           </div>
-        )}
-      </div>
+        </div>
+      )}
 
-      <StudentAnonymizePanel
-        student={student}
-        canAnonymize={Boolean(canAnonymize)}
-      />
+      {/* 5. ABA PRIVACIDADE (LGPD) */}
+      {activeTab === "privacy" && canAnonymize && (
+        <div className="space-y-6 animate-in fade-in">
+          <StudentAnonymizePanel student={student} canAnonymize={Boolean(canAnonymize)} />
+        </div>
+      )}
     </div>
   );
 }

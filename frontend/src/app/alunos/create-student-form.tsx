@@ -5,7 +5,11 @@ import { useRouter } from "next/navigation";
 import { LoaderCircle, UserPlus } from "lucide-react";
 import { readActionErrorMessage } from "@/lib/action-responses";
 
-export function CreateStudentForm() {
+type CreateStudentFormProps = {
+  onSuccess?: () => void;
+};
+
+export function CreateStudentForm({ onSuccess }: CreateStudentFormProps = {}) {
   const router = useRouter();
   const formRef = useRef<HTMLFormElement>(null);
   const [errorMessage, setErrorMessage] = useState("");
@@ -45,6 +49,9 @@ export function CreateStudentForm() {
           formRef.current?.reset();
           setSuccessMessage("Aluno cadastrado com sucesso.");
           router.refresh();
+          if (onSuccess) {
+            setTimeout(onSuccess, 800);
+          }
         });
       }}
     >

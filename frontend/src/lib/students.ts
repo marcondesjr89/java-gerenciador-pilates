@@ -66,3 +66,20 @@ export async function fetchStudentById(session: SessionUser, studentId: string) 
     errorMessage: "Nao foi possivel carregar o aluno selecionado."
   });
 }
+
+export type UpdateStudentPayload = {
+  fullName: string;
+  email: string;
+  phoneNumber: string;
+  birthDate: string | null;
+  status: StudentStatus;
+};
+
+export async function updateStudent(session: SessionUser, studentId: string, payload: UpdateStudentPayload) {
+  return fetchApiJson<Student>(session, `/api/v1/students/${studentId}`, {
+    method: "PUT",
+    body: JSON.stringify(payload),
+    errorMessage: "Nao foi possivel atualizar os dados do aluno."
+  });
+}
+

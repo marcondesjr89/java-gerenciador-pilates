@@ -1,11 +1,8 @@
 import { Search } from "lucide-react";
-import { CreateStudentForm } from "@/app/alunos/create-student-form";
 import { loadStudentsPage, type StudentsSearchParams } from "@/app/alunos/load-students-page";
 import { StudentMetrics } from "@/app/alunos/student-metrics";
-import { StudentProfile } from "@/app/alunos/student-profile";
-import { StudentsList } from "@/app/alunos/students-list";
+import { StudentsPageClient } from "@/app/alunos/students-page-client";
 import { AppShell } from "@/components/ui/app-shell";
-import { SectionCard } from "@/components/ui/section-card";
 import { requireInternalSession } from "@/lib/auth";
 
 type StudentsPageProps = {
@@ -34,10 +31,10 @@ export default async function StudentsPage({ searchParams }: StudentsPageProps) 
           <p className="text-sm uppercase tracking-[0.24em] text-brand-primary">Modulo de alunos</p>
           <div className="mt-4 flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
             <div>
-              <h1 className="font-display text-4xl text-brand-secondary lg:text-5xl">Cadastro e leitura operacional</h1>
+              <h1 className="font-display text-4xl text-brand-secondary lg:text-5xl">Gestão de Alunos</h1>
               <p className="mt-3 max-w-2xl text-sm leading-7 text-brand-subtext">
-                Primeira entrega do modulo de alunos conectada ao backend real para recepcao consultar a base, abrir
-                novos cadastros e validar dados essenciais do aluno.
+                Consulte a base de alunos, acesse fichas clínicas com alertas em abas e realize cadastros
+                de forma isolada e em total conformidade com a LGPD.
               </p>
             </div>
 
@@ -70,42 +67,17 @@ export default async function StudentsPage({ searchParams }: StudentsPageProps) 
           lgpdCount={metrics.lgpdCount}
         />
 
-        <div className="grid gap-6 xl:grid-cols-[0.92fr_1.08fr]">
-          <SectionCard
-            title="Cadastrar aluno"
-            description="Entrada operacional para recepcao criar alunos na base principal com os campos essenciais."
-          >
-            <CreateStudentForm />
-          </SectionCard>
-
-          <SectionCard
-            title="Ficha do aluno"
-            description="Leitura operacional do cadastro, acesso ao portal e sinais clinicos do aluno selecionado."
-          >
-            <StudentProfile
-              student={selectedStudent}
-              portalAccount={portalAccount}
-              clinicalRecord={clinicalRecord}
-              legalAcceptances={legalAcceptances}
-              canViewClinicalRecord={canViewClinicalRecord}
-              canAnonymize={canAnonymize}
-            />
-          </SectionCard>
-        </div>
-
-        <SectionCard
-          title="Base de alunos"
-          description="Lista operacional para recepcao localizar rapidamente alunos ativos e inativos."
-        >
-          <StudentsList
-            students={filteredStudents}
-            selectedStudentId={selectedStudent?.id ?? null}
-            searchTerm={params?.q}
-            currentPage={pagination.page}
-            totalElements={pagination.totalElements}
-            totalPages={pagination.totalPages}
-          />
-        </SectionCard>
+        <StudentsPageClient
+          students={filteredStudents}
+          selectedStudent={selectedStudent}
+          portalAccount={portalAccount}
+          clinicalRecord={clinicalRecord}
+          legalAcceptances={legalAcceptances}
+          canViewClinicalRecord={canViewClinicalRecord}
+          canAnonymize={canAnonymize}
+          pagination={pagination}
+          searchTerm={params?.q}
+        />
       </div>
     </AppShell>
   );

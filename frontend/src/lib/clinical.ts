@@ -75,6 +75,32 @@ export async function fetchClinicalRecord(session: SessionUser, studentId: strin
   });
 }
 
+export type UpsertStudentAnamnesisPayload = {
+  hasPathologies: boolean;
+  pathologyDetails: string | null;
+  hasSurgeries: boolean;
+  surgeryDetails: string | null;
+  hasPain: boolean;
+  painDetails: string | null;
+  hasHypertension: boolean;
+  hasOsteoporosis: boolean;
+  isPregnant: boolean;
+  medicalClearanceRequired: boolean;
+  generalObservations: string | null;
+};
+
+export async function saveStudentAnamnesis(
+  session: SessionUser,
+  studentId: string,
+  payload: UpsertStudentAnamnesisPayload
+) {
+  return fetchApiJson<StudentAnamnesis>(session, `/api/v1/students/${studentId}/anamnesis`, {
+    method: "PUT",
+    body: JSON.stringify(payload),
+    errorMessage: "Nao foi possivel salvar a anamnese do aluno."
+  });
+}
+
 export function getClinicalAlertSummary(record: ClinicalRecord | null): ClinicalAlertSummary {
   const alerts = record?.anamnesis?.alerts ?? [];
 

@@ -174,6 +174,40 @@ class GerenciadorPilatesApplicationTests {
     }
 
     @Test
+    void studentCanBeUpdatedSuccessfully() throws Exception {
+        Student student = studentRepository.save(new Student(
+                UUID.randomUUID(),
+                "Nome Antigo",
+                "12345678901",
+                "antigo@teste.local",
+                "85999991111",
+                LocalDate.of(1995, 3, 20),
+                StudentStatus.ACTIVE,
+                true
+        ));
+
+        String token = loginAndGetToken("admin@test.local", "Admin@12345");
+
+        mockMvc.perform(put("/api/v1/students/{studentId}", student.getId())
+                        .header("Authorization", "Bearer " + token)
+                        .contentType(APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "fullName": "Nome Atualizado",
+                                  "email": "atualizado@teste.local",
+                                  "phoneNumber": "85988887777",
+                                  "birthDate": "1995-03-20",
+                                  "status": "INACTIVE"
+                                }
+                                """))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.fullName").value("Nome Atualizado"))
+                .andExpect(jsonPath("$.email").value("atualizado@teste.local"))
+                .andExpect(jsonPath("$.phoneNumber").value("85988887777"))
+                .andExpect(jsonPath("$.status").value("INACTIVE"));
+    }
+
+    @Test
     void studentSearchSupportsQueryAndPagination() throws Exception {
         studentRepository.save(new Student(
                 UUID.randomUUID(),
