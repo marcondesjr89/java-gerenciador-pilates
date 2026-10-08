@@ -1,3 +1,4 @@
+import { ShieldCheck, UserSearch } from "lucide-react";
 import { CreateSubscriptionForm } from "@/app/financeiro/create-subscription-form";
 import { GenerateInvoiceForm } from "@/app/financeiro/generate-invoice-form";
 import { getToday, formatCurrency, formatDate, formatDateTimeWithTime, statusClass, statusLabel } from "@/app/financeiro/helpers";
@@ -21,8 +22,18 @@ export function StudentFinancialProfile({
 }: StudentFinancialProfileProps) {
   if (!student) {
     return (
-      <div className="rounded-[20px] border border-dashed border-brand-line bg-brand-surface px-5 py-10 text-center text-sm text-brand-subtext">
-        Nenhum aluno encontrado para o modulo financeiro.
+      <div className="flex flex-col items-center justify-center rounded-[24px] border border-dashed border-brand-line bg-brand-surface px-6 py-16 text-center">
+        <div className="rounded-2xl bg-brand-soft p-4 text-brand-primary">
+          <UserSearch className="h-8 w-8" />
+        </div>
+        <h3 className="mt-4 font-display text-xl text-brand-secondary">Nenhum aluno selecionado</h3>
+        <p className="mt-2 max-w-md text-sm leading-6 text-brand-subtext">
+          Por privacidade e diretrizes da LGPD (minimização de dados), valores e faturas não são abertos automaticamente no balcão. Selecione um aluno na lista ou consulte pelo nome para carregar a ficha financeira.
+        </p>
+        <div className="mt-4 flex items-center gap-2 rounded-xl bg-brand-soft px-3 py-1.5 text-xs text-brand-subtext">
+          <ShieldCheck className="h-3.5 w-3.5 text-brand-success" />
+          <span>Privacidade por design ativa</span>
+        </div>
       </div>
     );
   }

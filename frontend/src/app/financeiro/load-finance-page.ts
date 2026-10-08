@@ -14,6 +14,7 @@ export type FinanceSearchParams = {
   startDate?: string;
   endDate?: string;
   studentId?: string;
+  tab?: "overview" | "plans" | "students";
 };
 
 export async function loadFinancePage(session: SessionUser, params?: FinanceSearchParams) {
@@ -21,7 +22,12 @@ export async function loadFinancePage(session: SessionUser, params?: FinanceSear
   const startDate = params?.startDate ?? defaultRange.startDate;
   const endDate = params?.endDate ?? defaultRange.endDate;
   const students = await fetchStudents(session);
-  const selectedStudent = students.find((student) => student.id === params?.studentId) ?? students[0] ?? null;
+  const selectedStudent = params?.studentId
+    ? (students.find((student) => student.id === params.studentId) ?? null)
+    : null;
+  const activeTab: "overview" | "plans" | "students" =
+    params?.tab ?? (selectedStudent ? "students" : "overview");
+
   const [plans, overdueInvoices, dreSummary, expenses, studentSubscriptions, studentInvoices] = await Promise.all([
     fetchBillingPlans(session),
     fetchOverdueInvoices(session, endDate),
@@ -36,6 +42,7 @@ export async function loadFinancePage(session: SessionUser, params?: FinanceSear
     endDate,
     students,
     selectedStudent,
+    activeTab,
     plans,
     overdueInvoices,
     dreSummary,
