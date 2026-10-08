@@ -2,13 +2,12 @@ import { CalendarDays, Clock3, UsersRound } from "lucide-react";
 import { AppShell } from "@/components/ui/app-shell";
 import { SectionCard } from "@/components/ui/section-card";
 import { SlotBookingsPanel } from "@/app/agenda/slot-bookings-panel";
-import { CreateBlockForm } from "@/app/agenda/create-block-form";
 import { ManageBlocksPanel } from "@/app/agenda/manage-blocks-panel";
+import { AgendaHeaderActions } from "@/app/agenda/agenda-header-actions";
 import { requireInternalSession } from "@/lib/auth";
 import { formatDate, formatPercent, formatSpecialty, formatUtcHour, getTodayIsoDate } from "@/lib/formatters";
 import { fetchScheduleBlocks, fetchScheduleSlots } from "@/lib/schedule";
 import { fetchActiveStudents, fetchInstructors } from "@/lib/users";
-import { CreateSlotForm } from "@/app/agenda/create-slot-form";
 
 type AgendaPageProps = {
   searchParams?: Promise<{
@@ -51,21 +50,30 @@ export default async function AgendaPage({ searchParams }: AgendaPageProps) {
               </p>
             </div>
 
-            <form className="flex flex-col gap-2 rounded-[22px] bg-brand-soft px-5 py-4 text-sm text-brand-secondary">
-              <span className="font-semibold">Filtrar dia</span>
-              <input
-                name="date"
-                type="date"
-                defaultValue={selectedDate}
-                className="rounded-2xl border border-brand-line bg-brand-surface px-4 py-2 text-brand-ink outline-none"
-              />
-              <button
-                type="submit"
-                className="rounded-2xl bg-brand-primary px-4 py-2 font-semibold text-white transition hover:bg-brand-primaryHover"
-              >
-                Atualizar agenda
-              </button>
-            </form>
+            <div className="flex flex-col gap-4 sm:flex-row sm:items-end">
+              <form className="flex flex-col gap-2 rounded-[22px] bg-brand-soft px-5 py-4 text-sm text-brand-secondary">
+                <span className="font-semibold">Filtrar dia</span>
+                <div className="flex items-center gap-2">
+                  <input
+                    name="date"
+                    type="date"
+                    defaultValue={selectedDate}
+                    className="rounded-2xl border border-brand-line bg-brand-surface px-4 py-2 text-brand-ink outline-none"
+                  />
+                  <button
+                    type="submit"
+                    className="rounded-2xl bg-brand-primary px-4 py-2 font-semibold text-white transition hover:bg-brand-primaryHover"
+                  >
+                    Atualizar
+                  </button>
+                </div>
+              </form>
+
+              <div className="rounded-[22px] bg-brand-soft px-5 py-4">
+                <span className="block mb-2 text-sm font-semibold text-brand-secondary">Ações da agenda</span>
+                <AgendaHeaderActions selectedDate={selectedDate} instructors={instructors} />
+              </div>
+            </div>
           </div>
         </section>
 
@@ -113,32 +121,6 @@ export default async function AgendaPage({ searchParams }: AgendaPageProps) {
             </div>
           </article>
         </section>
-
-        <SectionCard
-          title="Criar horario"
-          description="Primeiro fluxo operacional da agenda ligado ao backend para abrir novos slots de atendimento."
-        >
-          {instructors.length > 0 ? (
-            <CreateSlotForm selectedDate={selectedDate} instructors={instructors} />
-          ) : (
-            <div className="rounded-2xl border border-dashed border-brand-line bg-brand-surface px-5 py-8 text-sm text-brand-subtext">
-              Nenhum instrutor ativo disponivel para criar horario.
-            </div>
-          )}
-        </SectionCard>
-
-        <SectionCard
-          title="Bloquear agenda"
-          description="Crie indisponibilidades do instrutor para impedir novos horarios em intervalos reservados."
-        >
-          {instructors.length > 0 ? (
-            <CreateBlockForm selectedDate={selectedDate} instructors={instructors} />
-          ) : (
-            <div className="rounded-2xl border border-dashed border-brand-line bg-brand-surface px-5 py-8 text-sm text-brand-subtext">
-              Nenhum instrutor ativo disponivel para bloquear agenda.
-            </div>
-          )}
-        </SectionCard>
 
         <SectionCard
           title="Grade do dia"
