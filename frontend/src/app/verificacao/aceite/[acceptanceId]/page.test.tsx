@@ -114,6 +114,44 @@ describe("LegalAcceptanceVerificationPage", () => {
     expect(screen.getByText("Assinado com chave criptografica")).toBeInTheDocument();
   });
 
+  it("renderiza badge com alto contraste acessivel quando o codigo e divergente", async () => {
+    fetchStudentLegalAcceptanceVerificationMock.mockResolvedValue({
+      acceptanceId: "acceptance-3",
+      studentId: "student-3",
+      studentName: "Juliana Divergente",
+      studentCpfMasked: "***.999.888-**",
+      issuerName: "Studio Pilates Exemplo Ltda",
+      issuerDocument: "12.345.678/0001-99",
+      termType: "LGPD_DATA_PROCESSING",
+      coveredTermTypes: ["LGPD_DATA_PROCESSING"],
+      title: "Termo de Consentimento",
+      termsVersion: "v2026.04",
+      legalBasis: "Consentimento",
+      documentHash: "hash-divergente-999",
+      status: "ACCEPTED",
+      collectionMethod: "TABLET_SIGNATURE",
+      acceptedAt: "2026-04-16T12:00:00Z",
+      createdAt: "2026-04-16T11:55:00Z",
+      capturedByUserName: "Recepcao",
+      verificationCode: "CODIGOINVALIDO12",
+      documentReference: "ACEITE-V202604-DIV99999",
+      verificationStatement: "Codigo divergente do termo original emitido.",
+      verified: false
+    });
+
+    render(
+      await LegalAcceptanceVerificationPage({
+        params: Promise.resolve({ acceptanceId: "acceptance-3" }),
+        searchParams: Promise.resolve({ code: "CODIGOINVALIDO12" })
+      })
+    );
+
+    const badge = screen.getByText("Codigo divergente");
+    expect(badge).toBeInTheDocument();
+    expect(badge.closest("div")).toHaveClass("text-[#664d03]");
+    expect(badge.closest("div")).toHaveClass("bg-[#fff3cd]");
+  });
+
   it("exibe estado de falha quando a verificacao publica cai", async () => {
     fetchStudentLegalAcceptanceVerificationMock.mockRejectedValue(new Error("offline"));
 

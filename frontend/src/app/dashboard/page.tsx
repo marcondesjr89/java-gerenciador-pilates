@@ -1,30 +1,21 @@
-import { AlertCircle, CalendarClock, TrendingUp } from "lucide-react";
+import Link from "next/link";
+import {
+  AlertCircle,
+  ArrowRight,
+  CalendarClock,
+  CalendarDays,
+  CreditCard,
+  TrendingUp,
+  UserCog,
+  UsersRound
+} from "lucide-react";
 import { AppShell } from "@/components/ui/app-shell";
 import { KpiCard } from "@/components/ui/kpi-card";
 import { SectionCard } from "@/components/ui/section-card";
 import { fetchDashboardKpis } from "@/lib/dashboard";
 import { requireInternalSession } from "@/lib/auth";
-
-const agendaItems = [
-  {
-    time: "07:00",
-    title: "Pilates Aparelhos",
-    subtitle: "Instrutor: Marina Costa",
-    status: "9/10 vagas"
-  },
-  {
-    time: "08:30",
-    title: "Reabilitacao",
-    subtitle: "Instrutor: Fabio Rocha",
-    status: "4/4 vagas"
-  },
-  {
-    time: "10:00",
-    title: "Solo Intermediario",
-    subtitle: "Instrutor: Julia Nunes",
-    status: "6/8 vagas"
-  }
-];
+import { formatSpecialty, formatUtcHour } from "@/lib/formatters";
+import { fetchScheduleSlots } from "@/lib/schedule";
 
 function formatPercent(value: number) {
   return `${value.toFixed(2).replace(".", ",")}%`;
@@ -44,8 +35,13 @@ export default async function DashboardPage() {
 
   const startIso = startDate.toISOString().slice(0, 10);
   const endIso = endDate.toISOString().slice(0, 10);
+  const todayIso = today.toISOString().slice(0, 10);
 
-  const dashboard = await fetchDashboardKpis(session, startIso, endIso);
+  const [dashboard, scheduleSlots] = await Promise.all([
+    fetchDashboardKpis(session, startIso, endIso),
+    fetchScheduleSlots(session, todayIso)
+  ]);
+
   const valuesByKey = new Map(dashboard.indicators.map((indicator) => [indicator.key, indicator]));
 
   return (
@@ -57,8 +53,8 @@ export default async function DashboardPage() {
             <div>
               <h1 className="font-display text-4xl text-brand-secondary lg:text-5xl">Studio em operacao</h1>
               <p className="mt-3 max-w-2xl text-sm leading-7 text-brand-subtext">
-                O dashboard agora consome os indicadores operacionais reais do backend para apoiar a rotina
-                de recepcao e administracao.
+                Visão executiva em tempo real com indicadores operacionais, grade de horários do dia e atalhos rápidos
+                para recepção e gestão.
               </p>
             </div>
             <div className="rounded-[22px] bg-brand-soft px-5 py-4 text-sm text-brand-secondary">
@@ -96,43 +92,144 @@ export default async function DashboardPage() {
         <div className="grid gap-6 xl:grid-cols-[1.1fr_0.9fr]">
           <SectionCard
             title="Agenda do dia"
-            description="Visao operacional para recepcao e instrutores acompanharem ritmo, lotacao e gargalos."
+            description="Grade em tempo real do backend para recepção e instrutores acompanharem lotação e horários de hoje."
           >
-            <div className="space-y-3">
-              {agendaItems.map((item) => (
-                <div
-                  key={`${item.time}-${item.title}`}
-                  className="flex flex-col gap-3 rounded-[20px] border border-brand-line bg-brand-surface px-4 py-4 md:flex-row md:items-center md:justify-between"
+            {scheduleSlots.length === 0 ? (
+              <div className="rounded-[20px] border border-dashed border-brand-line bg-brand-surface px-5 py-10 text-center">
+                <CalendarDays className="mx-auto h-8 w-8 text-brand-subtext/70" />
+                <p className="mt-3 font-semibold text-brand-secondary">Nenhum horário cadastrado para hoje</p>
+                <p className="mt-1 text-sm text-brand-subtext">Abra novos horários operacionais na agenda para liberar reservas.</p>
+                <Link
+                  href="/agenda"
+                  className="mt-4 inline-flex items-center gap-2 rounded-2xl bg-brand-primary px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-brand-primaryHover"
                 >
-                  <div className="flex items-center gap-4">
-                    <div className="rounded-2xl bg-brand-primary px-3 py-2 text-sm font-semibold text-white">
-                      {item.time}
+                  <span>Abrir agenda</span>
+                  <ArrowRight className="h-4 w-4" />
+                </Link>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {scheduleSlots.map((slot) => {
+                  const isFull = slot.availableSpots === 0;
+
+                  return (
+                    <div
+                      key={slot.id}
+                      className="flex flex-col gap-3 rounded-[20px] border border-brand-line bg-brand-surface px-4 py-4 md:flex-row md:items-center md:justify-between"
+                    >
+                      <div className="flex items-center gap-4">
+                        <div className="rounded-2xl bg-brand-primary px-3 py-2 text-sm font-semibold text-white">
+                          {formatUtcHour(slot.startTime)}
+                        </div>
+                        <div>
+                          <p className="font-semibold text-brand-ink">{formatSpecialty(slot.requiredSpecialty)}</p>
+                          <p className="text-sm text-brand-subtext">
+                            Instrutor: {slot.instructorName} ({formatUtcHour(slot.startTime)} - {formatUtcHour(slot.endTime)})
+                          </p>
+                        </div>
+                      </div>
+
+                      <div className="flex items-center gap-2">
+                        <span
+                          className={
+                            isFull
+                              ? "rounded-full bg-[rgba(220,53,69,0.12)] px-3 py-1 text-xs font-semibold text-brand-danger"
+                              : "rounded-full bg-brand-soft px-3 py-1 text-xs font-semibold text-brand-secondary"
+                          }
+                        >
+                          {slot.bookedCount}/{slot.capacity} vagas
+                        </span>
+                        {isFull ? (
+                          <span className="rounded-full bg-[rgba(220,53,69,0.08)] px-2 py-0.5 text-xs text-brand-danger">
+                            Lotado
+                          </span>
+                        ) : null}
+                      </div>
                     </div>
-                    <div>
-                      <p className="font-semibold text-brand-ink">{item.title}</p>
-                      <p className="text-sm text-brand-subtext">{item.subtitle}</p>
-                    </div>
-                  </div>
-                  <span className="rounded-full bg-brand-soft px-3 py-1 text-xs font-semibold text-brand-secondary">
-                    {item.status}
-                  </span>
+                  );
+                })}
+
+                <div className="pt-2 text-right">
+                  <Link
+                    href="/agenda"
+                    className="inline-flex items-center gap-1.5 text-sm font-semibold text-brand-primary hover:underline"
+                  >
+                    <span>Ver grade completa da agenda</span>
+                    <ArrowRight className="h-4 w-4" />
+                  </Link>
                 </div>
-              ))}
-            </div>
+              </div>
+            )}
           </SectionCard>
 
           <SectionCard
-            title="Backlog funcional"
-            description="Com o dashboard ligado ao backend, o proximo corte natural e abrir os modulos internos."
+            title="Acesso rápido operacional"
+            description="Atalhos diretos e visão da sessão autenticada para agilizar a rotina interna."
           >
-            <div className="space-y-4 text-sm leading-7 text-brand-subtext">
-              <p>
-                Sessao autenticada para o painel interno: <strong className="font-semibold text-brand-secondary">{session.email}</strong>
-              </p>
-              <p>
-                A mesma casca agora pode evoluir para alunos, agenda e financeiro sem reescrever autenticacao
-                e navegacao.
-              </p>
+            <div className="space-y-4">
+              <div className="rounded-2xl border border-brand-line bg-brand-panel p-4 text-sm">
+                <div className="flex items-center justify-between gap-2">
+                  <span className="text-brand-subtext">Sessão ativa:</span>
+                  <span className="rounded-full bg-brand-soft px-2.5 py-0.5 text-xs font-semibold text-brand-secondary uppercase">
+                    {session.role}
+                  </span>
+                </div>
+                <p className="mt-1 font-semibold text-brand-ink truncate">{session.email}</p>
+              </div>
+
+              <div className="grid gap-3 sm:grid-cols-2">
+                <Link
+                  href="/agenda"
+                  className="flex items-center gap-3 rounded-2xl border border-brand-line bg-brand-surface p-3.5 transition hover:border-brand-primary/40 hover:bg-brand-soft"
+                >
+                  <div className="rounded-xl bg-brand-soft p-2.5 text-brand-primary">
+                    <CalendarDays className="h-4 w-4" />
+                  </div>
+                  <div>
+                    <p className="text-sm font-semibold text-brand-ink">Agenda</p>
+                    <p className="text-xs text-brand-subtext">Horários e reservas</p>
+                  </div>
+                </Link>
+
+                <Link
+                  href="/alunos"
+                  className="flex items-center gap-3 rounded-2xl border border-brand-line bg-brand-surface p-3.5 transition hover:border-brand-primary/40 hover:bg-brand-soft"
+                >
+                  <div className="rounded-xl bg-brand-soft p-2.5 text-brand-primary">
+                    <UsersRound className="h-4 w-4" />
+                  </div>
+                  <div>
+                    <p className="text-sm font-semibold text-brand-ink">Alunos</p>
+                    <p className="text-xs text-brand-subtext">Fichas e anamnese</p>
+                  </div>
+                </Link>
+
+                <Link
+                  href="/financeiro"
+                  className="flex items-center gap-3 rounded-2xl border border-brand-line bg-brand-surface p-3.5 transition hover:border-brand-primary/40 hover:bg-brand-soft"
+                >
+                  <div className="rounded-xl bg-brand-soft p-2.5 text-brand-primary">
+                    <CreditCard className="h-4 w-4" />
+                  </div>
+                  <div>
+                    <p className="text-sm font-semibold text-brand-ink">Financeiro</p>
+                    <p className="text-xs text-brand-subtext">Planos, faturas e DRE</p>
+                  </div>
+                </Link>
+
+                <Link
+                  href="/usuarios"
+                  className="flex items-center gap-3 rounded-2xl border border-brand-line bg-brand-surface p-3.5 transition hover:border-brand-primary/40 hover:bg-brand-soft"
+                >
+                  <div className="rounded-xl bg-brand-soft p-2.5 text-brand-primary">
+                    <UserCog className="h-4 w-4" />
+                  </div>
+                  <div>
+                    <p className="text-sm font-semibold text-brand-ink">Equipe</p>
+                    <p className="text-xs text-brand-subtext">Gestão de usuários</p>
+                  </div>
+                </Link>
+              </div>
             </div>
           </SectionCard>
         </div>

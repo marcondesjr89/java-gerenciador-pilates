@@ -45,7 +45,9 @@ export default async function LegalAcceptanceVerificationPage({
 
                 <div
                   className={`inline-flex items-center gap-2 rounded-full px-4 py-2 text-sm font-semibold ${
-                    verification.verified ? "bg-white/16 text-white" : "bg-[rgba(255,193,7,0.18)] text-white"
+                    verification.verified
+                      ? "bg-white/16 text-white border border-white/20"
+                      : "bg-[#fff3cd] text-[#664d03] border border-[#ffe69c]"
                   }`}
                 >
                   {verification.verified ? <ShieldCheck className="h-4 w-4" /> : <ShieldX className="h-4 w-4" />}
@@ -249,14 +251,26 @@ function InfoCard({
     <article className="rounded-3xl border border-brand-line bg-brand-panel p-5">
       <p className="text-xs uppercase tracking-[0.18em] text-brand-subtext">{title}</p>
       <div className="mt-4 space-y-4">
-        {rows.map(([label, value], index) => (
-          <div key={label}>
-            <p className="text-xs uppercase tracking-[0.14em] text-brand-subtext">{label}</p>
-            <p className={`mt-1 text-sm leading-6 text-brand-ink ${monoLastRow && index === rows.length - 1 ? "break-all font-mono text-xs" : ""}`}>
-              {value}
-            </p>
-          </div>
-        ))}
+        {rows.map(([label, value], index) => {
+          const isCryptographic =
+            label.toLowerCase().includes("hash") ||
+            label.toLowerCase().includes("código") ||
+            label.toLowerCase().includes("serie") ||
+            (monoLastRow && index === rows.length - 1);
+
+          return (
+            <div key={label}>
+              <p className="text-xs uppercase tracking-[0.14em] text-brand-subtext">{label}</p>
+              <p
+                className={`mt-1 text-sm leading-6 text-brand-ink ${
+                  isCryptographic ? "break-all font-mono text-xs" : "break-words"
+                }`}
+              >
+                {value}
+              </p>
+            </div>
+          );
+        })}
       </div>
     </article>
   );
