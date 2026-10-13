@@ -10,12 +10,12 @@ import java.time.LocalDate;
 import org.hibernate.validator.constraints.br.CPF;
 
 public record CreateStudentRequest(
-        @NotBlank @Size(max = 255) String fullName,
-        @NotBlank @CPF String cpf,
-        @NotBlank @Email String email,
-        @NotBlank @Size(max = 20) String phoneNumber,
-        @Past LocalDate birthDate,
-        @NotNull StudentStatus status,
+        @NotBlank(message = "Nome completo e obrigatorio") @Size(max = 255, message = "Nome completo excede 255 caracteres") String fullName,
+        @NotBlank(message = "CPF e obrigatorio") @CPF(message = "CPF invalido (digitos verificadores incorretos)") String cpf,
+        @NotBlank(message = "E-mail e obrigatorio") @Email(message = "E-mail invalido") String email,
+        @NotBlank(message = "Telefone e obrigatorio") @Size(max = 20, message = "Telefone excede 20 caracteres") String phoneNumber,
+        @Past(message = "Data de nascimento deve ser no passado") LocalDate birthDate,
+        @NotNull(message = "Status e obrigatorio") StudentStatus status,
         boolean lgpdConsent
 ) {
 }

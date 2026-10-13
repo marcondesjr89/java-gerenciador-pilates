@@ -37,7 +37,18 @@ function unauthorized(message: string) {
 }
 
 async function readBackendProblem(response: Response) {
-  const payload = (await response.json().catch(() => ({}))) as { detail?: string };
+  const payload = (await response.json().catch(() => ({}))) as {
+    detail?: string;
+    fields?: Record<string, string>;
+  };
+
+  if (payload.fields && typeof payload.fields === "object" && Object.keys(payload.fields).length > 0) {
+    const fieldDetails = Object.entries(payload.fields)
+      .map(([field, msg]) => `${field}: ${msg}`)
+      .join(", ");
+    return `${payload.detail ?? "Dados invalidos"} (${fieldDetails})`;
+  }
+
   return payload.detail;
 }
 

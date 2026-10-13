@@ -26,7 +26,7 @@ export async function POST(request: Request) {
     lgpdConsent?: unknown;
   };
   const fullName = readTrimmedString(body.fullName);
-  const cpf = readTrimmedString(body.cpf);
+  const cpf = readTrimmedString(body.cpf).replace(/\D/g, "");
   const email = readTrimmedString(body.email);
   const phoneNumber = readTrimmedString(body.phoneNumber);
   const birthDate = readTrimmedString(body.birthDate);

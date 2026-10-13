@@ -32,7 +32,7 @@ export function CreateStudentForm({ onSuccess }: CreateStudentFormProps = {}) {
             },
             body: JSON.stringify({
               fullName: String(formData.get("fullName") ?? "").trim(),
-              cpf: String(formData.get("cpf") ?? "").trim(),
+              cpf: String(formData.get("cpf") ?? "").replace(/\D/g, "").trim(),
               email: String(formData.get("email") ?? "").trim(),
               phoneNumber: String(formData.get("phoneNumber") ?? "").trim(),
               birthDate: String(formData.get("birthDate") ?? ""),
@@ -56,7 +56,7 @@ export function CreateStudentForm({ onSuccess }: CreateStudentFormProps = {}) {
       }}
     >
       {successMessage ? (
-        <div className="md:col-span-2 rounded-2xl border border-brand-line bg-[rgba(25,135,84,0.12)] px-4 py-3 text-sm text-brand-success">
+        <div role="status" className="md:col-span-2 rounded-2xl border border-brand-line bg-[rgba(25,135,84,0.12)] px-4 py-3 text-sm text-brand-success">
           {successMessage}
         </div>
       ) : null}
@@ -80,7 +80,7 @@ export function CreateStudentForm({ onSuccess }: CreateStudentFormProps = {}) {
           type="text"
           inputMode="numeric"
           className="w-full rounded-2xl border border-brand-line bg-brand-surface px-4 py-3 text-brand-ink outline-none"
-          placeholder="Somente numeros"
+          placeholder="Somente 11 numeros (ex: 11122233396)"
           required
         />
       </label>
@@ -147,7 +147,7 @@ export function CreateStudentForm({ onSuccess }: CreateStudentFormProps = {}) {
       </div>
 
       {errorMessage ? (
-        <div className="md:col-span-2 rounded-2xl border border-brand-line bg-brand-soft px-4 py-3 text-sm text-brand-secondary">
+        <div role="alert" className="md:col-span-2 rounded-2xl border border-brand-line bg-brand-soft px-4 py-3 text-sm text-brand-secondary">
           {errorMessage}
         </div>
       ) : null}
