@@ -6,13 +6,21 @@ target/
 .kotlin
 
 ### IntelliJ IDEA ###
-.idea/modules.xml
-.idea/jarRepositories.xml
-.idea/compiler.xml
-.idea/libraries/
+.idea/
 *.iws
 *.iml
 *.ipr
+
+### Environment and Secrets ###
+.env
+.env.*
+!.env.example
+*.env
+*.env.local
+*.p12
+*.jks
+*.key
+*.pem
 
 ### Eclipse ###
 .apt_generated
