@@ -704,7 +704,7 @@ class GerenciadorPilatesApplicationTests {
                 .andExpect(jsonPath("$.totalBookings").value(1))
                 .andExpect(jsonPath("$.slots[0].id").value(slot.getId().toString()))
                 .andExpect(jsonPath("$.slots[0].bookings[0].studentName").value("Aluno Agregado"))
-                .andExpect(jsonPath("$.slots[0].bookings[0].clinicalSummary.alerts[0]").value("Dor em acompanhamento"))
+                .andExpect(jsonPath("$.slots[0].bookings[0].clinicalSummary.alerts[0]").value("Dor: Dor lombar leve."))
                 .andExpect(jsonPath("$.slots[0].bookings[0].clinicalSummary.alerts[1]").value("Exige liberacao medica"))
                 .andExpect(jsonPath("$.slots[0].bookings[0].clinicalSummary.generalObservations").value("Evitar carga axial intensa."))
                 .andExpect(jsonPath("$.slots[0].bookings[0].clinicalSummary.latestProgressEntry.instructorNotes")

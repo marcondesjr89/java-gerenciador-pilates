@@ -3,6 +3,7 @@ import { ProgressEntryForm } from "@/app/instrutor/progress-entry-form";
 import { loadInstructorPage, type InstructorSearchParams } from "@/app/instrutor/load-instructor-page";
 import { requireInstructorSession } from "@/lib/auth";
 import { formatSpecialty, formatUtcHour } from "@/lib/formatters";
+import { ThemeToggle } from "@/components/ui/theme-toggle";
 
 type InstructorPageProps = {
   searchParams?: Promise<InstructorSearchParams>;
@@ -34,10 +35,20 @@ export default async function InstructorPage({ searchParams }: InstructorPagePro
     <main className="min-h-screen bg-[var(--page-background)] px-3 py-4 md:px-4">
       <div className="mx-auto max-w-7xl space-y-5">
         <section className="rounded-[28px] border border-brand-line bg-brand-surface p-5 shadow-panel md:p-6">
-          <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
+          <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
             <div>
-              <p className="text-sm uppercase tracking-[0.24em] text-brand-primary">Modo instrutor</p>
-              <h1 className="mt-3 font-display text-4xl text-brand-secondary">{session.fullName}</h1>
+              <div className="flex items-center justify-between gap-3">
+                <p className="text-sm uppercase tracking-[0.24em] text-brand-primary">Modo instrutor</p>
+                <div className="lg:hidden">
+                  <ThemeToggle />
+                </div>
+              </div>
+              <div className="mt-3 flex flex-wrap items-center gap-4">
+                <h1 className="font-display text-3xl sm:text-4xl text-brand-secondary">{session.fullName}</h1>
+                <div className="hidden lg:block">
+                  <ThemeToggle />
+                </div>
+              </div>
               <p className="mt-2 max-w-2xl text-sm leading-7 text-brand-subtext">
                 Interface de tablet para acompanhar a agenda do dia e registrar evolucao dos alunos confirmados.
               </p>
@@ -81,7 +92,7 @@ export default async function InstructorPage({ searchParams }: InstructorPagePro
           </div>
         </section>
 
-        <section className="grid gap-4 md:grid-cols-4">
+        <section className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
           <article className="rounded-[24px] border border-brand-line bg-brand-panel p-5 shadow-panel">
             <div className="flex items-start justify-between gap-4">
               <div>
@@ -161,7 +172,7 @@ export default async function InstructorPage({ searchParams }: InstructorPagePro
             </div>
 
             {dayOperationalSummary.priorityQueue.length > 0 ? (
-              <div className="mt-5 grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+              <div className="mt-5 grid gap-3 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
                 {dayOperationalSummary.priorityQueue.map((item) => (
                   <a
                     key={item.bookingId}
@@ -240,7 +251,7 @@ export default async function InstructorPage({ searchParams }: InstructorPagePro
               ) : null}
             </div>
 
-            <div className="mt-5 grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+            <div className="mt-5 grid gap-3 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
               {careQueue.map((item, index) => {
                 const isSelected = selectedBooking?.studentId === item.studentId;
 
@@ -295,7 +306,7 @@ export default async function InstructorPage({ searchParams }: InstructorPagePro
             </p>
           </div>
         ) : (
-          <section className="grid gap-5 xl:grid-cols-[320px_minmax(0,1fr)]">
+          <section className="grid gap-5 lg:grid-cols-[280px_minmax(0,1fr)] xl:grid-cols-[320px_minmax(0,1fr)]">
             <aside className="rounded-[28px] border border-brand-line bg-brand-surface p-4 shadow-panel">
               <div className="mb-4">
                 <p className="text-sm uppercase tracking-[0.18em] text-brand-primary">Agenda do dia</p>
@@ -511,7 +522,7 @@ export default async function InstructorPage({ searchParams }: InstructorPagePro
                         )}
                       </div>
 
-                      <div className="mt-5 grid gap-4 xl:grid-cols-[0.95fr_1.05fr]">
+                      <div className="mt-5 grid gap-4 lg:grid-cols-[0.95fr_1.05fr]">
                         <div className="space-y-4">
                           <div className="rounded-[20px] border border-brand-line bg-brand-panel px-4 py-4">
                             <p className="text-xs uppercase tracking-[0.18em] text-brand-subtext">Alertas clinicos</p>
@@ -520,8 +531,9 @@ export default async function InstructorPage({ searchParams }: InstructorPagePro
                                 alertSummary.alerts.map((alert) => (
                                   <span
                                     key={alert}
-                                    className="rounded-full bg-[rgba(220,53,69,0.08)] px-3 py-1 text-xs font-semibold text-brand-danger"
+                                    className="inline-flex items-center gap-1.5 rounded-full border border-brand-danger/20 bg-[rgba(220,53,69,0.08)] px-3 py-1.5 text-xs font-semibold text-brand-danger"
                                   >
+                                    <AlertTriangle className="h-3.5 w-3.5 shrink-0" />
                                     {alert}
                                   </span>
                                 ))

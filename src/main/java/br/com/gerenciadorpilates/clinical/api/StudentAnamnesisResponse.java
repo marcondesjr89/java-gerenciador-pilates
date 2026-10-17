@@ -47,13 +47,28 @@ public record StudentAnamnesisResponse(
     private static List<String> buildAlerts(StudentAnamnesis anamnesis) {
         List<String> alerts = new ArrayList<>();
         if (anamnesis.isHasPathologies()) {
-            alerts.add("Patologias registradas");
+            String details = anamnesis.getPathologyDetails();
+            if (details != null && !details.isBlank()) {
+                alerts.add("Patologia: " + details.trim());
+            } else {
+                alerts.add("Patologias registradas");
+            }
         }
         if (anamnesis.isHasSurgeries()) {
-            alerts.add("Cirurgias registradas");
+            String details = anamnesis.getSurgeryDetails();
+            if (details != null && !details.isBlank()) {
+                alerts.add("Cirurgia: " + details.trim());
+            } else {
+                alerts.add("Cirurgias registradas");
+            }
         }
         if (anamnesis.isHasPain()) {
-            alerts.add("Dor em acompanhamento");
+            String details = anamnesis.getPainDetails();
+            if (details != null && !details.isBlank()) {
+                alerts.add("Dor: " + details.trim());
+            } else {
+                alerts.add("Dor em acompanhamento");
+            }
         }
         if (anamnesis.isHasHypertension()) {
             alerts.add("Hipertensao");
